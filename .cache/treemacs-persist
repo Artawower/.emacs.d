@@ -1,0 +1,7 @@
+* Default
+** ui
+ - path :: ~/projects/ui
+** atom-security
+ - path :: ~/projects/fr/atom-security
+** bonds-analyzer
+ - path :: ~/projects/pet/bonds-analyzer
