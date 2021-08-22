@@ -10,6 +10,11 @@
 
 
 * Core
+** Variables
+#+BEGIN_SRC emacs-lisp
+(setq m-color-main "#4FAAEA")
+#+END_SRC
+
 ** Package manager
 #+BEGIN_SRC emacs-lisp
   (require 'package)
@@ -178,11 +183,11 @@ Clean up emacs
     :bind
     (("C-w" . backward-kill-word)
      ("C-h" . delete-backward-char)
-     ("C-u" . backward-kill-line)
      :map ivy-minibuffer-map
      ("C-j" . ivy-next-line)
      ("C-k" . ivy-previous-line)
      ("C-y" . ivy-yank-word)
+     ("C-u" . backward-kill-line)
      ;; ("C-c C-r" . ivy-copy-to-buffer-action)
      ;; ("C-f" . ivy-kill-ring-save)
      ("C-b" . counsel-yank-pop)
@@ -426,19 +431,22 @@ Functions for evil binding
           ("SPC TAB n" . persp-next)
           ("SPC TAB p" . persp-prev)
           ("SPC TAB s" . persp-switch)
+          ("C-u" . evil-scroll-up)
           ("SPC b b" . persp-ivy-switch-buffer)
           ("SPC TAB d" . persp-kill)
           ("f" . avy-goto-char))
     :init
-    (setq evil-want-C-u-scroll t)
     (setq evil-want-keybinding nil)
     :config
     (setq-default evil-kill-on-visual-paste nil)
     (global-evil-leader-mode 1)
-    ;; (evil-leader-mode)
+    ;; (setq evil-want-C-u-scroll t)
     (evil-mode 1)
     )
 #+END_SRC
+
+#+RESULTS:
+: avy-goto-char
 
 #+BEGIN_SRC emacs-lisp
   (use-package evil-matchit
@@ -1142,13 +1150,14 @@ Very imporant cat
     :after ivy
     :diminish
     :custom-face
-    (ivy-posframe-border ((t (:background "#4FAAEA"))))
+    (ivy-posframe-border ((t (:background ,m-color-main))))
     :init
     (ivy-posframe-mode 1)
     :config
     (setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display))
           ivy-posframe-height-alist '((t . 20))
           ivy-posframe-height 20
+          ;; ivy-posframe-border (t (:background m-color-main))
           ivy-posframe-parameters '((internal-border-width . 2) (left-fringe . 18) (right-fringe . 18) )
           )
     (defun ivy-posframe-get-size ()
@@ -1165,6 +1174,10 @@ Very imporant cat
 
     )
 #+END_SRC
+
+#+RESULTS:
+: t
+
 ** Time track
 #+BEGIN_SRC emacs-lisp
   (use-package wakatime-mode
@@ -1205,7 +1218,7 @@ Very imporant cat
 #+BEGIN_SRC emacs-lisp
   (use-package presentation
     :ensure t
-    :bind (:map presentation-mode-map ("SPC t b" . presentation-mode))
+    :bind (:map evil-normal-state-map ("SPC t b" . presentation-mode))
     :defer 0.1)
 #+END_SRC
 
@@ -1368,7 +1381,7 @@ Very imporant cat
     (setq lsp-diagnostic-clean-after-change t)
     (setq lsp-ui-doc-delay 1.5)
     (setq lsp-ui-doc-show-with-mouse nil)
-    (setq lsp-ui-doc-border "#4FAAEA")
+    (setq lsp-ui-doc-border m-color-main)
     ;; (setq lsp-ui-doc-delay 0.8)
     ;; (setq lsp-ui-doc-use-webkit t)
     ;; (setq lsp-ui-doc-use-childframe t)
@@ -1807,6 +1820,8 @@ Very imporant cat
 ** Org roam
 
 #+BEGIN_SRC emacs-lisp
+
+
   (use-package org-roam
     :ensure t
     :defer 0.1
@@ -1814,10 +1829,26 @@ Very imporant cat
     :init
     (setq org-roam-v2-ack t)
     :config
+    (cl-defmethod org-roam-node-compositetitle ((node org-roam-node))
+      "Return customized title of roam node"
+      (let* ((tags (org-roam-node-tags node))
+             (title (org-roam-node-title node)))
+        (if (not tags)
+            title
+          (setq joined-text (string-join tags ", "))
+          (concat (propertize (format "(%s) " joined-text) 'face `(:foreground ,m-color-main :weight bold :slant italic)) title)
+          )
+        )
+      )
+    ;; (message m-color-main)
     (setq org-roam-completion-system 'ivy)
+    (setq org-roam-node-display-template "${compositetitle:100}")
     (setq org-roam-directory "~/Yandex.Disk.localized/org-roam")
     )
 #+END_SRC
+
+#+RESULTS:
+: org-roam-node-find
 
 Incompotible now with org roam 2
 #+BEGIN_SRC emacs-lisp
