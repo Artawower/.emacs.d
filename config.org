@@ -673,6 +673,10 @@ Enable fllyspell for all texts modes
           ("3" . nil)
           ("4" . nil))
     :config
+    ;; Keymaps for exiting minibuffers like evil
+    (define-key transient-map        "q" 'transient-quit-one)
+    (define-key transient-edit-map   "q" 'transient-quit-one)
+    (define-key transient-sticky-map "q" 'transient-quit-seq)
     ;; (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
     (setq magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
 
@@ -849,6 +853,9 @@ Enable fllyspell for all texts modes
       ;; (advice-add #'git-messenger:popup-close :override #'(setq modal-opened 0))
       (advice-add #'git-messenger:popup-message :override #'my-git-messenger:popup-message)))
 #+END_SRC
+
+#+RESULTS:
+: git-messenger:copy-message
 
 *** Timemachine
 #+BEGIN_SRC emacs-lisp
