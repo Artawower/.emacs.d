@@ -409,7 +409,7 @@ Functions for evil binding
 #+BEGIN_SRC emacs-lisp
   (use-package evil
     :ensure t
-    :defer 0.1
+    :after evil-leader
     :bind
     (:map evil-normal-state-map
           ("SPC ." . find-file)
@@ -434,6 +434,8 @@ Functions for evil binding
     (setq evil-want-keybinding nil)
     :config
     (setq-default evil-kill-on-visual-paste nil)
+    (global-evil-leader-mode 1)
+    ;; (evil-leader-mode)
     (evil-mode 1)
     )
 #+END_SRC
@@ -480,8 +482,6 @@ Functions for evil binding
   (use-package evil-leader
     :ensure t
     :defer 0.1
-    :init
-    (global-evil-leader-mode)
     :config
     (evil-leader/set-key
       "f" 'evil-find-char
@@ -510,6 +510,7 @@ Functions for evil binding
       "e" 'lsp-treemacs-errors-list
       "r" 'treemacs-select-window
       )
+
     )
 #+END_SRC
 ** AVY fast navigation
@@ -1098,9 +1099,10 @@ Enable fllyspell for all texts modes
 
   (use-package all-the-icons-ivy-rich
     :ensure t
-    :after (counsel-projectile counsel)
+    :after (counsel-projectile)
     :init
     (all-the-icons-ivy-rich-mode 1))
+
 #+END_SRC
 ** Modeline
 #+BEGIN_SRC emacs-lisp
