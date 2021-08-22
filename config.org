@@ -63,14 +63,15 @@
     :ensure t
     :defer 0.1
     :config
-    (setenv "PERL5LIB" (concat "~/perl5/lib/perl5" ":"
-                               (getenv "PERL5LIB")))
+    (custom-set-variables
+     '(exec-path-from-shell-arguments (quote ("-l"))))
+    ;; (setenv "PERL5LIB" (concat "~/perl5/lib/perl5" ":"
+    ;;                            (getenv "PERL5LIB")))
 
-    (setenv "LC_ALL" "en_US.UTF-8")
+    ;; (setenv "LC_ALL" "en_US.UTF-8")
     (exec-path-from-shell-initialize)
-    (exec-path-from-shell-copy-env "SSH_AGENT_PID")
-    (exec-path-from-shell-copy-env "SSH_AUTH_SOCK")
-    ;; (add-hook 'after-init-hook 'my-exec-path-from-shell-initialize)
+    ;; (exec-path-from-shell-copy-env "SSH_AGENT_PID")
+    ;; (exec-path-from-shell-copy-env "SSH_AUTH_SOCK")
     )
 #+END_SRC
 ** Garbage colleciton hack
@@ -100,6 +101,17 @@ Backups
 #+BEGIN_SRC emacs-lisp
 (setq backup-directory-alist '(("." . "~/.emacs-saves")))
 #+END_SRC
+Clean up emacs
+#+BEGIN_SRC emacs-lisp
+  (use-package no-littering
+    :ensure t
+    :defer 0.1
+    :config
+    (setq auto-save-file-name-transforms
+          `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+    )
+#+END_SRC
+
 
 
 
@@ -170,9 +182,16 @@ Backups
      :map ivy-minibuffer-map
      ("C-j" . ivy-next-line)
      ("C-k" . ivy-previous-line)
+     ("C-y" . ivy-yank-word)
+     ;; ("C-c C-r" . ivy-copy-to-buffer-action)
+     ;; ("C-f" . ivy-kill-ring-save)
+     ("C-b" . counsel-yank-pop)
+     ("C-f" . ivy--action-copy)
      ("<ESC>" . minibuffer-keyboard-quit)
      ("C-SPC" . ivy-call-and-recenter)
-     :map ivy-switch-buffer-map ("C-k" . ivy-previous-line))
+     :map ivy-switch-buffer-map
+     ("C-k" . ivy-previous-line)
+     :map evil-normal-state-map ("SPC '" . ivy-resume))
     :config
     (setq ivy-use-virtual-buffers t)
     (setq ivy-initial-inputs-alist nil) ;; Delete ^ at start
@@ -192,6 +211,11 @@ Backups
     (ivy-rich-mode 1)
     )
 #+END_SRC
+
+#+RESULTS:
+: t
+
+
 *** Smex - remember last commands and sort
 #+BEGIN_SRC emacs-lisp
   (use-package smex
@@ -287,16 +311,27 @@ Backups
   (use-package perspective
     :ensure t
     :defer 0.1
-    :bind (:map evil-normal-state-map
-                ("SPC TAB r" . persp-rename)
-                ("SPC TAB n" . persp-next)
-                ("SPC TAB p" . persp-prev)
-                ("SPC TAB s" . persp-switch)
-                ("SPC b b" . persp-ivy-switch-buffer)
-                ("SPC TAB d" . persp-kill))   ; or use a nicer switcher, see below
+    ;; :bind (:map evil-normal-state-map
+    ;;             ("SPC TAB r" . persp-rename)
+    ;;             ("SPC TAB n" . persp-next)
+    ;;             ("SPC TAB p" . persp-prev)
+    ;;             ("SPC TAB s" . persp-switch)
+    ;;             ("SPC b b" . persp-ivy-switch-buffer)
+    ;;             ("SPC TAB d" . persp-kill))   ; or use a nicer switcher, see below
+    :init
+    (persp-mode)
     :config
-    (persp-mode))
+    (setq persp-state-default-file "~/.emacs.d/perspective_save")
+    ;; Load all perspectives from the save file, and enable persp-mode.
+    (persp-state-load "~/.emacs.d/perspective_save")
+    (persp-switch "main")
+    ;; Automatically save perspective session when Emacs exists.
+    (add-hook 'kill-emacs-hook #'persp-state-save)
+    )
 #+END_SRC
+
+#+RESULTS:
+: persp-kill
 
 
 
@@ -378,13 +413,21 @@ Functions for evil binding
     :bind
     (:map evil-normal-state-map
           ("SPC ." . find-file)
-          ("SPC b b" . switch-to-buffer)
           ("SPC h v" . describe-variable)
           ("SPC h f" . describe-function)
           ("SPC b O" . kill-other-buff)
           ("SPC o t" . vterm-toggle-cd)
           ("SPC t l" . global-display-line-numbers-mode)
           ("SPC RET" . counsel-bookmark)
+          ("SPC b n" . evil-buffer-new)
+          ("SPC q" . kill-current-buffer)
+          ;; Perspective keybindings
+          ("SPC TAB r" . persp-rename)
+          ("SPC TAB n" . persp-next)
+          ("SPC TAB p" . persp-prev)
+          ("SPC TAB s" . persp-switch)
+          ("SPC b b" . persp-ivy-switch-buffer)
+          ("SPC TAB d" . persp-kill)
           ("f" . avy-goto-char))
     :init
     (setq evil-want-C-u-scroll t)
@@ -436,9 +479,10 @@ Functions for evil binding
 #+BEGIN_SRC emacs-lisp
   (use-package evil-leader
     :ensure t
-    :after evil
+    :defer 0.1
+    :init
+    (global-evil-leader-mode)
     :config
-    ;; (setq evil-leader/no-prefix-mode-rx t)
     (evil-leader/set-key
       "f" 'evil-find-char
       "b" 'evilem-motion-previous-line
@@ -452,7 +496,8 @@ Functions for evil binding
       "v" 'vterm
       "`" 'vterm-toggle-cd
       "i" 'git-messenger:popup-message
-      "t" 'google-translate-at-point
+      ;; "t" 'google-translate-at-point
+      "t" 'google-translate-smooth-translate
       "T" 'google-translate-query-translate
 
       "a" 'counsel-org-agenda-headlines
@@ -465,7 +510,6 @@ Functions for evil binding
       "e" 'lsp-treemacs-errors-list
       "r" 'treemacs-select-window
       )
-    (global-evil-leader-mode 1)
     )
 #+END_SRC
 ** AVY fast navigation
@@ -483,9 +527,16 @@ Functions for evil binding
     :defer 0.2
     :custom
     (google-translate-backend-method 'curl)
+    :bind (:map google-translate-minibuffer-keymap
+                ("C-j" . google-translate-next-translation-direction)
+                ("C-k" . google-translate-next-translation-direction))
     :config
+    (require 'google-translate-smooth-ui)
+    (setq google-translate-translation-directions-alist
+          '(("en" . "ru") ("ru" . "en")))
     (defun google-translate--search-tkk () "Search TKK." (list 430675 2721866130)))
 #+END_SRC
+
 
 ** Bookmarks
 #+BEGIN_SRC emacs-lisp
@@ -524,6 +575,50 @@ Functions for evil binding
   ;; @see https://github.com/redguardtoo/emacs.d/issues/796
   (setq ispell-extra-args '("--sug-mode=ultra" "--lang=en_US" "--run-together" "--run-together-limit=16"))
 #+END_SRC
+Enable fllyspell for all texts modes
+
+ #+BEGIN_SRC emacs-lisp
+   (add-hook 'text-mode-hook 'flyspell-mode)
+   (add-hook 'prog-mode-hook 'flyspell-prog-mode)
+ #+END_SRC
+ 
+*** Another spellchecker
+ #+BEGIN_SRC emacs-lisp
+   (use-package spell-fu
+     :ensure t
+     :defer 0.1
+     ;; :init
+     ;; (global-spell-fu-mode)
+     :config
+     (setq ispell-personal-dictionar "~/tmp)")
+     (setq ispell-program-name "aspell")
+     (setq ispell-dictionary "en")
+     (setq-default spell-fu-faces-include
+                   '(tree-sitter-hl-face:comment
+                     tree-sitter-hl-face:doc
+                     tree-sitter-hl-face:string
+                     tree-sitter-hl-face:method
+                     tree-sitter-hl-face:constant
+                     tree-sitter-hl-face:function
+                     tree-sitter-hl-face:variable
+                     tree-sitter-hl-face:arguments
+                     font-lock-comment-face
+                     font-lock-doc-face
+                     font-lock-string-face))
+     )
+ #+END_SRC
+
+*** Automatic language picker
+#+BEGIN_SRC emacs-lisp
+  (use-package guess-language
+    :ensure t
+    :defer 0.1
+    :config
+    (setq guess-language-languages '(en ru))
+    (setq guess-language-min-paragraph-length 35)
+    )
+#+END_SRC
+
 
 ** Rest client
 #+BEGIN_SRC emacs-lisp
@@ -782,7 +877,7 @@ Functions for evil binding
     :after evil
     :config
     (setq undo-tree-auto-save-history t)
-    (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
+    (setq undo-tree-history-directory-alist '(("." . "~/tmp/undo")))
     (global-undo-tree-mode)
     (evil-set-undo-system 'undo-tree)
     )
@@ -863,6 +958,25 @@ Functions for evil binding
 
 
 * Visual
+** Colors
+*** Highlight color of hex strings
+#+BEGIN_SRC emacs-lisp
+  (use-package rainbow-mode
+    :ensure t
+    :hook ((css-mode . rainbow-mode) (scss-mode . rainbow-mode) ())
+    :defer 0.1
+    :config
+    )
+  #+END_SRC
+*** Brackets color
+#+BEGIN_SRC emacs-lisp
+  (use-package rainbow-delimiters
+    :hook ((go-mode typescript-mode js-mode scss-mode json-mode) . rainbow-delimiters-mode)
+    :ensure t
+    :defer 0.1)
+#+END_SRC
+
+
 ** Theme
 #+BEGIN_SRC emacs-lisp
 
@@ -898,7 +1012,7 @@ Functions for evil binding
     (setq heaven-and-hell-theme-type 'dark) ;; Omit to use light by default
     (setq heaven-and-hell-themes
           ;; '((light . zaiste)
-          '((light . doom-one-light)
+          '((light . zaiste)
             (dark . doom-moonlight))) ;; Themes can be the list: (dark . (tsdh-dark wombat))
     ;; Optionall, load themes without asking for confirmation.
     (setq heaven-and-hell-load-theme-no-confirm t)
@@ -908,6 +1022,7 @@ Functions for evil binding
 #+END_SRC
 
 **
+
 
 ** Configs
 #+BEGIN_SRC emacs-lisp
@@ -921,6 +1036,8 @@ Functions for evil binding
   (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
   (set-frame-parameter (selected-frame) 'alpha '(90 . 90))
   (add-to-list 'default-frame-alist '(alpha . (90 . 90)))
+  (setq-default left-margin-width 4 right-margin-width 4)
+
 #+END_SRC
 ** Fonts and ligatures
 #+BEGIN_SRC emacs-lisp
@@ -981,7 +1098,7 @@ Functions for evil binding
 
   (use-package all-the-icons-ivy-rich
     :ensure t
-    :after counsel-projectile
+    :after (counsel-projectile counsel)
     :init
     (all-the-icons-ivy-rich-mode 1))
 #+END_SRC
@@ -1240,6 +1357,9 @@ Very imporant cat
     ;; (setq lsp-ui-sideline-show-symbol t)
     ;; (setq lsp-ui-doc-alignment 'window)
     (setq lsp-diagnostic-clean-after-change t)
+    (setq lsp-ui-doc-delay 1.5)
+    (setq lsp-ui-doc-show-with-mouse nil)
+    (setq lsp-ui-doc-border "#4FAAEA")
     ;; (setq lsp-ui-doc-delay 0.8)
     ;; (setq lsp-ui-doc-use-webkit t)
     ;; (setq lsp-ui-doc-use-childframe t)
@@ -1513,6 +1633,14 @@ Very imporant cat
     :defer 0.1
     ;; :config
     ;; (setq emmet-move-cursor-between-quotes t)
+    )
+#+END_SRC
+
+** Json
+#+BEGIN_SRC emacs-lisp
+  (use-package json-mode
+    :ensure t
+    :defer 0.2
     )
 #+END_SRC
 

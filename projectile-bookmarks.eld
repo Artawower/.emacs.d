@@ -1,1 +1,0 @@
-("~/vanila/" "~/projects/pet/bonds-analyzer/" "~/projects/fr/atom-security/atom-security-back/" "~/projects/fr/atom-security/atom-security-front/" "~/projects/fr/atom-security/" "~/")
