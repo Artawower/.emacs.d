@@ -43,7 +43,7 @@
     (use-package-enable-imenu-support t))
 #+END_SRC
 
-** Instal packages from everywhere
+** Install packages from everywhere
 #+BEGIN_SRC emacs-lisp
   ;; Quelpa
   (unless (package-installed-p 'quelpa)
@@ -105,7 +105,11 @@ Don't show warnings
 Backups
 #+BEGIN_SRC emacs-lisp
 (setq backup-directory-alist '(("." . "~/.emacs-saves")))
+(setq create-lockfiles nil) ;; Don't save tmp files
 #+END_SRC
+
+#+RESULTS:
+
 Clean up emacs
 #+BEGIN_SRC emacs-lisp
   (use-package no-littering
@@ -970,7 +974,7 @@ Enable fllyspell for all texts modes
                mhtml-forward
                nil))
 #+END_SRC
-** Seeesions
+** Seesions
 #+BEGIN_SRC emacs-lisp
   ;; (use-package session
   ;;   :ensure t
@@ -1279,12 +1283,16 @@ Very imporant cat
     :ensure t
     :after company
     :init
-    (yas-global-mode 1)
-    :config
-
     (setq yas-snippet-dirs
           '("~/doom.d/snippets"                 ;; personal snippets
             ))
+
+    (yas-global-mode 1)
+    :config
+
+    ;; (setq yas-snippet-dirs
+    ;;       '("~/doom.d/snippets"                 ;; personal snippets
+    ;;         ))
     ;; (defvar company-mode/enable-yas t
     ;;   "Enable yasnippet for all backends.")
 
@@ -1416,6 +1424,7 @@ Very imporant cat
     (if (and (eq major-mode 'org-mode)
              (org-in-src-block-p t))
         (format-org-mode-block)
+      (format-all-ensure-formatter)
       (format-all-buffer)
       ))
   (use-package format-all
@@ -1425,6 +1434,10 @@ Very imporant cat
     (setq formatters '((typescript-mode . "prettier") (js-mode . "prettier") (go-mode "gofmt")))
     (format-all-mode 1))
 #+END_SRC
+
+#+RESULTS:
+: [nil 0 0 100000 nil require (format-all nil t) idle 0]
+
 ** Flycheck
 #+BEGIN_SRC emacs-lisp
   (use-package flycheck
