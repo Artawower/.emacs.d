@@ -304,6 +304,7 @@ Clean up emacs
            ;; ("SPC *" . my-counsel-ag-from-here)
            ("SPC f p" . counsel-projectile-recentf)
            ("SPC f P" . counsel-projectile-switch-project)
+           ("SPC p a" . projectile-add-known-project)
            ("SPC *" . my-counsel-git-grep))
     )
 #+END_SRC
@@ -345,13 +346,6 @@ Clean up emacs
   (use-package treemacs
     :ensure t
     :defer 0.1
-    ;; :bind (:map treemacs-mode-map
-    ;;             ("w" . treemacs-set-width)
-    ;;             ("r" . treemacs-refresh)
-    ;;             ("R" . treemacs-rename)
-    ;;             ("yp" . treemacs-copy-absolute-path-at-point)
-    ;;             ("SPC o p"   . treemacs)
-    ;;             )
     :config
     (evil-define-key 'treemacs treemacs-mode-map (kbd "SPC o p") #'treemacs)
     (setq treemacs-width 50))
@@ -363,6 +357,7 @@ Clean up emacs
       :ensure t
       :bind (:map evil-normal-state-map
                   ("SPC o p"   . treemacs)
+                  ("SPC t a" . treemacs-add-project-to-workspace)
                   ("SPC o P" . treemacs-find-file)))
 
     (use-package treemacs-projectile
@@ -426,15 +421,29 @@ Functions for evil binding
           ("SPC RET" . counsel-bookmark)
           ("SPC b n" . evil-buffer-new)
           ("SPC q" . kill-current-buffer)
+          ("SPC v l" . visual-line-mode)
+          ("C-u" . evil-scroll-up)
+          ("SPC b b" . persp-ivy-switch-buffer)
+          ("SPC TAB d" . persp-kill)
+          ("f" . avy-goto-char)
           ;; Perspective keybindings
           ("SPC TAB r" . persp-rename)
           ("SPC TAB n" . persp-next)
           ("SPC TAB p" . persp-prev)
           ("SPC TAB s" . persp-switch)
-          ("C-u" . evil-scroll-up)
-          ("SPC b b" . persp-ivy-switch-buffer)
-          ("SPC TAB d" . persp-kill)
-          ("f" . avy-goto-char))
+          :map global-map
+          ;; Org mode
+          ("C-c t" . org-time-stamp-inactive)
+          :map org-read-date-minibuffer-local-map
+          ("C-j" . (lambda () (interactive)
+                     (org-eval-in-calendar '(calendar-forward-week 1))))
+          ("C-l" . (lambda () (interactive)
+                     (org-eval-in-calendar '(calendar-forward-day 1))))
+          ("C-k" . (lambda () (interactive)
+                     (org-eval-in-calendar '(calendar-backward-week 1))))
+          ("C-h" . (lambda () (interactive)
+                     (org-eval-in-calendar '(calendar-backward-day 1))))
+          )
     :init
     (setq evil-want-keybinding nil)
     :config
@@ -446,7 +455,7 @@ Functions for evil binding
 #+END_SRC
 
 #+RESULTS:
-: avy-goto-char
+| lambda | nil | (interactive) | (org-eval-in-calendar '(calendar-backward-day 1)) |
 
 #+BEGIN_SRC emacs-lisp
   (use-package evil-matchit
@@ -1420,6 +1429,7 @@ Very imporant cat
 #+BEGIN_SRC emacs-lisp
   (use-package flycheck
     :ensure t
+    :hook (org-mode . )
     :init (global-flycheck-mode))
 #+END_SRC
 ** Debug
