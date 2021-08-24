@@ -21,6 +21,8 @@
   (customize-set-variable 'package-archives
                           `(,@package-archives
                             ("melpa" . "https://melpa.org/packages/")
+                            ("melpa-stable" . "http://stable.melpa.org/packages/")
+                            ("marmalade"   . "http://marmalade-repo.org/packages/")
                             ("org" . "https://orgmode.org/elpa/")
                             ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
                             ))
@@ -79,6 +81,19 @@
     ;; (exec-path-from-shell-copy-env "SSH_AUTH_SOCK")
     )
 #+END_SRC
+
+** Profiler
+Use it with responsibly
+#+BEGIN_SRC emacs-lisp
+  ;; (use-package esup
+  ;;   :ensure t
+  ;;   ;; To use MELPA Stable use ":pin melpa-stable",
+  ;;   :pin melpa
+  ;;   :init
+  ;;   (setq esup-depth 0))
+#+END_SRC
+
+
 ** Garbage colleciton hack
 #+BEGIN_SRC emacs-lisp
   (use-package gcmh
@@ -88,6 +103,21 @@
     (gcmh-mode 1))
 #+END_SRC
 
+
+* Custom funcs
+** Toggle buffer full size
+#+BEGIN_SRC emacs-lisp
+(defun toggle-maximize-buffer () "Maximize buffer"
+  (interactive)
+  (if (= 1 (length (window-list)))
+      (jump-to-register '_) 
+    (progn
+      (window-configuration-to-register '_)
+      (delete-other-windows))))
+#+END_SRC
+
+#+RESULTS:
+: toggle-maximize-buffer
 
 * Workspace
 ** Fixes
@@ -317,31 +347,62 @@ Clean up emacs
 : my-counsel-git-grep
 
 ** Perspective
+*** Original perspective.el
 #+BEGIN_SRC emacs-lisp
-  (use-package perspective
-    :ensure t
-    :defer 0.1
-    ;; :bind (:map evil-normal-state-map
-    ;;             ("SPC TAB r" . persp-rename)
-    ;;             ("SPC TAB n" . persp-next)
-    ;;             ("SPC TAB p" . persp-prev)
-    ;;             ("SPC TAB s" . persp-switch)
-    ;;             ("SPC b b" . persp-ivy-switch-buffer)
-    ;;             ("SPC TAB d" . persp-kill))   ; or use a nicer switcher, see below
-    :init
-    (persp-mode)
-    :config
-    (setq persp-state-default-file "~/.emacs.d/perspective_save")
-    ;; Load all perspectives from the save file, and enable persp-mode.
-    (persp-state-load "~/.emacs.d/perspective_save")
-    (persp-switch "main")
-    ;; Automatically save perspective session when Emacs exists.
-    (add-hook 'kill-emacs-hook #'persp-state-save)
-    )
+  ;; (use-package perspective
+  ;;   :ensure t
+  ;;   :bind (:map evil-normal-state-map
+  ;;               ("SPC p r" . (lambda () (interactive)
+  ;;                              (persp-state-load "~/.emacs.d/perspective_save")
+  ;;                               (persp-switch "main"))))
+  ;;   ;;             ("SPC TAB n" . persp-next)
+  ;;   ;;             ("SPC TAB p" . persp-prev)
+  ;;   ;;             ("SPC TAB s" . persp-switch)
+  ;;   ;;             ("SPC b b" . persp-ivy-switch-buffer)
+  ;;   ;;             ("SPC TAB d" . persp-kill))   ; or use a nicer switcher, see below
+  ;;   :init
+  ;;   (persp-mode)
+  ;;   :config
+  ;;   (setq persp-state-default-file "~/.emacs.d/perspective_save")
+  ;;   ;; Load all perspectives from the save file, and enable persp-mode.
+  ;;   ;; (persp-state-load "~/.emacs.d/perspective_save")
+  ;;   ;; (persp-switch "main")
+  ;;   ;; )))
+  ;; ;;             ("SPC TAB n" . persp-next)
+  ;; ;;             ("SPC TAB p" . persp-prev)
+  ;; ;;             ("SPC TAB s" . persp-switch)
+  ;; ;;             ("SPC b b" . persp-ivy-switch-buffer)
+  ;; ;;             ("SPC TAB d" . persp-kill))   ; or use a nicer switcher, see below
+  ;; :init
+  ;; (persp-mode)
+  ;; :config
+  ;; (setq persp-state-default-file "~/.emacs.d/perspective_save")
+  ;; ;; Load all perspectives from the save file, and enable persp-mode.
+  ;; ;; (persp-state-load "~/.emacs.d/perspective_save")
+  ;; ;; (persp-switch "main")
+  ;; ;; Automatically save perspective session when Emacs exists.
+  ;; (add-hook 'kill-emacs-hook #'persp-state-save)
+  ;; )
 #+END_SRC
 
 #+RESULTS:
-: persp-kill
+| lambda | nil | (interactive) | (persp-state-load ~/.emacs.d/perspective_save) |
+*** Persp mode (fork of perspective.el)
+#+BEGIN_SRC emacs-lisp
+  (use-package persp-mode
+    :demand t
+    :ensure t
+    :init
+    (persp-mode 1)
+    :config
+    (setq persp-auto-resume-time 1 ;; No autoload buffers
+          persp-set-last-persp-for-new-frames t
+          persp-reset-windows-on-nil-window-conf t
+          persp-autokill-buffer-on-remove t
+          persp-add-buffer-on-after-change-major-mode t
+          persp-kill-foreign-buffer-behaviour 'kill)
+    )
+#+END_SRC
 
 
 
@@ -427,14 +488,18 @@ Functions for evil binding
           ("SPC q" . kill-current-buffer)
           ("SPC v l" . visual-line-mode)
           ("C-u" . evil-scroll-up)
-          ("SPC b b" . persp-ivy-switch-buffer)
+          ;; ("SPC b b" . persp-ivy-switch-buffer)
+          ("SPC b b" . persp-switch-to-buffer)
           ("SPC TAB d" . persp-kill)
           ("f" . avy-goto-char)
           ;; Perspective keybindings
           ("SPC TAB r" . persp-rename)
           ("SPC TAB n" . persp-next)
           ("SPC TAB p" . persp-prev)
-          ("SPC TAB s" . persp-switch)
+          ;; ("SPC TAB s" . persp-switch)
+          ("SPC TAB s" . persp-window-switch)
+          ;; Frames
+          ("SPC f b" . (lambda () (interactive) (switch-to-buffer-other-frame "*scratch*")))
           :map global-map
           ;; Org mode
           ("C-c t" . org-time-stamp-inactive)
@@ -509,9 +574,9 @@ Functions for evil binding
       "b" 'evilem-motion-previous-line
       "p" 'prettier-prettify
       "k" 'save-buffer-without-dtw
-
+  
       "d" 'dup-debug
-
+  
       "o" 'org-mode
       "q" 'kill-current-buffer
       "v" 'vterm
@@ -520,20 +585,25 @@ Functions for evil binding
       ;; "t" 'google-translate-at-point
       "t" 'google-translate-smooth-translate
       "T" 'google-translate-query-translate
-
+  
       "a" 'counsel-org-agenda-headlines
       "c" 'dired-create-empty-file
       "p" 'my-format-all
       "s" 'publish-org-blog
       "g" 'dogears-go
-
+  
       "h" 'lsp-ui-doc-show
       "e" 'lsp-treemacs-errors-list
       "r" 'treemacs-select-window
+      "m" 'toggle-maximize-buffer
       )
-
+  
     )
 #+END_SRC
+
+#+RESULTS:
+: t
+
 ** AVY fast navigation
 #+BEGIN_SRC emacs-lisp
   (use-package avy
@@ -1050,8 +1120,6 @@ Enable fllyspell for all texts modes
            ("<f5>" . heaven-and-hell-toggle-theme)))
 #+END_SRC
 
-**
-
 
 ** Configs
 #+BEGIN_SRC emacs-lisp
@@ -1066,8 +1134,9 @@ Enable fllyspell for all texts modes
   (set-frame-parameter (selected-frame) 'alpha '(90 . 90))
   (add-to-list 'default-frame-alist '(alpha . (90 . 90)))
   (setq-default left-margin-width 4 right-margin-width 4)
-
+  (setq confirm-kill-emacs #'y-or-n-p) ;; Config emacs to close window
 #+END_SRC
+
 ** Fonts and ligatures
 #+BEGIN_SRC emacs-lisp
   (use-package unicode-fonts
@@ -1440,10 +1509,10 @@ Very imporant cat
 
 ** Flycheck
 #+BEGIN_SRC emacs-lisp
-  (use-package flycheck
-    :ensure t
-    :hook (org-mode . )
-    :init (global-flycheck-mode))
+	(use-package flycheck
+		:ensure t
+    :defer 0.1
+		:init (global-flycheck-mode))
 #+END_SRC
 ** Debug
 #+BEGIN_SRC emacs-lisp
@@ -1763,7 +1832,10 @@ Very imporant cat
 
   (use-package org
     :mode (("\\.org$" . org-mode))
-    :ensure t
+    ;; :ensure t
+    :ensure org-plus-contrib
+    :defer 0.3
+    ;; :demand t
     ;; :bind
     ;; (:map org-mode-map ("C-o f" . format-org-mode-block))
     :config
@@ -1824,14 +1896,16 @@ Very imporant cat
   ;;   (define-key org-mode-map "\C-x \Cp" ))
   #+END_SRC
 
+  #+RESULTS:
+  : ((.ts' . typescript-mode) (\.whl\' . python-mode) (\.pth\' . python-mode) (\.pyi\' . python-mode) (\.pyr\' . python-mode) (\.pxd\' . python-mode) (\.pyo\' . python-mode) (\.pyx\' . python-mode) (\.pyc\' . python-mode) (\.pym\' . python-mode) (\.py\' . python-mode) (\.vue\' . web-mode) (\.odc\' . archive-mode) (\.odf\' . archive-mode) (\.odi\' . archive-mode) (\.otp\' . archive-mode) (\.odp\' . archive-mode) (\.otg\' . archive-mode) (\.odg\' . archive-mode) (\.ots\' . archive-mode) (\.ods\' . archive-mode) (\.odm\' . archive-mode) (\.ott\' . archive-mode) (\.odt\' . archive-mode) (\.org$ . org-mode) (\(?:\(?:\.\(?:b\(?:\(?:abel\|ower\)rc\)\|json\(?:ld\)?\)\|composer\.lock\)\'\) . json-mode) (docker-compose[^/]*\.ya?ml\' . docker-compose-mode) (\.dockerfile\' . dockerfile-mode) (/Dockerfile\(?:\.[^/\]*\)?\' . dockerfile-mode) (go\.mod\' . go-dot-mod-mode) (\.go\' . go-mode) (Jenkinsfile\' . jenkinsfile-mode) (Jenkinsfile . groovy-mode) (\.g\(?:ant\|roovy\|radle\)\' . groovy-mode) (\.module.ts\' . ng2-ts-mode) (\.guard.ts\' . ng2-ts-mode) (\.directive.ts\' . ng2-ts-mode) (\.pipe.ts\' . ng2-ts-mode) (\.service.ts\' . ng2-ts-mode) (\.component.ts\' . ng2-ts-mode) (\.component.html\' . ng2-html-mode) (\.rs\' . rustic-mode) (\.\(?:md\|markdown\|mkd\|mdown\|mkdn\|mdwn\)\' . markdown-mode) (/git-rebase-todo\' . git-rebase-mode) (\.ts\' . typescript-mode) (\.\(e?ya?\|ra\)ml\' . yaml-mode) (\.gpg\(~\|\.~[0-9]+~\)?\' nil epa-file) (\.\(?:3fr\|a\(?:rw\|vs\)\|bmp[23]?\|c\(?:als?\|myka?\|r[2w]\|u[rt]\)\|d\(?:c[mrx]\|ds\|ng\|px\)\|exr\|f\(?:ax\|its\)\|gif\(?:87\)?\|hrz\|ic\(?:on\|[bo]\)\|j\(?:2c\|ng\|p\(?:eg\|[2cg]\)\)\|k\(?:25\|dc\)\|m\(?:iff\|ng\|rw\|s\(?:l\|vg\)\|tv\)\|nef\|o\(?:rf\|tb\)\|p\(?:bm\|c\(?:ds\|[dltx]\)\|db\|ef\|gm\|i\(?:ct\|x\)\|jpeg\|n\(?:g\(?:24\|32\|8\)\|[gm]\)\|pm\|sd\|tif\|wp\)\|r\(?:a[fs]\|gb[ao]?\|l[ae]\)\|s\(?:c[rt]\|fw\|gi\|r[2f]\|un\|vgz?\)\|t\(?:ga\|i\(?:ff\(?:64\)?\|le\|m\)\|tf\)\|uyvy\|v\(?:da\|i\(?:car\|d\|ff\)\|st\)\|w\(?:bmp\|pg\)\|x\(?:3f\|bm\|cf\|pm\|[cv]\)\|y\(?:cbcra?\|uv\)\)\' . image-mode) (\.elc\' . elisp-byte-code-mode) (\.zst\' nil jka-compr) (\.dz\' nil jka-compr) (\.xz\' nil jka-compr) (\.lzma\' nil jka-compr) (\.lz\' nil jka-compr) (\.g?z\' nil jka-compr) (\.bz2\' nil jka-compr) (\.Z\' nil jka-compr) (\.vr[hi]?\' . vera-mode) (\(?:\.\(?:rbw?\|ru\|rake\|thor\|jbuilder\|rabl\|gemspec\|podspec\)\|/\(?:Gem\|Rake\|Cap\|Thor\|Puppet\|Berks\|Brew\|Vagrant\|Guard\|Pod\)file\)\' . ruby-mode) (\.re?st\' . rst-mode) (\.py[iw]?\' . python-mode) (\.m\' . octave-maybe-mode) (\.less\' . less-css-mode) (\.scss\' . scss-mode) (\.awk\' . awk-mode) (\.\(u?lpc\|pike\|pmod\(\.in\)?\)\' . pike-mode) (\.idl\' . idl-mode) (\.java\' . java-mode) (\.m\' . objc-mode) (\.ii\' . c++-mode) (\.i\' . c-mode) (\.lex\' . c-mode) (\.y\(acc\)?\' . c-mode) (\.h\' . c-or-c++-mode) (\.c\' . c-mode) (\.\(CC?\|HH?\)\' . c++-mode) (\.[ch]\(pp\|xx\|\+\+\)\' . c++-mode) (\.\(cc\|hh\)\' . c++-mode) (\.\(bat\|cmd\)\' . bat-mode) (\.[sx]?html?\(\.[a-zA-Z_]+\)?\' . mhtml-mode) (\.svgz?\' . image-mode) (\.svgz?\' . xml-mode) (\.x[bp]m\' . image-mode) (\.x[bp]m\' . c-mode) (\.p[bpgn]m\' . image-mode) (\.tiff?\' . image-mode) (\.gif\' . image-mode) (\.png\' . image-mode) (\.jpe?g\' . image-mode) (\.te?xt\' . text-mode) (\.[tT]e[xX]\' . tex-mode) (\.ins\' . tex-mode) (\.ltx\' . latex-mode) (\.dtx\' . doctex-mode) (\.org\' . org-mode) (\.dir-locals\(?:-2\)?\.el\' . lisp-data-mode) (eww-bookmarks\' . lisp-data-mode) (tramp\' . lisp-data-mode) (/archive-contents\' . lisp-data-mode) (places\' . lisp-data-mode) (\.emacs-places\' . lisp-data-mode) (\.el\' . emacs-lisp-mode) (Project\.ede\' . emacs-lisp-mode) (\.\(scm\|stk\|ss\|sch\)\' . scheme-mode) (\.l\' . lisp-mode) (\.li?sp\' . lisp-mode) (\.[fF]\' . fortran-mode) (\.for\' . fortran-mode) (\.p\' . pascal-mode) (\.pas\' . pascal-mode) (\.\(dpr\|DPR\)\' . delphi-mode) (\.\([pP]\([Llm]\|erl\|od\)\|al\)\' . perl-mode) (Imakefile\' . makefile-imake-mode) (Makeppfile\(?:\.mk\)?\' . makefile-makepp-mode) (\.makepp\' . makefile-makepp-mode) (\.mk\' . makefile-bsdmake-mode) (\.make\' . makefile-bsdmake-mode) (GNUmakefile\' . makefile-gmake-mode) ([Mm]akefile\' . makefile-bsdmake-mode) (\.am\' . makefile-automake-mode) (\.texinfo\' . texinfo-mode) (\.te?xi\' . texinfo-mode) (\.[sS]\' . asm-mode) (\.asm\' . asm-mode) (\.css\' . css-mode) (\.mixal\' . mixal-mode) (\.gcov\' . compilation-mode) (/\.[a-z0-9-]*gdbinit . gdb-script-mode) (-gdb\.gdb . gdb-script-mode) ([cC]hange\.?[lL]og?\' . change-log-mode) ([cC]hange[lL]og[-.][0-9]+\' . change-log-mode) (\$CHANGE_LOG\$\.TXT . change-log-mode) (\.scm\.[0-9]*\' . scheme-mode) (\.[ckz]?sh\'\|\.shar\'\|/\.z?profile\' . sh-mode) (\.bash\' . sh-mode) (/PKGBUILD\' . sh-mode) (\(/\|\`\)\.\(bash_\(profile\|history\|log\(in\|out\)\)\|z?log\(in\|out\)\)\' . sh-mode) (\(/\|\`\)\.\(shrc\|zshrc\|m?kshrc\|bashrc\|t?cshrc\|esrc\)\' . sh-mode) (\(/\|\`\)\.\([kz]shenv\|xinitrc\|startxrc\|xsession\)\' . sh-mode) (\.m?spec\' . sh-mode) (\.m[mes]\' . nroff-mode) (\.man\' . nroff-mode) (\.sty\' . latex-mode) (\.cl[so]\' . latex-mode) (\.bbl\' . latex-mode) (\.bib\' . bibtex-mode) (\.bst\' . bibtex-style-mode) (\.sql\' . sql-mode) (\(acinclude\|aclocal\|acsite\)\.m4\' . autoconf-mode) (\.m[4c]\' . m4-mode) (\.mf\' . metafont-mode) (\.mp\' . metapost-mode) (\.vhdl?\' . vhdl-mode) (\.article\' . text-mode) (\.letter\' . text-mode) (\.i?tcl\' . tcl-mode) (\.exp\' . tcl-mode) (\.itk\' . tcl-mode) (\.icn\' . icon-mode) (\.sim\' . simula-mode) (\.mss\' . scribe-mode) (\.f9[05]\' . f90-mode) (\.f0[38]\' . f90-mode) (\.indent\.pro\' . fundamental-mode) (\.\(pro\|PRO\)\' . idlwave-mode) (\.srt\' . srecode-template-mode) (\.prolog\' . prolog-mode) (\.tar\' . tar-mode) (\.\(arc\|zip\|lzh\|lha\|zoo\|[jew]ar\|xpi\|rar\|cbr\|7z\|squashfs\|ARC\|ZIP\|LZH\|LHA\|ZOO\|[JEW]AR\|XPI\|RAR\|CBR\|7Z\|SQUASHFS\)\' . archive-mode) (\.oxt\' . archive-mode) (\.\(deb\|[oi]pk\)\' . archive-mode) (\`/tmp/Re . text-mode) (/Message[0-9]*\' . text-mode) (\`/tmp/fol/ . text-mode) (\.oak\' . scheme-mode) (\.sgml?\' . sgml-mode) (\.x[ms]l\' . xml-mode) (\.dbk\' . xml-mode) (\.dtd\' . sgml-mode) (\.ds\(ss\)?l\' . dsssl-mode) (\.js[mx]?\' . javascript-mode) (\.har\' . javascript-mode) (\.json\' . javascript-mode) (\.[ds]?va?h?\' . verilog-mode) (\.by\' . bovine-grammar-mode) (\.wy\' . wisent-grammar-mode) ([:/\]\..*\(emacs\|gnus\|viper\)\' . emacs-lisp-mode) (\`\..*emacs\' . emacs-lisp-mode) ([:/]_emacs\' . emacs-lisp-mode) (/crontab\.X*[0-9]+\' . shell-script-mode) (\.ml\' . lisp-mode) (\.ld[si]?\' . ld-script-mode) (ld\.?script\' . ld-script-mode) (\.xs\' . c-mode) (\.x[abdsru]?[cnw]?\' . ld-script-mode) (\.zone\' . dns-mode) (\.soa\' . dns-mode) (\.asd\' . lisp-mode) (\.\(asn\|mib\|smi\)\' . snmp-mode) (\.\(as\|mi\|sm\)2\' . snmpv2-mode) (\.\(diffs?\|patch\|rej\)\' . diff-mode) (\.\(dif\|pat\)\' . diff-mode) (\.[eE]?[pP][sS]\' . ps-mode) (\.\(?:PDF\|DVI\|OD[FGPST]\|DOCX\|XLSX?\|PPTX?\|pdf\|djvu\|dvi\|od[fgpst]\|docx\|xlsx?\|pptx?\)\' . doc-view-mode-maybe) (configure\.\(ac\|in\)\' . autoconf-mode) (\.s\(v\|iv\|ieve\)\' . sieve-mode) (BROWSE\' . ebrowse-tree-mode) (\.ebrowse\' . ebrowse-tree-mode) (#\*mail\* . mail-mode) (\.g\' . antlr-mode) (\.mod\' . m2-mode) (\.ses\' . ses-mode) (\.docbook\' . sgml-mode) (\.com\' . dcl-mode) (/config\.\(?:bat\|log\)\' . fundamental-mode) (/\.\(authinfo\|netrc\)\' . authinfo-mode) (\.\(?:[iI][nN][iI]\|[lL][sS][tT]\|[rR][eE][gG]\|[sS][yY][sS]\)\' . conf-mode) (\.la\' . conf-unix-mode) (\.ppd\' . conf-ppd-mode) (java.+\.conf\' . conf-javaprop-mode) (\.properties\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-javaprop-mode) (\.toml\' . conf-toml-mode) (\.desktop\' . conf-desktop-mode) (/\.redshift\.conf\' . conf-windows-mode) (\`/etc/\(?:DIR_COLORS\|ethers\|.?fstab\|.*hosts\|lesskey\|login\.?de\(?:fs\|vperm\)\|magic\|mtab\|pam\.d/.*\|permissions\(?:\.d/.+\)?\|protocols\|rpc\|services\)\' . conf-space-mode) (\`/etc/\(?:acpid?/.+\|aliases\(?:\.d/.+\)?\|default/.+\|group-?\|hosts\..+\|inittab\|ksysguarddrc\|opera6rc\|passwd-?\|shadow-?\|sysconfig/.+\)\' . conf-mode) ([cC]hange[lL]og[-.][-0-9a-z]+\' . change-log-mode) (/\.?\(?:gitconfig\|gnokiirc\|hgrc\|kde.*rc\|mime\.types\|wgetrc\)\' . conf-mode) (/\.\(?:asound\|enigma\|fetchmail\|gltron\|gtk\|hxplayer\|mairix\|mbsync\|msmtp\|net\|neverball\|nvidia-settings-\|offlineimap\|qt/.+\|realplayer\|reportbug\|rtorrent\.\|screen\|scummvm\|sversion\|sylpheed/.+\|xmp\)rc\' . conf-mode) (/\.\(?:gdbtkinit\|grip\|mpdconf\|notmuch-config\|orbital/.+txt\|rhosts\|tuxracer/options\)\' . conf-mode) (/\.?X\(?:default\|resource\|re\)s\> . conf-xdefaults-mode) (/X11.+app-defaults/\|\.ad\' . conf-xdefaults-mode) (/X11.+locale/.+/Compose\' . conf-colon-mode) (/X11.+locale/compose\.dir\' . conf-javaprop-mode) (\.~?[0-9]+\.[0-9][-.0-9]*~?\' nil t) (\.\(?:orig\|in\|[bB][aA][kK]\)\' nil t) ([/.]c\(?:on\)?f\(?:i?g\)?\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-mode-maybe) (\.[1-9]\' . nroff-mode) (\.art\' . image-mode) (\.avs\' . image-mode) (\.bmp\' . image-mode) (\.cmyk\' . image-mode) (\.cmyka\' . image-mode) (\.crw\' . image-mode) (\.dcr\' . image-mode) (\.dcx\' . image-mode) (\.dng\' . image-mode) (\.dpx\' . image-mode) (\.fax\' . image-mode) (\.hrz\' . image-mode) (\.icb\' . image-mode) (\.icc\' . image-mode) (\.icm\' . image-mode) (\.ico\' . image-mode) (\.icon\' . image-mode) (\.jbg\' . image-mode) (\.jbig\' . image-mode) (\.jng\' . image-mode) (\.jnx\' . image-mode) (\.miff\' . image-mode) (\.mng\' . image-mode) (\.mvg\' . image-mode) (\.otb\' . image-mode) (\.p7\' . image-mode) (\.pcx\' . image-mode) (\.pdb\' . image-mode) (\.pfa\' . image-mode) (\.pfb\' . image-mode) (\.picon\' . image-mode) (\.pict\' . image-mode) (\.rgb\' . image-mode) (\.rgba\' . image-mode) (\.tga\' . image-mode) (\.wbmp\' . image-mode) (\.webp\' . image-mode) (\.wmf\' . image-mode) (\.wpg\' . image-mode) (\.xcf\' . image-mode) (\.xmp\' . image-mode) (\.xwd\' . image-mode) (\.yuv\' . image-mode) (\.tgz\' . tar-mode) (\.tbz2?\' . tar-mode) (\.txz\' . tar-mode) (\.tzst\' . tar-mode))
+
 ** Beautiful ligatures
 #+BEGIN_SRC emacs-lisp
   (use-package org-superstar
     :ensure t
-    :defer 0.1
-    ;; :after org
-    :hook ((org-mode . org-superstar-mode)
-           )
+    ;; :defer 0.1
+    :after org
+    :hook ((org-mode . org-superstar-mode))
     :config
     (setq org-directory "~/Yandex.Disk.localized/org")
     (setq org-agenda-files '("~/Yandex.Disk.localized/org/articles"))
@@ -1841,7 +1915,7 @@ Very imporant cat
     )
 #+END_SRC
 ** Org roam
-
+*** Roam
 #+BEGIN_SRC emacs-lisp
 
 
@@ -1905,4 +1979,27 @@ Incompotible now with org roam 2
 ;;   (smartparens-global-mode 1))
 
 #+END_SRC
-* Custom funcs
+*** Rom ui
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'load-path "~/.emacs.d/private/org-roam-ui")
+  (use-package websocket
+    :ensure t
+    :after org-roam
+    :config
+    (load-library "org-roam-ui")
+    )
+  ;; (use-package org-roam-ui
+  ;;   :straight
+  ;;     (:host github :repo "org-roam/org-roam-ui" :branch "main" :files ("*.el" "out"))
+  ;;     :after org-roam
+  ;; ;;         normally we'd recommend hooking orui after org-roam, but since org-roam does not have
+  ;; ;;         a hookable mode anymore, you're advised to pick something yourself
+  ;; ;;         if you don't care about startup time, use
+  ;; ;;  :hook (after-init . org-roam-ui-mode)
+  ;;     :config
+  ;;     (setq org-roam-ui-sync-theme t
+  ;;           org-roam-ui-follow t
+  ;;           org-roam-ui-update-on-save t
+  ;;           org-roam-ui-open-on-start t))
+ #+END_SRC
+
