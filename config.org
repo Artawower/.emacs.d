@@ -226,7 +226,9 @@ Clean up emacs
      ;; ("C-f" . ivy-kill-ring-save)
      ("C-b" . counsel-yank-pop)
      ("C-f" . ivy--action-copy)
-     ("<ESC>" . minibuffer-keyboard-quit)
+     ;; ("<ESC>" . minibuffer-keyboard-quit)
+     ("ESC" . ivy-exit)
+
      ("C-SPC" . ivy-call-and-recenter)
      :map ivy-switch-buffer-map
      ("C-k" . ivy-previous-line)
@@ -490,6 +492,7 @@ Functions for evil binding
           ("C-u" . evil-scroll-up)
           ;; ("SPC b b" . persp-ivy-switch-buffer)
           ("SPC b b" . persp-switch-to-buffer)
+          ("SPC b B" . counsel-switch-buffer)
           ("SPC TAB d" . persp-kill)
           ("f" . avy-goto-char)
           ;; Perspective keybindings
@@ -545,8 +548,15 @@ Functions for evil binding
     :after evil
     :config
     (evil-collection-init)
+    (evil-define-key 'normal magit-mode-map "Z" 'magit-stash)
+    (evil-define-key 'normal magit-mode-map "zz" 'evil-scroll-line-to-center)
+    (evil-define-key 'normal magit-mode-map "zt" 'evil-scroll-line-to-top)
+    (evil-define-key 'normal magit-mode-map "zb" 'evil-scroll-line-to-bottom)
     )
 #+END_SRC
+
+#+RESULTS:
+: t
 
 #+BEGIN_SRC emacs-lisp
   (use-package evil-commentary
@@ -1239,6 +1249,7 @@ Very imporant cat
     (setq ivy-posframe-display-functions-alist '((t . ivy-posframe-display))
           ivy-posframe-height-alist '((t . 20))
           ivy-posframe-height 20
+          ivy-posframe-display-functions-alist '((t . ivy-posframe-display-at-frame-top-center))
           ;; ivy-posframe-border (t (:background m-color-main))
           ivy-posframe-parameters '((internal-border-width . 2) (left-fringe . 18) (right-fringe . 18) )
           )
@@ -2002,4 +2013,14 @@ Incompotible now with org roam 2
   ;;           org-roam-ui-update-on-save t
   ;;           org-roam-ui-open-on-start t))
  #+END_SRC
+** Sticky header
+#+BEGIN_SRC emacs-lisp
+  (use-package org-sticky-header
+    :ensure t
+    :hook (org-mode . org-sticky-header-mode)
+    :defer t)
+#+END_SRC
+
+
+
 
