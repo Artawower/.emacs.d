@@ -43,10 +43,11 @@
 ;;; Code:
 
 (setq enable-local-variables :safe)
-(let ((default-directory user-emacs-directory)
+(let* ((default-directory user-emacs-directory)
       (file-name-handler-alist nil)
       (gc-cons-percentage .6)
-      (gc-cons-threshold most-positive-fixnum)
+      (gc-cons-threshold-original gc-cons-threshold)
+      (gc-cons-threshold (* 1024 1024 100))
       (read-process-output-max (* 1024 1024)))
 
   ;; Disable that pesky echo message
@@ -74,3 +75,4 @@
   ;; Collect garbage when all else is done
   (garbage-collect))
 
+(setq counsel-projectile)
