@@ -18,7 +18,7 @@
                           `(,@package-archives
                             ("melpa" . "https://melpa.org/packages/")
                             ("melpa-stable" . "http://stable.melpa.org/packages/")
-                            ("marmalade"   . "http://marmalade-repo.org/packages/")
+                            ;("marmalade"   . "http://marmalade-repo.org/packages/")
                             ("org" . "https://orgmode.org/elpa/")
                             ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
                             ))
@@ -42,6 +42,7 @@
 #+END_SRC
 
 ** Install packages from everywhere
+*** Quelpa
 #+BEGIN_SRC emacs-lisp
   ;; Quelpa
   (unless (package-installed-p 'quelpa)
@@ -50,6 +51,18 @@
       (eval-buffer)
       (quelpa-self-upgrade)))
 #+END_SRC
+*** Quelpa user package
+#+BEGIN_SRC emacs-lisp
+  (quelpa
+   '(quelpa-use-package
+     :fetcher git
+     :url "https://github.com/quelpa/quelpa-use-package.git"))
+  (require 'quelpa-use-package)
+#+END_SRC
+
+#+RESULTS:
+: quelpa-use-package
+
 ** Env
 #+BEGIN_SRC emacs-lisp
   ;; (defun my-exec-path-from-shell-initialize ()
@@ -87,6 +100,7 @@ Use it with responsibly
   ;;   :pin melpa
   ;;   :init
   ;;   (setq esup-depth 0))
+  
 #+END_SRC
 
 
@@ -99,6 +113,11 @@ Use it with responsibly
   ;;   (gcmh-mode 1))
 #+END_SRC
 
+** Performace optimisation
+Sometime emacs trying to eat 100% cpu
+#+BEGIN_SRC emacs-list
+
+#+END_SRC
 
 * Custom funcs
 ** Toggle buffer full size
@@ -114,6 +133,20 @@ Use it with responsibly
 
 #+RESULTS:
 : toggle-maximize-buffer
+** Kill other buffer
+#+BEGIN_SRC emacs-lisp
+  (defun kill-other-buffers ()
+      "Kill all other buffers."
+      (interactive)
+      (mapc 'kill-buffer 
+            (delq (current-buffer) 
+                  (remove-if-not 'buffer-file-name (buffer-list)))))
+  
+#+END_SRC
+
+#+RESULTS:
+: kill-other-buffers
+
 
 * Workspace
 ** Fixes
@@ -222,13 +255,14 @@ Clean up emacs
      ;; ("C-f" . ivy-kill-ring-save)
      ("C-b" . counsel-yank-pop)
      ("C-f" . ivy--action-copy)
+     ("C-RET" . ivy-immediate-done)
      ;; ("<ESC>" . minibuffer-keyboard-quit)
      ("ESC" . ivy-exit)
 
      ("C-SPC" . ivy-call-and-recenter)
      :map ivy-switch-buffer-map
-     ("C-k" . ivy-previous-line)
-     :map evil-normal-state-map ("SPC '" . ivy-resume))
+     ("C-k" . ivy-previous-line))
+
     :config
     (setq ivy-use-virtual-buffers t)
     (setq ivy-initial-inputs-alist nil) ;; Delete ^ at start
@@ -239,6 +273,9 @@ Clean up emacs
 
     (ivy-mode 1))
 #+END_SRC
+
+#+RESULTS:
+: ivy-resume
 
 #+BEGIN_SRC emacs-lisp
 
@@ -296,19 +333,18 @@ Clean up emacs
     :ensure t
     :defer 0.1
     :bind (
-           :map evil-normal-state-map
-           ("SPC f r" . counsel-recentf)
-           ("SPC SPC" . counsel-projectile-find-file)
-           ("SPC /" . counsel-projectile-rg)
            :map counsel-mode-map
            ("C-k" . nil)
            )
     :config
     (define-key counsel-mode-map (kbd "C-k") 'ivy-previous-line-or-history)
     ;; (setq counsel-ag-base-command "ag --vimgrep -a %s")
+    :init
     (counsel-mode 1)
     )
 #+END_SRC
+
+#+RESULTS:
 
 #+BEGIN_SRC emacs-lisp
   (defun my-ivy-with-thing-at-point (cmd &optional dir)
@@ -317,14 +353,14 @@ Clean up emacs
            (list
             (cons cmd (thing-at-point 'symbol)))))
       (funcall cmd nil dir)))
-  
+
   (defun counsel-projectile-rg-at-point ()
     "Ivy version of `projectile-rg', using."
     (interactive)
     (my-ivy-with-thing-at-point
      'counsel-projectile-rg
      ))
-  
+
   (defun my-counsel-ag-from-here (&optional dir)
     "Start ag but from the directory the file is in (otherwise I would
           be using git-grep)."
@@ -332,25 +368,17 @@ Clean up emacs
     (my-ivy-with-thing-at-point
      'counsel-rg
      (or dir (file-name-directory (buffer-file-name)))))
-  
+
   (defun my-counsel-git-grep ()
     (interactive)
     (my-ivy-with-thing-at-point
      'counsel-git-grep))
-  
+
   (use-package counsel-projectile
     :ensure t
     :after counsel
-    :bind (
-           :map evil-normal-state-map
-           ;; ("SPC *" . my-counsel-ag-from-here)
-           ("SPC f p" . counsel-projectile-recentf)
-           ("SPC f P" . counsel-projectile-switch-project)
-           ("SPC p a" . projectile-add-known-project)
-           ("SPC *" . my-counsel-git-grep))
     :config
     (setq counsel-projectile-find-file-matcher 'counsel-projectile-find-file-matcher-basename)
-  
     )
 #+END_SRC
 
@@ -415,6 +443,17 @@ Clean up emacs
     )
 #+END_SRC
 
+** My own package :)
+#+BEGIN_SRC emacs-lisp
+  (use-package turbo-log
+    :quelpa ((turbo-log :fetcher github :repo "Artawower/turbo-log.el") :upgrade t)
+    :bind (:map global-map ("C-s-l" . turbo-log-print))
+    :config
+    (setq turbo-console--prefix "✰"))
+#+END_SRC
+
+#+RESULTS:
+: t
 
 
 ** Treemacs
@@ -430,11 +469,7 @@ Clean up emacs
     (use-package treemacs-evil
       ;; :after (treemacs evil)
       :defer 0.1
-      :ensure t
-      :bind (:map evil-normal-state-map
-                  ("SPC o p"   . treemacs)
-                  ("SPC t a" . treemacs-add-project-to-workspace)
-                  ("SPC o P" . treemacs-find-file)))
+      :ensure t)
 
     (use-package treemacs-projectile
       :after (treemacs projectile)
@@ -483,58 +518,78 @@ Functions for evil binding
                 (remove-if-not 'buffer-file-name (buffer-list)))))
 #+END_SRC
 #+BEGIN_SRC emacs-lisp
-  (use-package evil
-    :ensure t
-    :after evil-leader
-    :bind
-    (:map evil-normal-state-map
-          ("SPC m n" . org-store-link)
-          ("SPC m l l" . org-insert-link)
-          ("SPC ." . find-file)
-          ("SPC h v" . describe-variable)
-          ("SPC h f" . describe-function)
-          ("SPC b O" . kill-other-buff)
-          ("SPC o t" . vterm-toggle-cd)
-          ("SPC t l" . global-display-line-numbers-mode)
-          ("SPC RET" . counsel-bookmark)
-          ("SPC b n" . evil-buffer-new)
-          ("SPC q" . kill-current-buffer)
-          ("SPC v l" . visual-line-mode)
-          ("C-u" . evil-scroll-up)
-          ;; ("SPC b b" . persp-ivy-switch-buffer)
-          ("SPC b b" . persp-switch-to-buffer)
-          ("SPC b B" . counsel-switch-buffer)
-          ("SPC TAB d" . persp-kill)
-          ("f" . avy-goto-char)
-          ;; Perspective keybindings
-          ("SPC TAB r" . persp-rename)
-          ("SPC TAB n" . persp-next)
-          ("SPC TAB p" . persp-prev)
-          ;; ("SPC TAB s" . persp-switch)
-          ("SPC TAB s" . persp-window-switch)
-          ;; Frames
-          ("SPC f b" . (lambda () (interactive) (switch-to-buffer-other-frame "*scratch*")))
-          :map global-map
-          ;; Org mode
-          ("C-c t" . org-time-stamp-inactive)
-          :map org-read-date-minibuffer-local-map
-          ("C-j" . (lambda () (interactive)
-                     (org-eval-in-calendar '(calendar-forward-week 1))))
-          ("C-l" . (lambda () (interactive)
-                     (org-eval-in-calendar '(calendar-forward-day 1))))
-          ("C-k" . (lambda () (interactive)
-                     (org-eval-in-calendar '(calendar-backward-week 1))))
-          ("C-h" . (lambda () (interactive)
-                     (org-eval-in-calendar '(calendar-backward-day 1))))
-          )
-    :init
-    (setq evil-want-keybinding nil)
-    :config
-    (setq-default evil-kill-on-visual-paste nil)
-    (global-evil-leader-mode 1)
-    ;; (setq evil-want-C-u-scroll t)
-    (evil-mode 1)
-    )
+(use-package evil
+  :ensure t
+  :after evil-leader
+  :bind
+  (:map evil-normal-state-map
+   ("SPC f r" . counsel-recentf)
+   ("SPC SPC" . counsel-projectile-find-file)
+   ("SPC /" . counsel-projectile-rg)
+   ;; Presentation
+   ("SPC t b" . presentation-mode)
+   ;; Treemacs
+   ("SPC o p"   . treemacs)
+   ("SPC t a" . treemacs-add-project-to-workspace)
+   ("SPC o P" . treemacs-find-file)
+
+   ("SPC m n" . org-store-link)
+   ("SPC m l l" . org-insert-link)
+   ("SPC ." . find-file)
+   ("SPC h v" . describe-variable)
+   ("SPC h f" . describe-function)
+   ("SPC b O" . kill-other-buff)
+   ("SPC o t" . vterm-toggle-cd)
+   ("SPC t l" . global-display-line-numbers-mode)
+   ("SPC RET" . counsel-bookmark)
+   ("SPC b n" . evil-buffer-new)
+   ("SPC q" . kill-current-buffer)
+   ("SPC v l" . visual-line-mode)
+   ("C-u" . evil-scroll-up)
+   ("SPC g t" . git-timemachine)
+   ("SPC h t" . load-theme)
+   ;; ("SPC b b" . persp-ivy-switch-buffer)
+   ("SPC b b" . persp-switch-to-buffer)
+   ("SPC b B" . counsel-switch-buffer)
+   ("SPC TAB d" . persp-kill)
+   ("f" . avy-goto-char)
+   ;; Perspective keybindings
+   ("SPC TAB r" . persp-rename)
+   ("SPC TAB n" . persp-next)
+   ("SPC TAB p" . persp-prev)
+   ;; ("SPC TAB s" . persp-switch)
+   ("SPC TAB s" . persp-window-switch)
+   ("SPC f p" . counsel-projectile-recentf)
+   ("SPC f P" . counsel-projectile-switch-project)
+   ("SPC p a" . projectile-add-known-project)
+   ("SPC *" . my-counsel-git-grep)
+   ("SPC '" . ivy-resume)
+   ;; Frames
+   ("SPC f b" . (lambda () (interactive) (switch-to-buffer-other-frame "*scratch*")))
+   ("SPC n r f" . org-roam-node-find)
+   ;; git
+   ("SPC g g" . magit-status)
+   :map global-map
+   ;; Org mode
+   ("C-c t" . org-time-stamp-inactive)
+   :map org-read-date-minibuffer-local-map
+   ("C-j" . (lambda () (interactive)
+              (org-eval-in-calendar '(calendar-forward-week 1))))
+   ("C-l" . (lambda () (interactive)
+              (org-eval-in-calendar '(calendar-forward-day 1))))
+   ("C-k" . (lambda () (interactive)
+              (org-eval-in-calendar '(calendar-backward-week 1))))
+   ("C-h" . (lambda () (interactive)
+              (org-eval-in-calendar '(calendar-backward-day 1))))
+   )
+  :init
+  (setq evil-want-keybinding nil)
+  :config
+  (setq-default evil-kill-on-visual-paste nil)
+  (global-evil-leader-mode 1)
+  ;; (setq evil-want-C-u-scroll t)
+  (evil-mode 1)
+  )
 #+END_SRC
 
 
@@ -601,7 +656,6 @@ Functions for evil binding
       "v" 'vterm
       "`" 'vterm-toggle-cd
       "i" 'git-messenger:popup-message
-      ;; "t" 'google-translate-at-point
       "t" 'google-translate-smooth-translate
       "T" 'google-translate-query-translate
 
@@ -698,10 +752,6 @@ Functions for evil binding
                 font-lock-doc-face
                 font-lock-string-face))
 #+END_SRC
-
-#+RESULTS:
-| tree-sitter-hl-face:comment | tree-sitter-hl-face:doc | tree-sitter-hl-face:string | font-lock-comment-face | font-lock-doc-face | font-lock-string-face |
-
 Enable fllyspell for all texts modes
 
  #+BEGIN_SRC emacs-lisp
@@ -711,28 +761,28 @@ Enable fllyspell for all texts modes
  
 *** Another spellchecker
  #+BEGIN_SRC emacs-lisp
-   (use-package spell-fu
-     :ensure t
-     :defer 0.1
-     ;; :init
-     ;; (global-spell-fu-mode)
-     :config
-     (setq ispell-personal-dictionar "~/tmp)")
-     (setq ispell-program-name "aspell")
-     (setq ispell-dictionary "en")
-     (setq-default spell-fu-faces-include
-                   '(tree-sitter-hl-face:comment
-                     tree-sitter-hl-face:doc
-                     tree-sitter-hl-face:string
-                     tree-sitter-hl-face:method
-                     tree-sitter-hl-face:constant
-                     tree-sitter-hl-face:function
-                     tree-sitter-hl-face:variable
-                     tree-sitter-hl-face:arguments
-                     font-lock-comment-face
-                     font-lock-doc-face
-                     font-lock-string-face))
-     )
+   ;; (use-package spell-fu
+   ;;   :ensure t
+   ;;   :defer 0.1
+   ;;   ;; :init
+   ;;   ;; (global-spell-fu-mode)
+   ;;   :config
+   ;;   (setq ispell-personal-dictionar "~/tmp)")
+   ;;   (setq ispell-program-name "aspell")
+   ;;   (setq ispell-dictionary "en")
+   ;;   (setq-default spell-fu-faces-include
+   ;;                 '(tree-sitter-hl-face:comment
+   ;;                   tree-sitter-hl-face:doc
+   ;;                   tree-sitter-hl-face:string
+   ;;                   tree-sitter-hl-face:method
+   ;;                   tree-sitter-hl-face:constant
+   ;;                   tree-sitter-hl-face:function
+   ;;                   tree-sitter-hl-face:variable
+   ;;                   tree-sitter-hl-face:arguments
+   ;;                   font-lock-comment-face
+   ;;                   font-lock-doc-face
+   ;;                   font-lock-string-face))
+   ;;   )
  #+END_SRC
 
 *** Automatic language picker
@@ -789,11 +839,10 @@ Enable fllyspell for all texts modes
 #+BEGIN_SRC emacs-lisp
   (use-package magit
     :ensure t
-    :defer t
+    :defer 0.1
+
     :bind
-    (:map evil-normal-state-map
-          ("SPC g g" . magit-status)
-          :map magit-mode-map
+    (:map magit-mode-map
           ("1" . nil)
           ("2" . nil)
           ("3" . nil)
@@ -987,7 +1036,6 @@ Enable fllyspell for all texts modes
 #+BEGIN_SRC emacs-lisp
   (use-package git-timemachine
     :ensure t
-    :bind (:map evil-normal-state-map ("SPC g t" . git-timemachine))
     :defer 0.1)
 #+END_SRC
 
@@ -1097,7 +1145,7 @@ Enable fllyspell for all texts modes
 #+BEGIN_SRC emacs-lisp
   (use-package rainbow-mode
     :ensure t
-    :hook ((css-mode . rainbow-mode) (scss-mode . rainbow-mode) ())
+    :hook ((css-mode . rainbow-mode) (scss-mode . rainbow-mode) (org-mode . rainbow-mode))
     :defer 0.1
     :config
     )
@@ -1133,7 +1181,6 @@ Enable fllyspell for all texts modes
     ;; Corrects (and improves) org-mode's native fontification.
     ;; (doom-themes-org-config)
 
-    :bind (:map evil-normal-state-map ("SPC h t" . load-theme))
     )
 #+END_SRC
 
@@ -1223,23 +1270,25 @@ Enable fllyspell for all texts modes
 
 ** Icons for dependencies
 #+BEGIN_SRC emacs-lisp
-
+  
   (use-package all-the-icons
     :ensure t
     :defer 0.5s)
-
+  
   (use-package all-the-icons-ivy
+    :ensure t
+    :defer 0.1
     :init (add-hook 'after-init-hook 'all-the-icons-ivy-setup))
-
+  
   (use-package all-the-icons-dired
     :ensure t
     :defer 0.2)
-
+  
   (use-package treemacs-icons-dired
     :after (treemacs dired)
     :ensure t
     :config (treemacs-icons-dired-mode))
-
+  
   (use-package all-the-icons-ivy-rich
     :ensure t
     :after (ivy counsel-projectile)
@@ -1358,8 +1407,7 @@ Very imporant cat
 #+BEGIN_SRC emacs-lisp
   (use-package presentation
     :ensure t
-    :bind (:map evil-normal-state-map ("SPC t b" . presentation-mode))
-    :defer 0.1)
+    :after evil)
 #+END_SRC
 
 
@@ -1410,6 +1458,7 @@ Very imporant cat
 
 
 ** Snippets
+*** Yasnippet
 #+BEGIN_SRC emacs-lisp
   (use-package yasnippet
     :ensure t
@@ -1422,23 +1471,34 @@ Very imporant cat
     (yas-global-mode 1)
     :config
 
-    ;; (setq yas-snippet-dirs
-    ;;       '("~/doom.d/snippets"                 ;; personal snippets
-    ;;         ))
-    ;; (defvar company-mode/enable-yas t
-    ;;   "Enable yasnippet for all backends.")
+    (setq yas-snippet-dirs
+          '("~/doom.d/snippets"                 ;; personal snippets
+            ))
+    (defvar company-mode/enable-yas t
+      "Enable yasnippet for all backends.")
 
-    ;; (defun company-mode/backend-with-yas (backend)
-    ;;   (if (or (not company-mode/enable-yas) (and (listp backend) (member 'company-yasnippet backend)))
-    ;;       backend
-    ;;     (append (if (consp backend) backend (list backend))
-    ;;             '(:with company-yasnippet))))
+    (defun company-mode/backend-with-yas (backend)
+      (if (or (not company-mode/enable-yas) (and (listp backend) (member 'company-yasnippet backend)))
+          backend
+        (append (if (consp backend) backend (list backend))
+                '(:with company-yasnippet))))
 
     ;; (setq company-backends (mapcar #'company-mode/backend-with-yas company-backends))
     (global-set-key (kbd "C-c C-s") 'yas-new-snippet)
     (yas-reload-all)
     )
 #+END_SRC
+*** Collection of snippets
+#+BEGIN_SRC emacs-lisp
+  (use-package yasnippet-snippets
+              :ensure t
+              :defer 0.1)
+#+END_SRC
+
+#+RESULTS:
+: [nil 0 0 100000 nil require (yasnippet-snippets nil t) idle 0]
+
+
 ** Company mode
 *** Company
 #+BEGIN_SRC emacs-lisp
@@ -1651,7 +1711,8 @@ Very imporant cat
 
   (defun init-angular-env ()
     (add-hook 'typescript-mode-hook #'lsp)
-    (add-hook 'typescript-mode-hook #'prettier-js-mode)
+    ;; (add-hook 'typescript-mode-hook #'prettier-js-mode)
+    (add-hook 'typescript-mode-hook 'format-all-mode)
     (add-hook 'ng2-html-mode-hook #'lsp)
     (add-hook 'ng2-mode #'lsp)
     )
@@ -1702,8 +1763,12 @@ Very imporant cat
   (use-package go-mode
     :ensure t
     :defer t
-    :hook (go-mode . lsp-mode))
+    :hook (go-mode . lsp-mode)
+    :config
+    (setq tab-width 4)
+    (setq indent-tabs-mode 1))
 #+END_SRC
+
 
 #+BEGIN_SRC emacs-lisp
   ;; (use-package dap-go
@@ -1802,7 +1867,7 @@ Very imporant cat
     :ensure t
     :defer 0.1
     :config
-    ;; (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
+    (add-to-list 'auto-mode-alist '("\\.vue\\'" . web-mode))
     (flycheck-add-mode 'javascript-eslint 'web-mode)
 
     (add-hook 'web-mode-hook '(lambda () (setq lsp-diagnostic-package :none)))
@@ -1836,28 +1901,38 @@ Very imporant cat
 #+END_SRC
 *** Vue mode
 #+BEGIN_SRC emacs-lisp
-  (use-package vue-mode
-    :mode ("\\.vue\\'")
-    :hook ((vue-mode . lsp-mode)
-           (vue-mode . company-mode)
-           (vue-mode . prettier-js-mode))
-    :ensure t
-    :config
-    (setq mmm-submode-decoration-level 1)
-    ;; (add-hook 'vue-mode-hook (flycheck-select-checker 'javascript-eslint))
-    (setq mmm-vue-html-mode-exit-hook (lambda ()
-                                        (message "Run when leaving vue-html mode")
-                                        (emmet-mode -1)))
-    (setq mmm-vue-html-mode-enter-hook (lambda ()
-                                         (message "Run when entering vue-html mode")
-                                         (emmet-mode 1)))
-    ;; (setq mmm-js-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
-    ;; (setq mmm-typescript-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
-    (custom-set-faces '(mmm-default-submode-face ((t (:background nil)))))
-    (setq mmm-js-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
-    (setq mmm-typescript-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
-    )
+  ;; (use-package vue-mode
+  ;;   ;; :mode ("\\.vue\\'")
+  ;;   :hook ((vue-mode . lsp-mode)
+  ;;          (vue-mode . company-mode)
+  ;;          (vue-mode . prettier-js-mode))
+  ;;   :ensure t
+  ;;   :config
+  ;;   (setq mmm-submode-decoration-level 1)
+  ;;   ;; (add-hook 'vue-mode-hook (flycheck-select-checker 'javascript-eslint))
+  ;;   (setq mmm-vue-html-mode-exit-hook (lambda ()
+  ;;                                       (message "Run when leaving vue-html mode")
+  ;;                                       (emmet-mode -1)))
+  ;;   (setq mmm-vue-html-mode-enter-hook (lambda ()
+  ;;                                        (message "Run when entering vue-html mode")
+  ;;                                        (emmet-mode 1)))
+  ;;   ;; (setq mmm-js-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
+  ;;   ;; (setq mmm-typescript-mode-enter-hook (lambda () (setq syntax-ppss-table nil)))
+  ;;   (custom-set-faces '(mmm-default-submode-face ((t (:background nil)))))
+  ;;   (setq mmm-pug-mode-enter-hook (lambda ()
+  ;;                                   (message "ME?")
+  ;;                                   (pug-mode)))
+
+  ;;   (setq mmm-js-mode-enter-hook (lambda ()
+  ;;                                      (setq syntax-ppss-table nil)
+
+  ;;                                      (tree-sitter-hl-mode)))
+  ;;   ;; (setq mmm-typescript-mode-enter-hook (lambda ()
+  ;;   ;;                                            (setq syntax-ppss-table nil)
+  ;;   ;;                                            (tree-sitter-hl-mode)))
+  ;;   )
 #+END_SRC
+
 
 
 
@@ -1888,6 +1963,39 @@ Very imporant cat
     :defer 0.2
     )
 #+END_SRC
+
+** Lisp
+#+BEGIN_SRC emacs-lisp
+  (use-package package-lint
+    :ensure t
+    :defer 0.1)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (use-package paren-face
+    :ensure t
+    :defer 0.1
+    :config
+    (setq global-paren-face-mode 1))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+  (use-package hl-defined
+    :custom-face
+    (hdefd-functions ((t (:foreground "#61afff" :slant normal))))
+    (hdefd-undefined ((t (:foreground "#c678dd" :slant normal))))
+    (hdefd-variables ((t (:foreground "#e06c75" :slant normal))))
+    :ensure t
+    :defer 0.1
+    :config
+    (setq hdefd-highlight-mode 1))
+#+END_SRC
+
+#+RESULTS:
+: t
+
+
+
 
 * CI/CD devops
 ** Docker (compose)
@@ -1944,6 +2052,9 @@ Very imporant cat
                              (push '("#+ID:" . "") prettify-symbols-alist)
                              (push '("#+FILETAGS:" . "") prettify-symbols-alist)
                              (push '("#+ACTIVE:" . "") prettify-symbols-alist)
+                             (push '("#+START_SPOILER:" . "") prettify-symbols-alist)
+                             (push '("#+START_SPOILER" . "") prettify-symbols-alist)
+                             (push '("#+END_SPOILER" . "") prettify-symbols-alist)
                              (prettify-symbols-mode)))
   
   (use-package org-indent
@@ -2038,7 +2149,6 @@ Very imporant cat
 #+BEGIN_SRC emacs-lisp
   (use-package org-superstar
     :ensure t
-    ;; :defer 0.1
     :after org
     :hook ((org-mode . org-superstar-mode))
     :config
@@ -2057,7 +2167,7 @@ Very imporant cat
   (use-package org-roam
     :ensure t
     :defer 0.1
-    :bind (:map evil-normal-state-map ("SPC n r f" . org-roam-node-find))
+
     :init
     (setq org-roam-v2-ack t)
     :config
