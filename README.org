@@ -1,4 +1,7 @@
-~/pure-emacs#+TITLE: My awesome Emacs cofiguration ^__^
+:PROPERTIES:
+:header-args: :tangle yes
+:END:
+#+TITLE: My awesome Emacs cofiguration ^__^
 #+STARTUP: content
 
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
@@ -57,7 +60,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 #+END_SRC
-** Warning level
+** Wrning level
 #+BEGIN_SRC emacs-lisp
   (setq warning-minimum-level :emergency)
 #+END_SRC
@@ -427,6 +430,8 @@ Small patch for define face
     (straight-use-package
      '(nano-emacs :type git :host github :repo "rougier/nano-emacs"))
 
+    (use-package nano-theme-light)
+
     (use-package nano-theme-dark
       :config
       (scroll-bar-mode -1))
@@ -524,17 +529,59 @@ Small patch for define face
                                              0
                                              'compose-gstring-for-graphic)))))
 #+END_SRC
-** WAIT Theme switcher
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+** Switch theme patch
+#+BEGIN_SRC emacs-lisp
+(defvar nano-theme-light-var t)
+(defun nano-change-theme-dark ()
+  (interactive)
+  (nano-theme-set-dark)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+
+(defun nano-change-theme-light ()
+  (interactive)
+  (nano-theme-set-light)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+
+(defun nano-change-theme ()
+  (interactive)
+  (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
+  (setq nano-theme-light-var (not nano-theme-light-var)))
+#+END_SRC
+
+#+RESULTS:
+: nano-change-theme
+
+** Theme switcher
+Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
+#+BEGIN_SRC emacs-lisp
+(defun auto-dark--ns-set-theme (appearance)
+  "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+  ;; (mapc #'disable-theme custom-enabled-themes)
+  (pcase appearance
+    ('dark
+     (nano-change-theme-dark)
+     (run-hooks 'auto-dark-dark-mode-hook))
+    ('light
+     (nano-change-theme-light)
+     (run-hooks 'auto-dark-light-mode-hook))))
+#+END_SRC
+
 #+BEGIN_SRC emacs-lisp
 (use-package auto-dark
   :defer 5
   :config
-  (setq auto-dark--dark-theme 'doom-moonlight)
-  (setq auto-dark--light-theme 'pinky-winky))
+  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
+  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  (auto-dark-mode))
 #+END_SRC
+
+#+RESULTS:
+: t
 
 ** Disable menu bar mode and other stuff
 #+BEGIN_SRC emacs-lisp
@@ -545,11 +592,13 @@ Small patch for define face
 #+END_SRC
 ** Highlight todo keywords
 #+BEGIN_SRC emacs-lisp
-  (use-package hl-todo
-  :defer 2
+(use-package hl-todo
+  :defer 1
+  :hook (org-mode . hl-todo-mode)
   :config
   (setq hl-todo-keyword-faces
         '(("TODO"   . "#E5C07B")
+          ("HOLD"   . "#E5C07B")
           ("FIXME"  . "#E06C75")
           ("DEBUG"  . "#C678DD")
           ("REFACTOR"  . "#C678DD")
@@ -557,10 +606,12 @@ Small patch for define face
           ("NOTE"   . "#98C379")
           ("QUESTION"   . "#98C379")
           ("STUB"   . "#61AFEF")))
-  (global-hl-todo-mode 1))
+  (global-hl-todo-mode 1)
+  (hl-todo-mode))
 #+END_SRC
-** Automatix theme switcher
-Need to integrate with nano theme
+
+#+RESULTS:
+: t
 
 * Navigation
 ** Evil
@@ -763,7 +814,8 @@ Bookmark for navigation inside file
      :keymaps 'read-expression-map
      "C-w" 'backward-kill-word
      "C-h" 'previous-history-element
-     "C-l" 'next-history-element))
+     "C-l" 'next-history-element
+     "ESC" 'keyboard-escape-quit))
 
 #+END_SRC
 ** Universal keybindings across keyboard layouts
@@ -1005,7 +1057,7 @@ Something like screensaver
 #+BEGIN_SRC emacs-lisp
   (use-package corfu
     ;; Optional customizations
-    :after evil
+    :defer t
     :custom
     (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
     (corfu-auto t)                 ;; Enable auto completion
@@ -1041,6 +1093,10 @@ Something like screensaver
     (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
     (evil-make-overriding-map corfu-map))
 #+END_SRC
+
+#+RESULTS:
+: completion-at-point
+
 *** Corfu doc
 #+BEGIN_SRC emacs-lisp
   (use-package corfu-doc
@@ -1966,10 +2022,10 @@ For install type ~npm install -g @volar/server~
   (custom-set-faces
    '(org-document-title ((t (:inherit outline-1 :height 2.5))))
    '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
-   '(org-level-2 ((t (:inherit outline-2 :height 1.5))))
-   '(org-level-3 ((t (:inherit outline-3 :height 1.25))))
-   '(org-level-4 ((t (:inherit outline-4 :height 1.1))))
-   '(org-level-5 ((t (:inherit outline-5 :height 1.0)))))
+   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
+   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
+   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
+   '(org-level-5 ((t (:inherit outline-5 :height 2.0)))))
 
   (setq org-todo-keywords
         '((sequence
@@ -2278,7 +2334,7 @@ Dependency
 (use-package spell-fu
   :bind (:map evil-normal-state-map
               ("z g" . spell-fu-word-add))
-  :defer 2
+  :defer 5
   :config
   (setq ispell-program-name "aspell")
   (setq spell-fu-directory "~/.doom.d/dictionary")
@@ -2520,7 +2576,7 @@ Dependency
            ("s-i" . consult-imenu)
            ("M-g I" . consult-imenu-multi)
            ;; M-s bindings (search-map)
-           ("s-." . consult-find)
+           ;; ("s-." . consult-find)
            ("M-s D" . consult-locate)
            ;; ("C-c C-m" . consult-grep)
            ;;         ("C-c C-g" . consult-git-grep)
@@ -2560,7 +2616,7 @@ Dependency
     (advice-add #'register-preview :override #'consult-register-window)
 
     ;; Optionally replace `completing-read-multiple' with an enhanced version.
-    (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
+    ;; (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
 
     ;; Use Consult to select xref locations with preview
     (setq xref-show-xrefs-function #'consult-xref
@@ -2629,38 +2685,13 @@ Dependency
     ;; Optionally replace the key help with a completing-read interface
     (setq prefix-help-command #'embark-prefix-help-command)
 
-    :config
-
-    ;; Hide the mode line of the Embark live/completions buffers
-    (add-to-list 'display-buffer-alist
-                 '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                   nil
-                   (window-parameters (mode-line-format . none)))))
-
-  (defun embark-xmini-frame-disable ()
-    (mini-frame-mode -1))
-
-  (defun embark-xmini-frame-disable ()
-    (mini-frame-mode -1))
-
-  (defun embark-mini-frame-reset ()
-    (remove-hook 'embark-pre-action-hook #'embark-mini-frame-disable)
-    (mini-frame-mode 1))
-
-  (defun embark-mini-frame-detect (action target &optional quit)
-    (unless (memq action '(embark-become
-                           embark-collect-live
-                           embark-collect-snapshot
-                           embark-collect-snapshot
-                           embark-export))
-      (let ((allow-edit (if embark-allow-edit-default
-                          (not (memq action embark-skip-edit-commands))
-                          (memq action embark-allow-edit-commands))))
-        (when (and (not allow-edit) quit)
-          (add-hook 'embark-pre-action-hook #'embark-mini-frame-disable)))))
-
-  (advice-add #'embark--act :before #'embark-mini-frame-detect)
-  (add-hook 'embark-setup-hook #'embark-mini-frame-reset)
+    ;; :config
+		)
+    ;; ;; Hide the mode line of the Embark live/completions buffers
+    ;; (add-to-list 'display-buffer-alist
+    ;;              '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+    ;;                nil
+    ;;                (window-parameters (mode-line-format . none))))
 
   ;; Consult users will also want the embark-consult package.
   (use-package embark-consult
@@ -2715,3 +2746,4 @@ Dependency
   :defer t
   :hook (pdf-view-mode . pdf-view-themed-minor-mode))
 #+END_SRC
+

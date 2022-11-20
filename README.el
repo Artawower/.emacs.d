@@ -281,6 +281,8 @@ Version 2015-12-08"
 (straight-use-package
  '(nano-emacs :type git :host github :repo "rougier/nano-emacs"))
 
+(use-package nano-theme-light)
+
 (use-package nano-theme-dark
   :config
   (scroll-bar-mode -1))
@@ -319,6 +321,26 @@ Version 2015-12-08"
 ;;    :config
 ;;    (nano-command-mode))
 
+(defvar nano-theme-light-var t)
+(defun nano-change-theme-dark ()
+  (interactive)
+  (nano-theme-set-dark)
+  (nano-faces)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (nano-theme))
+
+(defun nano-change-theme-light ()
+  (interactive)
+  (nano-theme-set-light)
+  (nano-faces)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (nano-theme))
+
+(defun nano-change-theme ()
+  (interactive)
+  (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
+  (setq nano-theme-light-var (not nano-theme-light-var)))
+
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
 (defconst jetbrains-ligature-mode--ligatures
@@ -347,24 +369,45 @@ Version 2015-12-08"
                                              0
                                              'compose-gstring-for-graphic)))))
 
+(defun auto-dark--ns-set-theme (appearance)
+  "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+  (mapc #'disable-theme custom-enabled-themes)
+  (pcase appearance
+    ('dark
+     (nano-change-theme-dark)
+     (run-hooks 'auto-dark-dark-mode-hook))
+    ('light
+     (nano-change-theme-light)
+     (run-hooks 'auto-dark-light-mode-hook))))
+
+(use-package auto-dark
+  :defer 5
+  :config
+  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
+  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  (auto-dark-mode))
+
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (toggle-scroll-bar -1)
 (setq ring-bell-function 'ignore)
 
 (use-package hl-todo
-:defer 2
-:config
-(setq hl-todo-keyword-faces
-      '(("TODO"   . "#E5C07B")
-        ("FIXME"  . "#E06C75")
-        ("DEBUG"  . "#C678DD")
-        ("REFACTOR"  . "#C678DD")
-        ("GOTCHA" . "#FF4500")
-        ("NOTE"   . "#98C379")
-        ("QUESTION"   . "#98C379")
-        ("STUB"   . "#61AFEF")))
-(global-hl-todo-mode 1))
+  :defer 1
+  :config
+  (setq hl-todo-keyword-faces
+        '(("TODO"   . "#E5C07B")
+          ("HOLD"   . "#E5C07B")
+          ("FIXME"  . "#E06C75")
+          ("DEBUG"  . "#C678DD")
+          ("REFACTOR"  . "#C678DD")
+          ("GOTCHA" . "#FF4500")
+          ("NOTE"   . "#98C379")
+          ("QUESTION"   . "#98C379")
+          ("STUB"   . "#61AFEF")))
+  (global-hl-todo-mode 1)
+  (hl-todo-mode))
 
 (use-package evil-collection
   :after evil
@@ -538,7 +581,8 @@ Version 2015-12-08"
    :keymaps 'read-expression-map
    "C-w" 'backward-kill-word
    "C-h" 'previous-history-element
-   "C-l" 'next-history-element))
+   "C-l" 'next-history-element
+   "ESC" 'keyboard-escape-quit))
 
 (use-package reverse-im
   :config
@@ -700,7 +744,7 @@ Version 2015-12-08"
 
 (use-package corfu
   ;; Optional customizations
-  :after evil
+  :defer t
   :custom
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-auto t)                 ;; Enable auto completion
@@ -1049,7 +1093,7 @@ Version 2015-12-08"
   :hook
   (magit-process-mode . compilation-minor-mode)
   :config
-  (setq magit-display-buffer-function magit-display-buffer-fullcolumn-most-v1)
+  (setq magit-display-buffer-function #'magit-display-buffer-fullcolumn-most-v1)
   (define-key transient-map        "q" 'transient-quit-one)
   (define-key transient-edit-map   "q" 'transient-quit-one)
   (define-key transient-sticky-map "q" 'transient-quit-seq)
@@ -1379,10 +1423,10 @@ Version 2015-12-08"
   (custom-set-faces
    '(org-document-title ((t (:inherit outline-1 :height 2.5))))
    '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
-   '(org-level-2 ((t (:inherit outline-2 :height 1.5))))
-   '(org-level-3 ((t (:inherit outline-3 :height 1.25))))
-   '(org-level-4 ((t (:inherit outline-4 :height 1.1))))
-   '(org-level-5 ((t (:inherit outline-5 :height 1.0)))))
+   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
+   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
+   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
+   '(org-level-5 ((t (:inherit outline-5 :height 2.0)))))
 
   (setq org-todo-keywords
         '((sequence
@@ -1636,7 +1680,7 @@ Version 2015-12-08"
 (use-package spell-fu
   :bind (:map evil-normal-state-map
               ("z g" . spell-fu-word-add))
-  :defer 2
+  :defer 5
   :config
   (setq ispell-program-name "aspell")
   (setq spell-fu-directory "~/.doom.d/dictionary")
@@ -1849,7 +1893,7 @@ Version 2015-12-08"
          ("s-i" . consult-imenu)
          ("M-g I" . consult-imenu-multi)
          ;; M-s bindings (search-map)
-         ("s-." . consult-find)
+         ;; ("s-." . consult-find)
          ("M-s D" . consult-locate)
          ;; ("C-c C-m" . consult-grep)
          ;;         ("C-c C-g" . consult-git-grep)
@@ -1889,7 +1933,7 @@ Version 2015-12-08"
   (advice-add #'register-preview :override #'consult-register-window)
 
   ;; Optionally replace `completing-read-multiple' with an enhanced version.
-  (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
+  ;; (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
 
   ;; Use Consult to select xref locations with preview
   (setq xref-show-xrefs-function #'consult-xref
@@ -1954,38 +1998,13 @@ Version 2015-12-08"
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
 
-  :config
-
-  ;; Hide the mode line of the Embark live/completions buffers
-  (add-to-list 'display-buffer-alist
-               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                 nil
-                 (window-parameters (mode-line-format . none)))))
-
-(defun embark-xmini-frame-disable ()
-  (mini-frame-mode -1))
-
-(defun embark-xmini-frame-disable ()
-  (mini-frame-mode -1))
-
-(defun embark-mini-frame-reset ()
-  (remove-hook 'embark-pre-action-hook #'embark-mini-frame-disable)
-  (mini-frame-mode 1))
-
-(defun embark-mini-frame-detect (action target &optional quit)
-  (unless (memq action '(embark-become
-                         embark-collect-live
-                         embark-collect-snapshot
-                         embark-collect-snapshot
-                         embark-export))
-    (let ((allow-edit (if embark-allow-edit-default
-                        (not (memq action embark-skip-edit-commands))
-                        (memq action embark-allow-edit-commands))))
-      (when (and (not allow-edit) quit)
-        (add-hook 'embark-pre-action-hook #'embark-mini-frame-disable)))))
-
-(advice-add #'embark--act :before #'embark-mini-frame-detect)
-(add-hook 'embark-setup-hook #'embark-mini-frame-reset)
+  ;; :config
+	      )
+  ;; ;; Hide the mode line of the Embark live/completions buffers
+  ;; (add-to-list 'display-buffer-alist
+  ;;              '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+  ;;                nil
+  ;;                (window-parameters (mode-line-format . none))))
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult
