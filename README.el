@@ -57,6 +57,16 @@
   (format-all-buffer)
   (org-edit-src-exit))
 
+(defun @setup-org-mode-faces ()
+  "Setup faces for org mode"
+  (custom-set-faces
+   '(org-document-title ((t (:inherit outline-1 :height 2.5))))
+   '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
+   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
+   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
+   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
+   '(org-level-5 ((t (:inherit outline-5 :height 2.0))))))
+
 (defun my-switch-to-xwidget-buffer (&optional a b)
   "Switch to xwidget buffer."
   (interactive)
@@ -321,26 +331,6 @@ Version 2015-12-08"
 ;;    :config
 ;;    (nano-command-mode))
 
-(defvar nano-theme-light-var t)
-(defun nano-change-theme-dark ()
-  (interactive)
-  (nano-theme-set-dark)
-  (nano-faces)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
-  (nano-theme))
-
-(defun nano-change-theme-light ()
-  (interactive)
-  (nano-theme-set-light)
-  (nano-faces)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
-  (nano-theme))
-
-(defun nano-change-theme ()
-  (interactive)
-  (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
-  (setq nano-theme-light-var (not nano-theme-light-var)))
-
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
 (defconst jetbrains-ligature-mode--ligatures
@@ -369,21 +359,42 @@ Version 2015-12-08"
                                              0
                                              'compose-gstring-for-graphic)))))
 
-(defun auto-dark--ns-set-theme (appearance)
-  "Set light/dark theme using emacs-plus ns-system-appearance.
-Argument APPEARANCE should be light or dark."
-  (mapc #'disable-theme custom-enabled-themes)
-  (pcase appearance
-    ('dark
-     (nano-change-theme-dark)
-     (run-hooks 'auto-dark-dark-mode-hook))
-    ('light
-     (nano-change-theme-light)
-     (run-hooks 'auto-dark-light-mode-hook))))
+(defvar nano-theme-light-var t)
+(defun nano-change-theme-dark ()
+  (interactive)
+  (nano-theme-set-dark)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (@setup-org-mode-faces))
+
+(defun nano-change-theme-light ()
+  (interactive)
+  (nano-theme-set-light)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (@setup-org-mode-faces))
+
+(defun nano-change-theme ()
+  (interactive)
+  (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
+  (setq nano-theme-light-var (not nano-theme-light-var)))
 
 (use-package auto-dark
   :defer 5
   :config
+  (defun auto-dark--ns-set-theme (appearance)
+    "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+    ;; (mapc #'disable-theme custom-enabled-themes)
+    (pcase appearance
+      ('dark
+       (nano-change-theme-dark)
+       (run-hooks 'auto-dark-dark-mode-hook))
+      ('light
+       (nano-change-theme-light)
+       (run-hooks 'auto-dark-light-mode-hook))))
   (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
   (auto-dark-mode))
@@ -395,6 +406,7 @@ Argument APPEARANCE should be light or dark."
 
 (use-package hl-todo
   :defer 1
+  :hook (org-mode . hl-todo-mode)
   :config
   (setq hl-todo-keyword-faces
         '(("TODO"   . "#E5C07B")
@@ -572,17 +584,21 @@ Argument APPEARANCE should be light or dark."
 
   (general-override-mode)
   (general-define-key
-  :states '(normal)
-  :keymaps 'override
-  :prefix "SPC"
-  "SPC"  'projectile-find-file)
+   :states '(normal)
+   :keymaps 'override
+   :prefix "SPC"
+   "SPC"  'projectile-find-file)
 
   (general-define-key
    :keymaps 'read-expression-map
    "C-w" 'backward-kill-word
    "C-h" 'previous-history-element
    "C-l" 'next-history-element
-   "ESC" 'keyboard-escape-quit))
+   "ESC" 'keyboard-escape-quit)
+
+  (general-define-key
+   :keymaps 'org-src-mode-map
+   "C-c C-c" 'org-edit-src-exit))
 
 (use-package reverse-im
   :config
@@ -728,8 +744,18 @@ Argument APPEARANCE should be light or dark."
 
 (use-package tree-sitter
   :after tree-sitter-langs
-
-  :hook ((go-mode typescript-mode css-mode typescript-tsx-mode html-mode scss-mode ng2-mode js-mode python-mode rust-mode ng2-ts-mode ng2-html-mode) . tree-sitter-hl-mode)
+  :hook ((go-mode
+          typescript-mode
+          css-mode
+          typescript-tsx-mode
+          html-mode
+          scss-mode
+          ng2-mode
+          js-mode
+          python-mode
+          rust-mode
+          ng2-ts-mode
+          ng2-html-mode) . tree-sitter-hl-mode)
   :config
   (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -744,7 +770,7 @@ Argument APPEARANCE should be light or dark."
 
 (use-package corfu
   ;; Optional customizations
-  :defer t
+  :defer 2
   :custom
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-auto t)                 ;; Enable auto completion
@@ -765,16 +791,8 @@ Argument APPEARANCE should be light or dark."
          :map evil-insert-state-map
          ("C-x C-o" . completion-at-point)
          ("C-SPC" . completion-at-point))
-
-  ;; You may want to enable Corfu only for certain modes.
-  ;; :hook ((prog-mode . corfu-mode)
-  ;;        (shell-mode . corfu-mode)
-  ;;        (eshell-mode . corfu-mode))
-
-  ;; Recommended: Enable Corfu globally.
-  ;; This is recommended since dabbrev can be used globally (M-/).
   :init
-  (corfu-global-mode)
+	      (global-corfu-mode)
   :config
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
@@ -1419,14 +1437,9 @@ Argument APPEARANCE should be light or dark."
   (setq org-src-preserve-indentation t)
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu")))
-  (set org-imenu-depth 8)
-  (custom-set-faces
-   '(org-document-title ((t (:inherit outline-1 :height 2.5))))
-   '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
-   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
-   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
-   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
-   '(org-level-5 ((t (:inherit outline-5 :height 2.0)))))
+  (setq org-imenu-depth 8)
+  (@setup-org-mode-faces)
+  
 
   (setq org-todo-keywords
         '((sequence

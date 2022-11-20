@@ -576,23 +576,20 @@ Small patch for define face
 ** Theme switcher
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
 #+BEGIN_SRC emacs-lisp
-(defun auto-dark--ns-set-theme (appearance)
-  "Set light/dark theme using emacs-plus ns-system-appearance.
-Argument APPEARANCE should be light or dark."
-  ;; (mapc #'disable-theme custom-enabled-themes)
-  (pcase appearance
-    ('dark
-     (nano-change-theme-dark)
-     (run-hooks 'auto-dark-dark-mode-hook))
-    ('light
-     (nano-change-theme-light)
-     (run-hooks 'auto-dark-light-mode-hook))))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
 (use-package auto-dark
   :defer 5
   :config
+  (defun auto-dark--ns-set-theme (appearance)
+    "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+    ;; (mapc #'disable-theme custom-enabled-themes)
+    (pcase appearance
+      ('dark
+       (nano-change-theme-dark)
+       (run-hooks 'auto-dark-dark-mode-hook))
+      ('light
+       (nano-change-theme-light)
+       (run-hooks 'auto-dark-light-mode-hook))))
   (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
   (auto-dark-mode))
@@ -804,38 +801,45 @@ Bookmark for navigation inside file
 #+END_SRC
 ** General
 #+BEGIN_SRC emacs-lisp
-  (use-package general
-    :config
-    (general-define-key
-     :keymaps 'override
-     "C-w" 'backward-kill-word
-     "s-w" 'evil-window-delete
-     "C-h C-k" 'describe-key-briefly
-     "\t" 'google-translate-smooth-translate
-     "s-<backspace>" 'evil-delete-back-to-indentation
-     "C-<tab>" 'my-insert-tab
-     "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+(use-package general
+  :config
+  (general-define-key
+   :keymaps 'override
+   "C-w" 'backward-kill-word
+   "s-w" 'evil-window-delete
+   "C-h C-k" 'describe-key-briefly
+   "\t" 'google-translate-smooth-translate
+   "s-<backspace>" 'evil-delete-back-to-indentation
+   "C-<tab>" 'my-insert-tab
+   "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
-    (general-define-key
-     :keymaps 'minibuffer-mode-map
-     "C-w" 'backward-kill-word
-     "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+  (general-define-key
+   :keymaps 'minibuffer-mode-map
+   "C-w" 'backward-kill-word
+   "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
-    (general-override-mode)
-    (general-define-key
-    :states '(normal)
-    :keymaps 'override
-    :prefix "SPC"
-    "SPC"  'projectile-find-file)
+  (general-override-mode)
+  (general-define-key
+   :states '(normal)
+   :keymaps 'override
+   :prefix "SPC"
+   "SPC"  'projectile-find-file)
 
-    (general-define-key
-     :keymaps 'read-expression-map
-     "C-w" 'backward-kill-word
-     "C-h" 'previous-history-element
-     "C-l" 'next-history-element
-     "ESC" 'keyboard-escape-quit))
+  (general-define-key
+   :keymaps 'read-expression-map
+   "C-w" 'backward-kill-word
+   "C-h" 'previous-history-element
+   "C-l" 'next-history-element
+   "ESC" 'keyboard-escape-quit)
 
+  (general-define-key
+   :keymaps 'org-src-mode-map
+   "C-c C-c" 'org-edit-src-exit))
 #+END_SRC
+
+#+RESULTS:
+: t
+
 ** Universal keybindings across keyboard layouts
 #+BEGIN_SRC emacs-lisp
   (use-package reverse-im
@@ -1056,8 +1060,18 @@ Something like screensaver
 
   (use-package tree-sitter
     :after tree-sitter-langs
-
-    :hook ((go-mode typescript-mode css-mode typescript-tsx-mode html-mode scss-mode ng2-mode js-mode python-mode rust-mode ng2-ts-mode ng2-html-mode) . tree-sitter-hl-mode)
+    :hook ((go-mode
+            typescript-mode
+            css-mode
+            typescript-tsx-mode
+            html-mode
+            scss-mode
+            ng2-mode
+            js-mode
+            python-mode
+            rust-mode
+            ng2-ts-mode
+            ng2-html-mode) . tree-sitter-hl-mode)
     :config
     (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
     (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -1075,7 +1089,7 @@ Something like screensaver
 #+BEGIN_SRC emacs-lisp
   (use-package corfu
     ;; Optional customizations
-    :defer t
+    :defer 2
     :custom
     (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
     (corfu-auto t)                 ;; Enable auto completion
@@ -1096,16 +1110,8 @@ Something like screensaver
            :map evil-insert-state-map
            ("C-x C-o" . completion-at-point)
            ("C-SPC" . completion-at-point))
-
-    ;; You may want to enable Corfu only for certain modes.
-    ;; :hook ((prog-mode . corfu-mode)
-    ;;        (shell-mode . corfu-mode)
-    ;;        (eshell-mode . corfu-mode))
-
-    ;; Recommended: Enable Corfu globally.
-    ;; This is recommended since dabbrev can be used globally (M-/).
     :init
-    (corfu-global-mode)
+		(global-corfu-mode)
     :config
     (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
     (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
@@ -2036,7 +2042,7 @@ For install type ~npm install -g @volar/server~
   (setq org-src-preserve-indentation t)
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu")))
-  (set org-imenu-depth 8)
+  (setq org-imenu-depth 8)
   (@setup-org-mode-faces)
   
 
