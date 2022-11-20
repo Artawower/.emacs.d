@@ -739,7 +739,7 @@ Bookmark for navigation inside file
 (use-package bm
 :defer t
 :custom-face
-(bm-face ((t (:foreground ,+m-color-secondary))))
+(bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
 :bind (("C-M-n" . bm-next)
         ("C-M-p" . bm-previous)
         ("s-b" . bm-toggle)))
