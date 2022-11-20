@@ -763,6 +763,7 @@ Bookmark for navigation inside file
  "SPC"  'projectile-find-file
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
+ "bi" 'ibuffer
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
  ;; ;; TODO move to treemacs
