@@ -1401,6 +1401,13 @@ Something like screensaver
   (define-key vundo-mode-map (kbd "C-g") #'vundo-quit)
   (define-key vundo-mode-map (kbd "RET") #'vundo-confirm))
   #+END_SRC
+** Surround
+Package for quick editing/deleting brackets and bracket-likes symbols
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package evil-surround
+  :config
+  (global-evil-surround-mode 1))
+#+END_SRC
 ** Copilot
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
