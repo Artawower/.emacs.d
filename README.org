@@ -638,7 +638,6 @@ Argument APPEARANCE should be light or dark."
       (evil-commentary-mode))
 
     (use-package evil
-      :after dired
       :init
       (setq evil-want-keybinding nil)
       (evil-mode 1)
@@ -734,45 +733,45 @@ Argument APPEARANCE should be light or dark."
 #+RESULTS:
 | lambda | nil | (interactive) | (org-eval-in-calendar '(calendar-backward-day 1)) |
 
-*** Bookmarks
+** Bookmarks
 Bookmark for navigation inside file
 #+BEGIN_SRC emacs-lisp
 (use-package bm
-  :defer t
-  :custom-face
-  (bm-face ((t (:foreground ,+m-color-secondary))))
-  :bind (("C-M-n" . bm-next)
-         ("C-M-p" . bm-previous)
-         ("s-b" . bm-toggle)))
+:defer t
+:custom-face
+(bm-face ((t (:foreground ,+m-color-secondary))))
+:bind (("C-M-n" . bm-next)
+        ("C-M-p" . bm-previous)
+        ("s-b" . bm-toggle)))
 #+END_SRC
 
 #+RESULTS:
 : bm-toggle
 
-*** FAST JUMP
+** FAST JUMP
 #+BEGIN_SRC emacs-lisp
 (use-package avy
-  :defer t
+:defer t
 
-  :bind (:map evil-normal-state-map
-         ("f" . avy-goto-word-1)
-         ("SPC k l" . avy-kill-whole-line)
-         ("SPC k r" . avy-kill-region))
-  :custom
-  (avy-single-candidate-jump t)
-  (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
+:bind (:map evil-normal-state-map
+        ("f" . avy-goto-word-1)
+        ("SPC k l" . avy-kill-whole-line)
+        ("SPC k r" . avy-kill-region))
+:custom
+(avy-single-candidate-jump t)
+(avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
 #+END_SRC
-*** Fast jump between opened windows and frames
+** Fast jump between opened windows and frames
 #+BEGIN_SRC emacs-lisp
 (use-package ace-window
-    :bind (:map evil-normal-state-map
-                ("s-." . ace-window))
-    :defer t)
+:bind (:map evil-normal-state-map
+            ("s-." . ace-window))
+:defer t)
 #+END_SRC
-*** Quick jump by pairtags
+** Quick jump by pairtags
 #+BEGIN_SRC emacs-lisp
 (use-package evil-matchit
-  :defer t)
+:defer t)
 
 (evilmi-load-plugin-rules '(ng2-html-mode) '(html))
 (global-evil-matchit-mode 1)
@@ -818,7 +817,6 @@ Bookmark for navigation inside file
    "C-w" 'backward-kill-word
    "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
-  (general-override-mode)
   (general-define-key
    :states '(normal)
    :keymaps 'override
@@ -834,7 +832,9 @@ Bookmark for navigation inside file
 
   (general-define-key
    :keymaps 'org-src-mode-map
-   "C-c C-c" 'org-edit-src-exit))
+   "C-c C-c" 'org-edit-src-exit)
+
+(general-override-mode))
 #+END_SRC
 
 #+RESULTS:
@@ -2045,7 +2045,7 @@ For install type ~npm install -g @volar/server~
   (setq org-imenu-depth 8)
   (@setup-org-mode-faces)
   
-
+  (setq org-src-window-setup 'current-window)
   (setq org-todo-keywords
         '((sequence
            "TODO(t)"     ; A task that needs doing & is ready to do
@@ -2719,7 +2719,10 @@ Dependency
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-*** Posframe
+*** HOLD Posframe
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
         (use-package vertico-posframe
 
@@ -2730,7 +2733,11 @@ Dependency
           (vertico-posframe-mode 1))
 #+END_SRC
 
-*** Mini frame
+*** HOLD Mini frame
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp
   (use-package mini-fram
     :defer 2
