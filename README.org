@@ -79,7 +79,6 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (setq initial-major-mode (quote fundamental-mode))
 #+END_SRC
 
-
 * Custom functions
 ** Org
 Add additional space before link insert
@@ -425,6 +424,13 @@ Uncomment when u need to profile ;p
           ("STUB"   . "#61AFEF")))
   (global-hl-todo-mode 1))
 #+END_SRC
+** Highlight hex colors
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package rainbow-mode
+  :defer t
+  :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
+#+END_SRC
+
 * Theme
 ** Paddings
 #+BEGIN_SRC emacs-lisp
@@ -722,7 +728,7 @@ Bookmark for navigation inside file
 ** General
 *** Global keys
 #+NAME: general-global-mode-map
-#+BEGIN_SRC emacs-lisp :exports none
+#+BEGIN_SRC emacs-lisp :exports none :results silent
 (general-define-key
  :keymaps 'override
  "C-w" 'backward-kill-word
@@ -731,6 +737,8 @@ Bookmark for navigation inside file
  "\t" 'google-translate-smooth-translate
  "s-<backspace>" 'evil-delete-back-to-indentation
  "C-<tab>" 'my-insert-tab
+ "C-u" 'evil-scroll-up
+ "C-h C-m" 'describe-mode
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 #+END_SRC
 *** Evil. Isert mode.
@@ -746,14 +754,15 @@ Bookmark for navigation inside file
  "s-." 'ace-window)
 #+END_SRC
 *** Evil. Normal state map.
-#+NAME: genereal-minibofffer-mode-map
+#+NAME: evil-spc-mode-map 
 #+BEGIN_SRC emacs-lisp :exports none
 (general-define-key
- :states '(normal)
+ :states '(normal visual)
  :keymaps 'override
  :prefix "SPC"
  "SPC"  'projectile-find-file
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+ "hm" 'describe-mode
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
  ;; ;; TODO move to treemacs
@@ -792,18 +801,65 @@ Bookmark for navigation inside file
  )
 #+END_SRC
 
+#+RESULTS: evil-spc-mode-map
+
+*** Minibuffer mode map
+#+NAME: general-minibuffer-mode-map
+#+BEGIN_SRC emacs-lisp :results silent
+  (general-define-key
+   :keymaps 'minibuffer-mode-map
+   "C-w" 'backward-kill-word
+   "<escape>" 'keyboard-escape-quit
+   "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+#+END_SRC
+
+*** Evil. Leader.
+#+NAME: general-normal-leader-mode-map
+#+BEGIN_SRC emacs-lisp :results silent
+  (general-define-key
+   :states '(visual normal)
+   :keymaps 'override
+   :prefix "\\"
+    "f" 'avy-goto-char
+    "b" 'my-switch-to-xwidget-buffer
+    "k" 'save-buffer-without-dtw
+    "w" 'avy-goto-word-0
+    "]" 'flycheck-next-error
+    "[" 'flycheck-previous-error
+    "d" 'dap-debug
+
+    "o" 'org-mode
+    "q" 'kill-current-buffer
+    "v" 'vterm
+    "`" 'vterm-toggle-cd
+    "i" 'git-messenger:popup-message
+    "t" 'google-translate-smooth-translate
+    "T" 'google-translate-query-translate
+    "a" 'counsel-org-agenda-headlines
+    "c" 'dired-create-empty-file
+    "p" 'format-all-buffer
+    "s" 'publish-org-blog
+    "g" 'ace-window
+    ;; Evil
+    "=" 'evil-record-macro
+    "-" 'evil-execute-macro
+    "0" 'my-toggle-default-browser
+    "h" 'lsp-ui-doc-show
+    "e" 'lsp-treemacs-errors-list
+    "l" 'lsp-execute-code-action
+    "r" 'treemacs-select-window
+    "m" 'toggle-maximize-buffer)
+#+END_SRC
+
 *** Configs
 #+BEGIN_SRC emacs-lisp :exports none :noweb yes
 (use-package general
   :config
   <<general-global-mode-map>>
   <<general-evil-insert-mode-map>>
-  <<genereal-minibofffer-mode-map>>
-
-  (general-define-key
-   :keymaps 'minibuffer-mode-map
-   "C-w" 'backward-kill-word
-   "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+  <<general-minibuffer-mode-map>>
+  <<general-normal-leader-mode-map>>
+  <<evil-spc-mode-map>>
 
     (general-define-key
    :keymaps 'read-expression-map
@@ -2465,7 +2521,6 @@ Dependency
 ** Vertico
 #+BEGIN_SRC emacs-lisp
   (use-package vertico
-    :after evil-collection
     :bind (:map evil-normal-state-map
                 ("SPC '" . vertico-repeat)
                 ("SPC f P" . (lambda ()
@@ -2564,6 +2619,7 @@ Dependency
 #+END_SRC
 
 **
+
 ** Consult
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package consult
@@ -2654,7 +2710,7 @@ Dependency
 (use-package consult-projectile
   :general (:states 'normal
                     "SPC p p" 'consult-projectile-switch-project
-                    "SPC p a" 'projectile-add-known-project))
+                    "SPC p a" 'projectile-add-known-project)
   :defer t)
 #+END_SRC
 ** Embark
@@ -2721,12 +2777,14 @@ Dependency
 #+END_SRC
 
 ** Icons
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package all-the-icons-completion
   :after vertico
+  :hook (vertico-mode . all-the-icons-completion-mode)
   :config
   (all-the-icons-completion-mode))
 #+END_SRC
+
 * Emacs for everywhere
 ** PDF
 #+BEGIN_SRC emacs-lisp

@@ -490,6 +490,8 @@ Argument APPEARANCE should be light or dark."
  "\t" 'google-translate-smooth-translate
  "s-<backspace>" 'evil-delete-back-to-indentation
  "C-<tab>" 'my-insert-tab
+ "C-u" 'evil-scroll-up
+ "C-h C-m" 'describe-mode
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
 (general-define-key
@@ -502,11 +504,12 @@ Argument APPEARANCE should be light or dark."
  "s-." 'ace-window)
 
 (general-define-key
- :states '(normal)
+ :states '(normal visual)
  :keymaps 'override
  :prefix "SPC"
  "SPC"  'projectile-find-file
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+ "hm" 'describe-mode
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
  ;; ;; TODO move to treemacs
@@ -544,6 +547,46 @@ Argument APPEARANCE should be light or dark."
  ;; ("SPC TAB s" . persp-window-switch)
  )
 
+(general-define-key
+ :keymaps 'minibuffer-mode-map
+ "C-w" 'backward-kill-word
+ "<escape>" 'keyboard-escape-quit
+ "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+
+(general-define-key
+ :states '(visual normal)
+ :keymaps 'override
+ :prefix "\\"
+  "f" 'avy-goto-char
+  "b" 'my-switch-to-xwidget-buffer
+  "k" 'save-buffer-without-dtw
+  "w" 'avy-goto-word-0
+  "]" 'flycheck-next-error
+  "[" 'flycheck-previous-error
+  "d" 'dap-debug
+
+  "o" 'org-mode
+  "q" 'kill-current-buffer
+  "v" 'vterm
+  "`" 'vterm-toggle-cd
+  "i" 'git-messenger:popup-message
+  "t" 'google-translate-smooth-translate
+  "T" 'google-translate-query-translate
+  "a" 'counsel-org-agenda-headlines
+  "c" 'dired-create-empty-file
+  "p" 'format-all-buffer
+  "s" 'publish-org-blog
+  "g" 'ace-window
+  ;; Evil
+  "=" 'evil-record-macro
+  "-" 'evil-execute-macro
+  "0" 'my-toggle-default-browser
+  "h" 'lsp-ui-doc-show
+  "e" 'lsp-treemacs-errors-list
+  "l" 'lsp-execute-code-action
+  "r" 'treemacs-select-window
+  "m" 'toggle-maximize-buffer)
+
 (use-package general
   :config
   (general-define-key
@@ -554,6 +597,8 @@ Argument APPEARANCE should be light or dark."
    "\t" 'google-translate-smooth-translate
    "s-<backspace>" 'evil-delete-back-to-indentation
    "C-<tab>" 'my-insert-tab
+   "C-u" 'evil-scroll-up
+   "C-h C-m" 'describe-mode
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
    :states '(insert)
@@ -564,11 +609,50 @@ Argument APPEARANCE should be light or dark."
    "s-p" 'yank-from-kill-ring
    "s-." 'ace-window)
   (general-define-key
-   :states '(normal)
+   :keymaps 'minibuffer-mode-map
+   "C-w" 'backward-kill-word
+   "<escape>" 'keyboard-escape-quit
+   "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+  (general-define-key
+   :states '(visual normal)
+   :keymaps 'override
+   :prefix "\\"
+    "f" 'avy-goto-char
+    "b" 'my-switch-to-xwidget-buffer
+    "k" 'save-buffer-without-dtw
+    "w" 'avy-goto-word-0
+    "]" 'flycheck-next-error
+    "[" 'flycheck-previous-error
+    "d" 'dap-debug
+  
+    "o" 'org-mode
+    "q" 'kill-current-buffer
+    "v" 'vterm
+    "`" 'vterm-toggle-cd
+    "i" 'git-messenger:popup-message
+    "t" 'google-translate-smooth-translate
+    "T" 'google-translate-query-translate
+    "a" 'counsel-org-agenda-headlines
+    "c" 'dired-create-empty-file
+    "p" 'format-all-buffer
+    "s" 'publish-org-blog
+    "g" 'ace-window
+    ;; Evil
+    "=" 'evil-record-macro
+    "-" 'evil-execute-macro
+    "0" 'my-toggle-default-browser
+    "h" 'lsp-ui-doc-show
+    "e" 'lsp-treemacs-errors-list
+    "l" 'lsp-execute-code-action
+    "r" 'treemacs-select-window
+    "m" 'toggle-maximize-buffer)
+  (general-define-key
+   :states '(normal visual)
    :keymaps 'override
    :prefix "SPC"
    "SPC"  'projectile-find-file
    "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+   "hm" 'describe-mode
    ;; ;; Presentation
    ;; ("SPC t b" . presentation-mode)
    ;; ;; TODO move to treemacs
@@ -605,11 +689,6 @@ Argument APPEARANCE should be light or dark."
    ;; ;; ("SPC TAB s" . persp-switch)
    ;; ("SPC TAB s" . persp-window-switch)
    )
-
-  (general-define-key
-   :keymaps 'minibuffer-mode-map
-   "C-w" 'backward-kill-word
-   "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
     (general-define-key
    :keymaps 'read-expression-map
@@ -1826,7 +1905,6 @@ Argument APPEARANCE should be light or dark."
          ("SPC h ." . helpful-at-point)))
 
 (use-package vertico
-  :after evil-collection
   :bind (:map evil-normal-state-map
               ("SPC '" . vertico-repeat)
               ("SPC f P" . (lambda ()
@@ -2028,7 +2106,8 @@ Argument APPEARANCE should be light or dark."
 
 (use-package all-the-icons-completion
   :after vertico
-  :config
+  :hook (vertico-mode . all-the-icons-completion-mode)
+  :init
   (all-the-icons-completion-mode))
 
 (use-package pdf-view
