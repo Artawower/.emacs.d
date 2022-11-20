@@ -1411,6 +1411,15 @@ Something like screensaver
 #+END_SRC
 * Editing
 ** Undo redo
+*** Undo mode
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package undo-tree
+  :config
+  (global-undo-tree-mode)
+  (setq undo-tree-auto-save-history t)
+  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo"))))
+#+END_SRC
+
 *** Vundo
 #+BEGIN_SRC emacs-lisp
 (use-package vundo
@@ -2779,9 +2788,8 @@ Dependency
 ** Icons
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package all-the-icons-completion
-  :after vertico
   :hook (vertico-mode . all-the-icons-completion-mode)
-  :config
+  :init
   (all-the-icons-completion-mode))
 #+END_SRC
 

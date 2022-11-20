@@ -279,6 +279,10 @@ Version 2015-12-08"
           ("STUB"   . "#61AFEF")))
   (global-hl-todo-mode 1))
 
+(use-package rainbow-mode
+  :defer t
+  :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
+
 (fringe-mode '16)
 
 (progn
@@ -2080,7 +2084,7 @@ Argument APPEARANCE should be light or dark."
 (use-package consult-projectile
   :general (:states 'normal
                     "SPC p p" 'consult-projectile-switch-project
-                    "SPC p a" 'projectile-add-known-project))
+                    "SPC p a" 'projectile-add-known-project)
   :defer t)
 
 (use-package embark
@@ -2107,7 +2111,7 @@ Argument APPEARANCE should be light or dark."
 (use-package all-the-icons-completion
   :after vertico
   :hook (vertico-mode . all-the-icons-completion-mode)
-  :init
+  :config
   (all-the-icons-completion-mode))
 
 (use-package pdf-view
