@@ -3,7 +3,6 @@
 :END:
 #+TITLE: My awesome Emacs cofiguration ^__^
 #+STARTUP: content
-
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
 
@@ -98,6 +97,23 @@ Format org mode block
   (format-all-buffer)
   (org-edit-src-exit))
 #+END_SRC
+
+Init org mode faces for headlines
+#+BEGIN_SRC emacs-lisp
+(defun @setup-org-mode-faces ()
+  "Setup faces for org mode"
+  (custom-set-faces
+   '(org-document-title ((t (:inherit outline-1 :height 2.5))))
+   '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
+   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
+   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
+   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
+   '(org-level-5 ((t (:inherit outline-5 :height 2.0))))))
+#+END_SRC
+
+#+RESULTS:
+: @setup-org-mode-faces
+
 ** Browser
 #+BEGIN_SRC emacs-lisp
 (defun my-switch-to-xwidget-buffer (&optional a b)
@@ -529,7 +545,7 @@ Small patch for define face
                                              0
                                              'compose-gstring-for-graphic)))))
 #+END_SRC
-** Switch theme patch
+** Switch nano theme patch
 #+BEGIN_SRC emacs-lisp
 (defvar nano-theme-light-var t)
 (defun nano-change-theme-dark ()
@@ -537,14 +553,16 @@ Small patch for define face
   (nano-theme-set-dark)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (@setup-org-mode-faces))
 
 (defun nano-change-theme-light ()
   (interactive)
   (nano-theme-set-light)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (@setup-org-mode-faces))
 
 (defun nano-change-theme ()
   (interactive)
@@ -2019,13 +2037,8 @@ For install type ~npm install -g @volar/server~
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu")))
   (set org-imenu-depth 8)
-  (custom-set-faces
-   '(org-document-title ((t (:inherit outline-1 :height 2.5))))
-   '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
-   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
-   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
-   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
-   '(org-level-5 ((t (:inherit outline-5 :height 2.0)))))
+  (@setup-org-mode-faces)
+  
 
   (setq org-todo-keywords
         '((sequence
