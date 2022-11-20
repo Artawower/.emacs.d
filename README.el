@@ -42,6 +42,8 @@
 (setq confirm-kill-emacs 'y-or-n-p)
 (defalias 'yes-or-no-p 'y-or-n-p)
 
+(setq initial-major-mode (quote fundamental-mode))
+
 (defun my-add-additional-space-when-not-exist (_)
   "Add additional sapce if previous char is not space!"
   (unless (eq (char-before) ? )
@@ -428,124 +430,39 @@ Argument APPEARANCE should be light or dark."
   (evil-commentary-mode))
 
 (use-package evil
-  :after dired
   :init
   (setq evil-want-keybinding nil)
   (evil-mode 1)
   :config
   (evil-set-undo-system 'undo-redo)
   (setq-default evil-kill-on-visual-paste nil)
-  (evil-mode 1)
-  :bind
-  (:map evil-insert-state-map
-   ("C-u" . evil-delete-back-to-indentation)
-   ("s-Y" . xah-copy-to-register-1)
-   ("s-P" . xah-paste-from-register-1)
-   ("s-p" . yank-from-kill-ring)
-   ("s-." . ace-window)
-
-   :map evil-normal-state-map
-   ;; Core
-   ("SPC h r e" . (lambda () (interactive) (load-file "~/pure-emacs/init.el")))
-   ;; Consult
-   ("SPC f r" . consult-recent-file)
-   ("SPC /" . counsel-projectile-rg)
-   ;; Presentation
-   ("SPC t b" . presentation-mode)
-   ;; TODO move to treemacs
-   ;; Treemacs
-   ("SPC o p"   . treemacs)
-   ("SPC t a" . treemacs-add-project-to-workspace)
-   ("SPC o P" . treemacs-find-file)
-   ;; Projectile
-   ("SPC p p" . consult-projectile-switch-project)
-   ("SPC p a" . projectile-add-known-project)
-   ;; Window
-   ("SPC w r" . evil-window-rotate-downwards)
-   ("SPC w v" . evil-window-vsplit)
-   ("SPC w s" . evil-window-split)
-   ;; Buffers
-   ("SPC b ]" . next-buffer)
-   ("SPC b [" . previous-buffer)
-   ("SPC b b" . consult-buffer)
-   ;; Org
-   ("SPC m t" . org-todo)
-   ("SPC m n" . org-store-link)
-   ("SPC m l l" . org-insert-link)
-   ("SPC ." . find-file)
-   ("SPC h v" . describe-variable)
-   ("SPC h f" . describe-function)
-   ("SPC h F" . describe-face)
-   ("SPC b O" . kill-other-buff)
-   ("SPC o t" . vterm-toggle-cd)
-   ("SPC t l" . global-display-line-numbers-mode)
-   ("SPC s i" . consult-imenu)
-   ("SPC RET" . consult-bookmark)
-   ("SPC b n" . evil-buffer-new)
-   ("SPC q" . kill-current-buffer)
-   ("SPC b q" . kill-current-buffer)
-   ("SPC v l" . visual-line-mode)
-   ("C-u" . evil-scroll-up)
-   ("SPC g t" . git-timemachine)
-   ("SPC h t" . load-theme)
-   ;; ("SPC b b" . persp-ivy-switch-buffer)
-   ;; ("SPC b b" . persp-switch-to-buffer)
-   ("SPC b B" . consult-buffer)
-   ("SPC TAB d" . persp-kill)
-   ("f" . avy-goto-char)
-   ;; Perspective keybindings
-   ("SPC TAB r" . persp-rename)
-   ("SPC TAB n" . persp-next)
-   ("SPC TAB p" . persp-prev)
-   ;; ("SPC TAB s" . persp-switch)
-   ("SPC TAB s" . persp-window-switch)
-   ("SPC f p" . counsel-projectile-recentf)
-   ("SPC f P" . counsel-projectile-switch-project)
-   ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
-   ;; Frames
-   ("SPC f b" . (lambda () (interactive) (switch-to-buffer-other-frame "*scratch*")))
-   ("SPC n r f" . org-roam-node-find)
-   ;; git
-   ("SPC g g" . magit-status)
-   :map global-map
-   ;; Org mode
-   ("C-c t" . org-time-stamp-inactive)
-   :map org-read-date-minibuffer-local-map
-   ("C-j" . (lambda () (interactive)
-              (org-eval-in-calendar '(calendar-forward-week 1))))
-   ("C-l" . (lambda () (interactive)
-              (org-eval-in-calendar '(calendar-forward-day 1))))
-   ("C-k" . (lambda () (interactive)
-              (org-eval-in-calendar '(calendar-backward-week 1))))
-   ("C-h" . (lambda () (interactive)
-              (org-eval-in-calendar '(calendar-backward-day 1))))))
+  (evil-mode 1))
 
 (use-package bm
-  :defer t
-  :custom-face
-  (bm-face ((t (:foreground ,+m-color-secondary))))
-  :bind (("C-M-n" . bm-next)
-         ("C-M-p" . bm-previous)
-         ("s-b" . bm-toggle)))
+:defer t
+:custom-face
+(bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
+:bind (("C-M-n" . bm-next)
+        ("C-M-p" . bm-previous)
+        ("s-b" . bm-toggle)))
 
 (use-package avy
-  :defer t
-
-  :bind (:map evil-normal-state-map
-         ("f" . avy-goto-word-1)
-         ("SPC k l" . avy-kill-whole-line)
-         ("SPC k r" . avy-kill-region))
-  :custom
-  (avy-single-candidate-jump t)
-  (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
+:defer t
+:bind (:map evil-normal-state-map
+        ("f" . avy-goto-word-1)
+        ("SPC k l" . avy-kill-whole-line)
+        ("SPC k r" . avy-kill-region))
+:custom
+(avy-single-candidate-jump t)
+(avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
 
 (use-package ace-window
-    :bind (:map evil-normal-state-map
-                ("s-." . ace-window))
-    :defer t)
+:bind (:map evil-normal-state-map
+            ("s-." . ace-window))
+:defer t)
 
 (use-package evil-matchit
-  :defer t)
+:defer t)
 
 (evilmi-load-plugin-rules '(ng2-html-mode) '(html))
 (global-evil-matchit-mode 1)
@@ -565,6 +482,68 @@ Argument APPEARANCE should be light or dark."
 (global-set-key (kbd "C-S-k") 'shrink-window)
 (global-set-key (kbd "s-y") 'yas-expand)
 
+(general-define-key
+ :keymaps 'override
+ "C-w" 'backward-kill-word
+ "s-w" 'evil-window-delete
+ "C-h C-k" 'describe-key-briefly
+ "\t" 'google-translate-smooth-translate
+ "s-<backspace>" 'evil-delete-back-to-indentation
+ "C-<tab>" 'my-insert-tab
+ "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+
+(general-define-key
+ :states '(insert)
+ :keymaps 'override
+ "C-u" 'evil-delete-back-to-indentation
+ "s-Y" 'xah-copy-to-register-1
+ "s-P" 'xah-paste-from-register-1
+ "s-p" 'yank-from-kill-ring
+ "s-." 'ace-window)
+
+(general-define-key
+ :states '(normal)
+ :keymaps 'override
+ :prefix "SPC"
+ "SPC"  'projectile-find-file
+ "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+ ;; ;; Presentation
+ ;; ("SPC t b" . presentation-mode)
+ ;; ;; TODO move to treemacs
+ ;; ;; Treemacs
+ ;; ("SPC o p"   . treemacs)
+ ;; ("SPC t a" . treemacs-add-project-to-workspace)
+ ;; ("SPC o P" . treemacs-find-file)
+ ;; ;; Window
+ "wr" 'evil-window-rotate-downwards
+ "wv" 'evil-window-vsplit
+ "ws" 'evil-window-split
+ ;; ;; Buffers
+ "b ]" 'next-buffer
+ "b [" 'previous-buffer
+ "." 'find-file
+ "hv" 'describe-variable
+ "hf" 'describe-function
+ "hF" 'describe-face
+ "bO" 'kill-other-buff
+ "tl" 'global-display-line-numbers-mode
+ "bn" 'evil-buffer-new
+ "bq" 'kill-current-buffer
+ "vl" 'visual-line-mode
+ "C-u" 'evil-scroll-up
+ ;; ("SPC g t" . git-timemachine)
+ "ht" 'load-theme
+ ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
+ ;; ;; ("SPC b b" . persp-switch-to-buffer)
+ ;; ("SPC TAB d" . persp-kill)
+ ;; ;; Perspective keybindings
+ ;; ("SPC TAB r" . persp-rename)
+ ;; ("SPC TAB n" . persp-next)
+ ;; ("SPC TAB p" . persp-prev)
+ ;; ;; ("SPC TAB s" . persp-switch)
+ ;; ("SPC TAB s" . persp-window-switch)
+ )
+
 (use-package general
   :config
   (general-define-key
@@ -576,20 +555,63 @@ Argument APPEARANCE should be light or dark."
    "s-<backspace>" 'evil-delete-back-to-indentation
    "C-<tab>" 'my-insert-tab
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+  (general-define-key
+   :states '(insert)
+   :keymaps 'override
+   "C-u" 'evil-delete-back-to-indentation
+   "s-Y" 'xah-copy-to-register-1
+   "s-P" 'xah-paste-from-register-1
+   "s-p" 'yank-from-kill-ring
+   "s-." 'ace-window)
+  (general-define-key
+   :states '(normal)
+   :keymaps 'override
+   :prefix "SPC"
+   "SPC"  'projectile-find-file
+   "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+   ;; ;; Presentation
+   ;; ("SPC t b" . presentation-mode)
+   ;; ;; TODO move to treemacs
+   ;; ;; Treemacs
+   ;; ("SPC o p"   . treemacs)
+   ;; ("SPC t a" . treemacs-add-project-to-workspace)
+   ;; ("SPC o P" . treemacs-find-file)
+   ;; ;; Window
+   "wr" 'evil-window-rotate-downwards
+   "wv" 'evil-window-vsplit
+   "ws" 'evil-window-split
+   ;; ;; Buffers
+   "b ]" 'next-buffer
+   "b [" 'previous-buffer
+   "." 'find-file
+   "hv" 'describe-variable
+   "hf" 'describe-function
+   "hF" 'describe-face
+   "bO" 'kill-other-buff
+   "tl" 'global-display-line-numbers-mode
+   "bn" 'evil-buffer-new
+   "bq" 'kill-current-buffer
+   "vl" 'visual-line-mode
+   "C-u" 'evil-scroll-up
+   ;; ("SPC g t" . git-timemachine)
+   "ht" 'load-theme
+   ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
+   ;; ;; ("SPC b b" . persp-switch-to-buffer)
+   ;; ("SPC TAB d" . persp-kill)
+   ;; ;; Perspective keybindings
+   ;; ("SPC TAB r" . persp-rename)
+   ;; ("SPC TAB n" . persp-next)
+   ;; ("SPC TAB p" . persp-prev)
+   ;; ;; ("SPC TAB s" . persp-switch)
+   ;; ("SPC TAB s" . persp-window-switch)
+   )
 
   (general-define-key
    :keymaps 'minibuffer-mode-map
    "C-w" 'backward-kill-word
    "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 
-  (general-override-mode)
-  (general-define-key
-   :states '(normal)
-   :keymaps 'override
-   :prefix "SPC"
-   "SPC"  'projectile-find-file)
-
-  (general-define-key
+    (general-define-key
    :keymaps 'read-expression-map
    "C-w" 'backward-kill-word
    "C-h" 'previous-history-element
@@ -598,7 +620,9 @@ Argument APPEARANCE should be light or dark."
 
   (general-define-key
    :keymaps 'org-src-mode-map
-   "C-c C-c" 'org-edit-src-exit))
+   "C-c C-c" 'org-edit-src-exit)
+
+(general-override-mode))
 
 (use-package reverse-im
   :config
@@ -691,6 +715,7 @@ Argument APPEARANCE should be light or dark."
               ("SPC o h" . (lambda () (interactive)
                              (+vterm/toggle t)))
               ("SPC t h" . vterm-toggle-hide)
+              ("SPC o t" . vterm-toggle-cd)
               ("SPC t k" . my-open-kitty-right-here))
   :config
   (setq vterm-kill-buffer-on-exit nil)
@@ -1028,6 +1053,10 @@ Argument APPEARANCE should be light or dark."
   (define-key vundo-mode-map (kbd "C-g") #'vundo-quit)
   (define-key vundo-mode-map (kbd "RET") #'vundo-confirm))
 
+(use-package evil-surround
+  :config
+  (global-evil-surround-mode 1))
+
 (use-package copilot
   :defer 5
   :bind
@@ -1105,9 +1134,10 @@ Argument APPEARANCE should be light or dark."
 (use-package magit
   :defer t
   :bind (:map magit-mode-map
-         ("s-<return>" . magit-diff-visit-worktree-file)
-         :map evil-normal-state-map
-         ("SPC g i" . (lambda () (interactive) (wakatime-ui--clear-modeline) (magit-status))))
+              ("s-<return>" . magit-diff-visit-worktree-file)
+              :map evil-normal-state-map
+              ("SPC g g" . magit-status)
+              ("SPC g i" . (lambda () (interactive) (wakatime-ui--clear-modeline) (magit-status))))
   :hook
   (magit-process-mode . compilation-minor-mode)
   :config
@@ -1430,6 +1460,11 @@ Argument APPEARANCE should be light or dark."
 
 (use-package org
   :mode (("\\.org$" . org-mode))
+  :general
+  (:states '(normal)
+           "SPC m t" 'org-todo
+           "SPC m n" 'org-store-link
+           "SPC m l l" 'org-insert-link)
   :bind (:map evil-normal-state-map
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
@@ -1439,8 +1474,8 @@ Argument APPEARANCE should be light or dark."
             (lambda () (imenu-add-to-menubar "Imenu")))
   (setq org-imenu-depth 8)
   (@setup-org-mode-faces)
-  
 
+  (setq org-src-window-setup 'current-window)
   (setq org-todo-keywords
         '((sequence
            "TODO(t)"     ; A task that needs doing & is ready to do
@@ -1593,7 +1628,8 @@ Argument APPEARANCE should be light or dark."
 (use-package org-roam
   :after org
   :bind (:map evil-normal-state-map
-               ("SPC n r i" . org-roam-node-insert))
+              ("SPC n r i" . org-roam-node-insert)
+              ("SPC n r f" . org-roam-node-find))
   :init
   (setq org-roam-v2-ack t)
   :config
@@ -1775,6 +1811,9 @@ Argument APPEARANCE should be light or dark."
 (recentf-mode)
 
 (use-package projectile
+  :general
+  (:states 'normal
+           "SPC pa" 'projectile-add-known-project)
   :config
   (projectile-mode +1))
 
@@ -1879,52 +1918,17 @@ Argument APPEARANCE should be light or dark."
 
 (use-package consult
   :defer t
-  :bind (;; C-c bindings (mode-specific-map)
-         ("C-c h" . consult-history)
-         ("C-c m" . consult-mode-command)
-         ;; C-x bindings (ctl-x-map)
-         ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
-         ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
-         ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
-         ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
-         ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
-         ;; Custom M-# bindings for fast register access
-         ("M-#" . consult-register-load)
-         ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
-         ("C-M-#" . consult-register)
-         ;; Other custom bindings
-         ("M-y" . consult-yank-pop)                ;; orig. yank-pop
-         ("<help> a" . consult-apropos)            ;; orig. apropos-command
-         ;; M-g bindings (goto-map)
-         ("M-g e" . consult-compile-error)
-         ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
-         ("M-g g" . consult-goto-line)             ;; orig. goto-line
-         ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
-         ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
-         ("M-g m" . consult-mark)
-         ("M-g k" . consult-global-mark)
-         ("s-i" . consult-imenu)
-         ("M-g I" . consult-imenu-multi)
-         ;; M-s bindings (search-map)
-         ;; ("s-." . consult-find)
-         ("M-s D" . consult-locate)
-         ;; ("C-c C-m" . consult-grep)
-         ;;         ("C-c C-g" . consult-git-grep)
-         ;;        ("C-c C-r" . consult-ripgrep)
+  :bind (("s-i" . consult-imenu)
          ("s-f" . consult-line)
-         ;;         ("C-g C-m" . consult-line-multi)
-         ("M-s m" . consult-multqqi-occur)
-         ("M-s k" . consult-keep-lines)
-         ("M-s u" . consult-focus-lines)
-         ;; Isearch integration
-         ("M-s e" . consult-isearch-history)
-         :map isearch-mode-map
-         ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
-         ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
-         ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
-         ("M-s L" . consult-line-multi)
          :map evil-normal-state-map
+         ("SPC b b" . consult-buffer)
          ("SPC /" . consult-ripgrep)
+         ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
+         ("SPC s i" . consult-imenu)
+         ("SPC RET" . consult-bookmark)
+         ("SPC f r" . consult-recent-file)
+         ("SPC f P" . counsel-projectile-recentf)
+         ("SPC /" . counsel-projectile-rg)
          ("SPC SPC" . projectile-find-file))           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
@@ -1981,43 +1985,37 @@ Argument APPEARANCE should be light or dark."
 
   ;; Optionally configure a function which returns the project root directory.
   ;; There are multiple reasonable alternatives to chose from.
-      ;;;; 1. project.el (project-roots)
+        ;;;; 1. project.el (project-roots)
   (setq consult-project-root-function
         (lambda ()
           (when-let (project (project-current))
             (car (project-roots project)))))
-      ;;;; 2. projectile.el (projectile-project-root)
+        ;;;; 2. projectile.el (projectile-project-root)
   ;; (autoload 'projectile-project-root "projectile")
   ;; (setq consult-project-root-function #'projectile-project-root)
-      ;;;; 3. vc.el (vc-root-dir)
+        ;;;; 3. vc.el (vc-root-dir)
   ;; (setq consult-project-root-function #'vc-root-dir)
-      ;;;; 4. locate-dominating-file
+        ;;;; 4. locate-dominating-file
   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
   )
 
-(use-package consult-projectile :defer t)
+(use-package consult-projectile
+  :general (:states 'normal
+                    "SPC p p" 'consult-projectile-switch-project
+                    "SPC p a" 'projectile-add-known-project))
+  :defer t)
 
 (use-package embark
-  ;; :custom
-  ;; (embark-prompter 'embark-completing-read-prompter)
-  ;; (embark-verbose-indicator-excluded-actions t)
+  :custom
+  (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
   :bind
   (("C-." . embark-act)         ;; pick some comfortable binding
    ("C-;" . embark-dwim)        ;; good alternative: M-.
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
 
   :init
-
   ;; Optionally replace the key help with a completing-read interface
-  (setq prefix-help-command #'embark-prefix-help-command)
-
-  ;; :config
-	      )
-  ;; ;; Hide the mode line of the Embark live/completions buffers
-  ;; (add-to-list 'display-buffer-alist
-  ;;              '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-  ;;                nil
-  ;;                (window-parameters (mode-line-format . none))))
+  (setq prefix-help-command #'embark-prefix-help-command))
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult
