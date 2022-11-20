@@ -1998,9 +1998,9 @@ Argument APPEARANCE should be light or dark."
 (use-package consult-projectile :defer t)
 
 (use-package embark
-  :custom
-  (embark-prompter 'embark-completing-read-prompter)
-  (embark-verbose-indicator-excluded-actions t)
+  ;; :custom
+  ;; (embark-prompter 'embark-completing-read-prompter)
+  ;; (embark-verbose-indicator-excluded-actions t)
   :bind
   (("C-." . embark-act)         ;; pick some comfortable binding
    ("C-;" . embark-dwim)        ;; good alternative: M-.
