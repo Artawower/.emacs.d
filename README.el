@@ -1,3 +1,5 @@
+(setq warning-minimum-level :emergency)
+
 (let* ((normal-gc-cons-threshold (* 20 1024 1024))
      (init-gc-cons-threshold (* 128 1024 1024)))
 (setq gc-cons-threshold init-gc-cons-threshold)
@@ -33,8 +35,6 @@
 ;; (setq straight-use-package-by-default t)
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
-
-(setq warning-minimum-level :emergency)
 
 ;; Change backup folders
 (setq backup-directory-alist '(("." . "/Users/darkawower/tmp/emacs-backups")))
@@ -789,8 +789,9 @@ Argument APPEARANCE should be light or dark."
 (use-package secret-mode
   :defer t)
 
-(use-package doom-lib
-  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
+(use-package doom-workspaces
+  :ensure t
+  :straight (doom-workspaces :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
 
 (defface +workspace-tab-selected-face
   '((t :inherit nano-face-header-popout))
@@ -873,6 +874,11 @@ new project directory.")
               #'(lambda (bn) (when (and persp-mode
                                         (not persp-temporarily-display-buffer))
                                (persp-add-buffer bn))))
+  (dotimes (i 9)
+    (defalias (intern (format "+workspace/switch-to-%d" i))
+      (lambda () (interactive) (+workspace/switch-to i))
+      (format "Switch to workspace #%d" (1+ i))))
+  
   (add-hook! '(persp-mode-hook persp-after-load-state-functions)
     (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
       (when persp-mode
@@ -919,8 +925,7 @@ new project directory.")
             (t
              (when +workspace--old-uniquify-style
                (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
-             (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
-  )
+             (advice-remove #'doom-buffer-list #'+workspace-buffer-list))))))
 
 (use-package persp-mode-project-bridge
   :after persp-mode
@@ -1808,12 +1813,12 @@ new project directory.")
                                     (?I . "Important"))))
 
 (use-package org-indent
-  :defer 8
+  :after org
   :init
   (add-hook 'org-mode-hook 'org-indent-mode))
 
 (use-package org-superstar
-  :defer 5
+  :after org
   :hook (org-mode . org-superstar-mode)
   :config
   (setq org-directory "~/Yandex.Disk.localized/Dropbox/org")
@@ -1846,7 +1851,7 @@ new project directory.")
   :after org-roam)
 
 (use-package org-yt
-  :defer 20
+  :after org
   :config
   (defun org-image-link (protocol link _description)
     "Interpret LINK as base64-encoded image data."
@@ -1896,6 +1901,7 @@ new project directory.")
   (setq ob-async-no-async-languages-alist '("ipython")))
 
 (use-package org-insert
+  :after org
   :bind (:map org-mode-map
               ("<C-return>" . +org/insert-item-below)
               ("<C-S-return>" . +org/insert-item-above))

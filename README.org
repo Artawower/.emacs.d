@@ -90,7 +90,10 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package doom-lib
   :ensure t
-  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("lisp/doom-lib.el")))
+  :straight (doom-lib
+             :host github
+             :repo "hlissner/doom-emacs"
+             :files ("lisp/doom-lib.el" "lisp/lib/buffers.el")))
 #+END_SRC
 ** Some doom macros
 *** Return EXP unquoted.
@@ -1126,10 +1129,11 @@ Something like screensaver
 #+END_SRC
 ** Workspace
 *** Persp mode
-**** Persp doom configs
+**** KILL Persp doom configs
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package doom-lib
-  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
+(use-package doom-workspaces
+  :ensure t
+  :straight (doom-workspaces :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
 #+END_SRC
 
 **** Persp buffer advices
@@ -1205,54 +1209,58 @@ new project directory.")
 
 #+NAME: workspaces-doom-config
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
-  (add-hook! '(persp-mode-hook persp-after-load-state-functions)
-    (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
-      (when persp-mode
-        (dolist (frame (frame-list))
-          (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
-            ;; Take extra steps to ensure no frame ends up in the nil perspective
-            (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
-                                    +workspaces-main)
-                                frame))))))
+(dotimes (i 9)
+  (defalias (intern (format "+workspace/switch-to-%d" i))
+    (lambda () (interactive) (+workspace/switch-to i))
+    (format "Switch to workspace #%d" (1+ i))))
 
-  (add-hook! 'persp-mode-hook
-    (defun +workspaces-init-first-workspace-h (&rest _)
-      "Ensure a main workspace exists."
-      (when persp-mode
-        (let (persp-before-switch-functions)
-          ;; Try our best to hide the nil perspective.
-          (when (equal (car persp-names-cache) persp-nil-name)
-            (pop persp-names-cache))
-          ;; ...and create a *real* main workspace to fill this role.
-          (unless (or (persp-get-by-name +workspaces-main)
-                      ;; Start from 2 b/c persp-mode counts the nil workspace
-                      (> (hash-table-count *persp-hash*) 2))
-            (persp-add-new +workspaces-main))
-          ;; HACK Fix #319: the warnings buffer gets swallowed when creating
-          ;;      `+workspaces-main', so display it ourselves, if it exists.
-          (when-let (warnings (get-buffer "*Warnings*"))
-            (save-excursion
-              (display-buffer-in-side-window
-               warnings '((window-height . shrink-window-if-larger-than-buffer))))))))
-    (defun +workspaces-init-persp-mode-h ()
-      (cond (persp-mode
-             ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
-             ;; errors when switching between perspective (their buffers are
-             ;; serialized by name and persp-mode expects them to have the same
-             ;; name when restored).
-             (when uniquify-buffer-name-style
-               (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
-             (setq uniquify-buffer-name-style nil)
-             ;; Ensure `persp-kill-buffer-query-function' is last
-             (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
-             (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
-             ;; Restrict buffer list to workspace
-             (advice-add #'doom-buffer-list :override #'+workspace-buffer-list))
-            (t
-             (when +workspace--old-uniquify-style
-               (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
-             (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
+(add-hook! '(persp-mode-hook persp-after-load-state-functions)
+  (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
+    (when persp-mode
+      (dolist (frame (frame-list))
+        (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+          ;; Take extra steps to ensure no frame ends up in the nil perspective
+          (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+                                  +workspaces-main)
+                              frame))))))
 
+(add-hook! 'persp-mode-hook
+  (defun +workspaces-init-first-workspace-h (&rest _)
+    "Ensure a main workspace exists."
+    (when persp-mode
+      (let (persp-before-switch-functions)
+        ;; Try our best to hide the nil perspective.
+        (when (equal (car persp-names-cache) persp-nil-name)
+          (pop persp-names-cache))
+        ;; ...and create a *real* main workspace to fill this role.
+        (unless (or (persp-get-by-name +workspaces-main)
+                    ;; Start from 2 b/c persp-mode counts the nil workspace
+                    (> (hash-table-count *persp-hash*) 2))
+          (persp-add-new +workspaces-main))
+        ;; HACK Fix #319: the warnings buffer gets swallowed when creating
+        ;;      `+workspaces-main', so display it ourselves, if it exists.
+        (when-let (warnings (get-buffer "*Warnings*"))
+          (save-excursion
+            (display-buffer-in-side-window
+             warnings '((window-height . shrink-window-if-larger-than-buffer))))))))
+  (defun +workspaces-init-persp-mode-h ()
+    (cond (persp-mode
+           ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
+           ;; errors when switching between perspective (their buffers are
+           ;; serialized by name and persp-mode expects them to have the same
+           ;; name when restored).
+           (when uniquify-buffer-name-style
+             (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
+           (setq uniquify-buffer-name-style nil)
+           ;; Ensure `persp-kill-buffer-query-function' is last
+           (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
+           (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
+           ;; Restrict buffer list to workspace
+           (advice-add #'doom-buffer-list :override #'+workspace-buffer-list))
+          (t
+           (when +workspace--old-uniquify-style
+             (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
+           (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
 #+END_SRC
 
 **** Persp mode package
@@ -2557,14 +2565,17 @@ For install type ~npm install -g @volar/server~
 ** Org indent
 #+BEGIN_SRC emacs-lisp
 (use-package org-indent
-  :defer 8
+  :after org
   :init
   (add-hook 'org-mode-hook 'org-indent-mode))
 #+END_SRC
+
+#+RESULTS:
+
 ** Pretty org stars
 #+BEGIN_SRC emacs-lisp
 (use-package org-superstar
-  :defer 5
+  :after org
   :hook (org-mode . org-superstar-mode)
   :config
   (setq org-directory "~/Yandex.Disk.localized/Dropbox/org")
@@ -2619,7 +2630,7 @@ One of the best Zettelkasten implementation
 ** Image inserting to org documents
 #+BEGIN_SRC emacs-lisp
 (use-package org-yt
-  :defer 20
+  :after org
   :config
   (defun org-image-link (protocol link _description)
     "Interpret LINK as base64-encoded image data."
@@ -2641,6 +2652,10 @@ One of the best Zettelkasten implementation
    "imghttps"
    :image-data-fun #'org-image-link))
 #+END_SRC
+
+#+RESULTS:
+: t
+
 ** Roam publisher
 My own package for publish roam files
 
@@ -2687,11 +2702,15 @@ Dependency
 ** Org functions for pretty inserting
 #+BEGIN_SRC emacs-lisp
   (use-package org-insert
+    :after org
     :bind (:map org-mode-map
                 ("<C-return>" . +org/insert-item-below)
                 ("<C-S-return>" . +org/insert-item-above))
     :straight (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
 #+END_SRC
+
+#+RESULTS:
+: +org/insert-item-above
 
 * Spell checker
 # :PROPERTIES:
