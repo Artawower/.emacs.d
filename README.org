@@ -13,6 +13,10 @@ For install emacs on macos use brew:
 brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no-frame-refocus --with-native-comp --with-dbus --with-imagemagick
 #+END_SRC
 * Initial configs
+** Warning level
+#+BEGIN_SRC emacs-lisp
+  (setq warning-minimum-level :emergency)
+#+END_SRC
 ** Garbage collector
 #+BEGIN_SRC emacs-lisp
   (let* ((normal-gc-cons-threshold (* 20 1024 1024))
@@ -59,10 +63,6 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 #+END_SRC
-** Wrning level
-#+BEGIN_SRC emacs-lisp
-  (setq warning-minimum-level :emergency)
-#+END_SRC
 ** Common
 *** Backup
 #+BEGIN_SRC emacs-lisp
@@ -78,6 +78,108 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+BEGIN_SRC emacs-lisp :results silent
 (setq initial-major-mode (quote fundamental-mode))
 #+END_SRC
+** Patches
+*** Alias for doom use-package!
+#+BEGIN_SRC emacs-lisp :results silent
+(defalias 'use-package! 'use-package
+"Alias for call use-package from doom modules")
+#+END_SRC
+
+* Libs (functions and macros)
+** Doom libs (honestly spizjeno)
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package doom-lib
+  :ensure t
+  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("lisp/doom-lib.el")))
+#+END_SRC
+** Some doom macros
+*** Return EXP unquoted.
+#+BEGIN_SRC emacs-lisp :results silent
+(defun doom-unquote (exp)
+  "Return EXP unquoted."
+  (declare (pure t) (side-effect-free t))
+  (while (memq (car-safe exp) '(quote function))
+    (setq exp (cadr exp)))
+  exp)
+#+END_SRC
+
+*** macro for adding N functions to M hooks.
+#+BEGIN_SRC emacs-lisp :results silent
+(defmacro add-hook! (hooks &rest rest)
+  "A convenience macro for adding N functions to M hooks.
+
+This macro accepts, in order:
+
+  1. The mode(s) or hook(s) to add to. This is either an unquoted mode, an
+     unquoted list of modes, a quoted hook variable or a quoted list of hook
+     variables.
+  2. Optional properties :local, :append, and/or :depth [N], which will make the
+     hook buffer-local or append to the list of hooks (respectively),
+  3. The function(s) to be added: this can be a quoted function, a quoted list
+     thereof, a list of `defun' or `cl-defun' forms, or arbitrary forms (will
+     implicitly be wrapped in a lambda).
+
+\(fn HOOKS [:append :local [:depth N]] FUNCTIONS-OR-FORMS...)"
+  (declare (indent (lambda (indent-point state)
+                     (goto-char indent-point)
+                     (when (looking-at-p "\\s-*(")
+                       (lisp-indent-defform state indent-point))))
+           (debug t))
+  (let* ((hook-forms (doom--resolve-hook-forms hooks))
+         (func-forms ())
+         (defn-forms ())
+         append-p local-p remove-p depth)
+    (while (keywordp (car rest))
+      (pcase (pop rest)
+        (:append (setq append-p t))
+        (:depth  (setq depth (pop rest)))
+        (:local  (setq local-p t))
+        (:remove (setq remove-p t))))
+    (while rest
+      (let* ((next (pop rest))
+             (first (car-safe next)))
+        (push (cond ((memq first '(function nil))
+                     next)
+                    ((eq first 'quote)
+                     (let ((quoted (cadr next)))
+                       (if (atom quoted)
+                           next
+                         (when (cdr quoted)
+                           (setq rest (cons (list first (cdr quoted)) rest)))
+                         (list first (car quoted)))))
+                    ((memq first '(defun cl-defun))
+                     (push next defn-forms)
+                     (list 'function (cadr next)))
+                    ((prog1 `(lambda (&rest _) ,@(cons next rest))
+                       (setq rest nil))))
+              func-forms)))
+    `(progn
+       ,@defn-forms
+       (dolist (hook (nreverse ',hook-forms))
+         (dolist (func (list ,@func-forms))
+           ,(if remove-p
+                `(remove-hook hook func ,local-p)
+              `(add-hook hook func ,(or depth append-p) ,local-p)))))))
+#+END_SRC
+
+
+*** Converts a list of modes into a list of hook symbols.
+#+BEGIN_SRC emacs-lisp :results silent
+(defun doom--resolve-hook-forms (hooks)
+  "Converts a list of modes into a list of hook symbols.
+
+If a mode is quoted, it is left as is. If the entire HOOKS list is quoted, the
+list is returned as-is."
+  (declare (pure t) (side-effect-free t))
+  (let ((hook-list (ensure-list (doom-unquote hooks))))
+    (if (eq (car-safe hooks) 'quote)
+        hook-list
+      (cl-loop for hook in hook-list
+               if (eq (car-safe hook) 'quote)
+               collect (cadr hook)
+               else collect (intern (format "%s-hook" (symbol-name hook)))))))
+#+END_SRC
+
 
 * Custom functions
 ** Org
@@ -169,13 +271,14 @@ BEGIN END specifies region, otherwise works on entire buffer."
 #+END_SRC
 ** Workspaces
 #+BEGIN_SRC emacs-lisp
-(defun toggle-maximize-buffer () "Maximize buffer"
-       (interactive)
-       (if (= 1 (length (window-list)))
-           (jump-to-register '_)
-         (progn
-           (window-configuration-to-register '_)
-           (delete-other-windows))))
+(defun toggle-maximize-buffer ()
+	"Maximize buffer"
+  (interactive)
+  (if (= 1 (length (window-list)))
+      (jump-to-register '_)
+    (progn
+      (window-configuration-to-register '_)
+      (delete-other-windows))))
 #+END_SRC
 ** Register copy
 Copy selected text to special register
@@ -375,6 +478,11 @@ Uncomment when u need to profile ;p
 #+END_SRC
 
 * UI
+** Full size from startup
+#+BEGIN_SRC emacs-lisp :results silent
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+#+END_SRC
+
 ** Variables
 #+BEGIN_SRC emacs-lisp
   (setq +m-color-main "#61AFEF"
@@ -728,7 +836,7 @@ Bookmark for navigation inside file
 ** General
 *** Global keys
 #+NAME: general-global-mode-map
-#+BEGIN_SRC emacs-lisp :exports none :results silent
+#+BEGIN_SRC emacs-lisp :exports none :results silent :tangle no
 (general-define-key
  :keymaps 'override
  "C-w" 'backward-kill-word
@@ -743,7 +851,7 @@ Bookmark for navigation inside file
 #+END_SRC
 *** Evil. Isert mode.
 #+NAME: general-evil-insert-mode-map
-#+BEGIN_SRC emacs-lisp :exports none
+#+BEGIN_SRC emacs-lisp :exports none :tangle no
 (general-define-key
  :states '(insert)
  :keymaps 'override
@@ -755,7 +863,7 @@ Bookmark for navigation inside file
 #+END_SRC
 *** Evil. Normal state map.
 #+NAME: evil-spc-mode-map 
-#+BEGIN_SRC emacs-lisp :exports none
+#+BEGIN_SRC emacs-lisp :exports none :tangle no
 (general-define-key
  :states '(normal visual)
  :keymaps 'override
@@ -763,7 +871,10 @@ Bookmark for navigation inside file
  "SPC"  'projectile-find-file
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
- "bi" 'ibuffer
+ "bI" 'ibuffer
+ "vtt" 'my-toggle-transparency
+ "+" 'narrow-to-region
+ "-" 'widen
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
  ;; ;; TODO move to treemacs
@@ -806,7 +917,7 @@ Bookmark for navigation inside file
 
 *** Minibuffer mode map
 #+NAME: general-minibuffer-mode-map
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
   (general-define-key
    :keymaps 'minibuffer-mode-map
    "C-w" 'backward-kill-word
@@ -816,7 +927,7 @@ Bookmark for navigation inside file
 
 *** Evil. Leader.
 #+NAME: general-normal-leader-mode-map
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
   (general-define-key
    :states '(visual normal)
    :keymaps 'override
@@ -887,12 +998,6 @@ Bookmark for navigation inside file
 #+END_SRC
 * Common emacs packages
 ** Files
-*** Dired
-#+BEGIN_SRC emacs-lisp
-(define-key dired-mode-map (kbd "SPC") nil)
-(setq insert-directory-program "gls" dired-use-ls-dired t)
-(use-package dired+)
-#+END_SRC
 *** Dired batteries ;3
 Dirvish.
 #+BEGIN_SRC emacs-lisp
@@ -1019,6 +1124,195 @@ Something like screensaver
 (use-package secret-mode
   :defer t)
 #+END_SRC
+** Workspace
+*** Persp mode
+**** Persp doom configs
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package doom-lib
+  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
+#+END_SRC
+
+**** Persp buffer advices
+#+NAME: persp-buffer-advices
+#+BEGIN_SRC emacs-lisp :results silent :exports none :tangle no
+(defvar after-switch-to-buffer-functions nil)
+(defvar after-display-buffer-functions nil)
+
+(if (fboundp 'advice-add)
+    ;;Modern way
+    (progn
+      (defun after-switch-to-buffer-adv (&rest r)
+        (apply #'run-hook-with-args 'after-switch-to-buffer-functions r))
+      (defun after-display-buffer-adv (&rest r)
+        (apply #'run-hook-with-args 'after-display-buffer-functions r))
+      (advice-add #'switch-to-buffer :after #'after-switch-to-buffer-adv)
+      (advice-add #'display-buffer   :after #'after-display-buffer-adv)))
+#+END_SRC
+**** Persp mode custom
+#+NAME: persp-mode-custom
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(persp-autokill-buffer-on-remove 'kill-weak)
+(persp-reset-windows-on-nil-window-conf nil)
+(persp-add-buffer-on-after-change-major-mode t)
+(persp-nil-hidden t)
+(persp-auto-save-fname "autosave")
+(persp-save-dir (concat default-directory "workspaces/"))
+(persp-set-last-persp-for-new-frames t)
+(persp-switch-to-added-buffer nil)
+(persp-kill-foreign-buffer-behaviour 'kill)
+(persp-remove-buffers-from-nil-persp-behaviour nil)
+(persp-auto-resume-time -1) ; Don't auto-load on startup
+(persp-auto-save-opt (if noninteractive 0 1))
+#+END_SRC
+**** Buffers
+Add new buffer to current persp
+#+NAME: persp-add-buffer
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(add-hook 'after-switch-to-buffer-functions
+            #'(lambda (bn) (when (and persp-mode
+                                      (not persp-temporarily-display-buffer))
+                             (persp-add-buffer bn))))
+#+END_SRC
+**** Variables for tabs
+Variables for define colors of tab
+#+BEGIN_SRC emacs-lisp :results silent
+(defface +workspace-tab-selected-face
+  '((t :inherit nano-face-header-popout))
+  "Face for selected persp tab bar"
+  :group 'persp-tabbar)
+
+(defface +workspace-tab-face
+  '((t :inherit nano-face-popout ))
+  "Face for persp tab bar"
+  :group 'persp-tabbar)
+
+#+END_SRC
+**** Configs from doom
+#+BEGIN_SRC emacs-lisp :results silent
+(defvar +workspaces-main "main"
+  "The name of the primary and initial workspace, which cannot be deleted.")
+
+(defvar +workspaces-switch-project-function #'doom-project-find-file
+  "The function to run after `projectile-switch-project' or
+`counsel-projectile-switch-project'. This function must take one argument: the
+new project directory.")
+
+(defvar +workspaces-on-switch-project-behavior 'non-empty
+  "Controls the behavior of workspaces when switching to a new project.")
+
+#+END_SRC
+
+
+#+NAME: workspaces-doom-config
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+  (add-hook! '(persp-mode-hook persp-after-load-state-functions)
+    (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
+      (when persp-mode
+        (dolist (frame (frame-list))
+          (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+            ;; Take extra steps to ensure no frame ends up in the nil perspective
+            (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+                                    +workspaces-main)
+                                frame))))))
+
+  (add-hook! 'persp-mode-hook
+    (defun +workspaces-init-first-workspace-h (&rest _)
+      "Ensure a main workspace exists."
+      (when persp-mode
+        (let (persp-before-switch-functions)
+          ;; Try our best to hide the nil perspective.
+          (when (equal (car persp-names-cache) persp-nil-name)
+            (pop persp-names-cache))
+          ;; ...and create a *real* main workspace to fill this role.
+          (unless (or (persp-get-by-name +workspaces-main)
+                      ;; Start from 2 b/c persp-mode counts the nil workspace
+                      (> (hash-table-count *persp-hash*) 2))
+            (persp-add-new +workspaces-main))
+          ;; HACK Fix #319: the warnings buffer gets swallowed when creating
+          ;;      `+workspaces-main', so display it ourselves, if it exists.
+          (when-let (warnings (get-buffer "*Warnings*"))
+            (save-excursion
+              (display-buffer-in-side-window
+               warnings '((window-height . shrink-window-if-larger-than-buffer))))))))
+    (defun +workspaces-init-persp-mode-h ()
+      (cond (persp-mode
+             ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
+             ;; errors when switching between perspective (their buffers are
+             ;; serialized by name and persp-mode expects them to have the same
+             ;; name when restored).
+             (when uniquify-buffer-name-style
+               (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
+             (setq uniquify-buffer-name-style nil)
+             ;; Ensure `persp-kill-buffer-query-function' is last
+             (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
+             (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
+             ;; Restrict buffer list to workspace
+             (advice-add #'doom-buffer-list :override #'+workspace-buffer-list))
+            (t
+             (when +workspace--old-uniquify-style
+               (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
+             (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
+
+#+END_SRC
+
+**** Persp mode package
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+(use-package persp-mode
+  :bind (("s-1" . +workspace/switch-to-0)
+         ("s-2" . +workspace/switch-to-1)
+         ("s-3" . +workspace/switch-to-2)
+         ("s-4" . +workspace/switch-to-3)
+         ("s-5" . +workspace/switch-to-4)
+         ("s-6" . +workspace/switch-to-5)
+         ("s-7" . +workspace/switch-to-6)
+         ("s-8" . +workspace/switch-to-7)
+         ("s-9" . +workspace/switch-to-8)
+         :map evil-normal-state-map
+         ("SPC b b" . persp-switch-to-buffer)
+         ("SPC b k" . persp-kill-buffer)
+         ("SPC <tab> c" . persp-copy)
+         ("SPC <tab> k" . persp-kill)
+         ("SPC <tab> S" . +workspace/save)
+         ("SPC <tab> L" . +workspace/load)
+         ("SPC <tab> d" . +workspace/delete)
+         ("SPC <tab> r" . +workspace/rename)
+         ("SPC <tab> s" . persp-switch)
+         ("SPC <tab> n" . +workspace/new)
+         ("SPC <tab> o" . +workspace/other)
+         ("SPC <tab> <tab>" . +workspace/display)
+         ("SPC b i" . (lambda (arg)
+                        (interactive "P")
+                        (with-persp-buffer-list () (ibuffer arg)))))
+  :init
+  (add-hook 'window-setup-hook (lambda () (persp-mode 1)))
+	:custom
+  <<persp-mode-custom>>
+  :config
+  (set-persp-parameter 'dont-save-to-file t nil)
+  <<persp-buffer-advices>>
+  (persp-mode 1)
+  <<persp-add-buffer>>
+  <<workspaces-doom-config>>)
+#+END_SRC
+*** Projectile integration with workspaces
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package persp-mode-project-bridge
+  :after persp-mode
+  :config
+  (with-eval-after-load "persp-mode-projectile-bridge-autoloads"
+    (add-hook 'persp-mode-projectile-bridge-mode-hook
+              #'(lambda ()
+                  (if persp-mode-projectile-bridge-mode
+                      (persp-mode-projectile-bridge-find-perspectives-for-all-buffers)
+                    (persp-mode-projectile-bridge-kill-perspectives))))
+    (add-hook 'after-init-hook
+              #'(lambda ()
+                  (persp-mode-projectile-bridge-mode 1))
+              t)))
+#+END_SRC
+
+
+
 * Programming
 ** Snippets
 #+BEGIN_SRC emacs-lisp
@@ -1095,8 +1389,7 @@ Something like screensaver
 #+END_SRC
 ** AST. Tree sitter.
 #+BEGIN_SRC emacs-lisp
-  (use-package tree-sitter-langs
-    :defer t)
+  (use-package tree-sitter-langs)
 
   (use-package tree-sitter
     :after tree-sitter-langs
@@ -1414,14 +1707,23 @@ Something like screensaver
 ** Undo redo
 *** Undo mode
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package undo-tree
-  :config
-  (global-undo-tree-mode)
-  (setq undo-tree-auto-save-history t)
-  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo"))))
+(use-package undo-fu
+  :defer t
+  :bind (:map evil-normal-state-map
+              ("u" . undo-fu-only-undo)
+              ("C-r" . undo-fu-only-redo)))
+#+END_SRC
+*** Undo sessions (history saving)
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package undo-fu-session
+  :init
+  (global-undo-fu-session-mode))
 #+END_SRC
 
-*** Vundo
+*** HOLD Vundo
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
 (use-package vundo
   :defer 1
@@ -1626,7 +1928,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
     :config
     (set-face-foreground 'git-gutter:modified +m-color-main) ;; background color
     (set-face-foreground 'git-gutter:added +m-color-green)
-    (set-face-foreground 'git-gutter:deleted +m-color-red)
+    (set-face-foreground 'git-gutter:deleted +m-color-secondary)
     :init
     (global-git-gutter-mode))
 #+END_SRC
@@ -2087,6 +2389,9 @@ For install type ~npm install -g @volar/server~
     (setq grip-github-user (car credential)
           grip-github-password (cadr credential))))
 #+END_SRC
+
+#+RESULTS:
+: t
 
 * Org mode
 ** Org package
@@ -2638,14 +2943,13 @@ Dependency
   :bind (("s-i" . consult-imenu)
          ("s-f" . consult-line)
          :map evil-normal-state-map
-         ("SPC b b" . consult-buffer)
+         ("SPC b B" . consult-buffer)
          ("SPC /" . consult-ripgrep)
          ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
          ("SPC s i" . consult-imenu)
          ("SPC RET" . consult-bookmark)
          ("SPC f r" . consult-recent-file)
          ("SPC f P" . counsel-projectile-recentf)
-         ("SPC /" . counsel-projectile-rg)
          ("SPC SPC" . projectile-find-file))           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is

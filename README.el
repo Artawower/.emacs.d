@@ -44,6 +44,90 @@
 
 (setq initial-major-mode (quote fundamental-mode))
 
+(defalias 'use-package! 'use-package
+"Alias for call use-package from doom modules")
+
+(use-package doom-lib
+  :ensure t
+  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("lisp/doom-lib.el")))
+
+(defun doom-unquote (exp)
+  "Return EXP unquoted."
+  (declare (pure t) (side-effect-free t))
+  (while (memq (car-safe exp) '(quote function))
+    (setq exp (cadr exp)))
+  exp)
+
+(defmacro add-hook! (hooks &rest rest)
+  "A convenience macro for adding N functions to M hooks.
+
+This macro accepts, in order:
+
+  1. The mode(s) or hook(s) to add to. This is either an unquoted mode, an
+     unquoted list of modes, a quoted hook variable or a quoted list of hook
+     variables.
+  2. Optional properties :local, :append, and/or :depth [N], which will make the
+     hook buffer-local or append to the list of hooks (respectively),
+  3. The function(s) to be added: this can be a quoted function, a quoted list
+     thereof, a list of `defun' or `cl-defun' forms, or arbitrary forms (will
+     implicitly be wrapped in a lambda).
+
+\(fn HOOKS [:append :local [:depth N]] FUNCTIONS-OR-FORMS...)"
+  (declare (indent (lambda (indent-point state)
+                     (goto-char indent-point)
+                     (when (looking-at-p "\\s-*(")
+                       (lisp-indent-defform state indent-point))))
+           (debug t))
+  (let* ((hook-forms (doom--resolve-hook-forms hooks))
+         (func-forms ())
+         (defn-forms ())
+         append-p local-p remove-p depth)
+    (while (keywordp (car rest))
+      (pcase (pop rest)
+        (:append (setq append-p t))
+        (:depth  (setq depth (pop rest)))
+        (:local  (setq local-p t))
+        (:remove (setq remove-p t))))
+    (while rest
+      (let* ((next (pop rest))
+             (first (car-safe next)))
+        (push (cond ((memq first '(function nil))
+                     next)
+                    ((eq first 'quote)
+                     (let ((quoted (cadr next)))
+                       (if (atom quoted)
+                           next
+                         (when (cdr quoted)
+                           (setq rest (cons (list first (cdr quoted)) rest)))
+                         (list first (car quoted)))))
+                    ((memq first '(defun cl-defun))
+                     (push next defn-forms)
+                     (list 'function (cadr next)))
+                    ((prog1 `(lambda (&rest _) ,@(cons next rest))
+                       (setq rest nil))))
+              func-forms)))
+    `(progn
+       ,@defn-forms
+       (dolist (hook (nreverse ',hook-forms))
+         (dolist (func (list ,@func-forms))
+           ,(if remove-p
+                `(remove-hook hook func ,local-p)
+              `(add-hook hook func ,(or depth append-p) ,local-p)))))))
+
+(defun doom--resolve-hook-forms (hooks)
+  "Converts a list of modes into a list of hook symbols.
+
+If a mode is quoted, it is left as is. If the entire HOOKS list is quoted, the
+list is returned as-is."
+  (declare (pure t) (side-effect-free t))
+  (let ((hook-list (ensure-list (doom-unquote hooks))))
+    (if (eq (car-safe hooks) 'quote)
+        hook-list
+      (cl-loop for hook in hook-list
+               if (eq (car-safe hook) 'quote)
+               collect (cadr hook)
+               else collect (intern (format "%s-hook" (symbol-name hook)))))))
+
 (defun my-add-additional-space-when-not-exist (_)
   "Add additional sapce if previous char is not space!"
   (unless (eq (char-before) ? )
@@ -105,13 +189,14 @@ BEGIN END specifies region, otherwise works on entire buffer."
     (while (re-search-forward "^.*\033\\[2K\033\\[1G" end t)
       (replace-match ""))))
 
-(defun toggle-maximize-buffer () "Maximize buffer"
-       (interactive)
-       (if (= 1 (length (window-list)))
-           (jump-to-register '_)
-         (progn
-           (window-configuration-to-register '_)
-           (delete-other-windows))))
+(defun toggle-maximize-buffer ()
+	"Maximize buffer"
+  (interactive)
+  (if (= 1 (length (window-list)))
+      (jump-to-register '_)
+    (progn
+      (window-configuration-to-register '_)
+      (delete-other-windows))))
 
 (defun xah-copy-to-register-1 ()
   "Copy current line or text selection to register 1.
@@ -253,6 +338,8 @@ Version 2015-12-08"
   "Insert simple tab"
   (interactive)
   (insert "\t"))
+
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (setq +m-color-main "#61AFEF"
       +m-color-secondary "#FF3399"
@@ -486,111 +573,6 @@ Argument APPEARANCE should be light or dark."
 (global-set-key (kbd "C-S-k") 'shrink-window)
 (global-set-key (kbd "s-y") 'yas-expand)
 
-(general-define-key
- :keymaps 'override
- "C-w" 'backward-kill-word
- "s-w" 'evil-window-delete
- "C-h C-k" 'describe-key-briefly
- "\t" 'google-translate-smooth-translate
- "s-<backspace>" 'evil-delete-back-to-indentation
- "C-<tab>" 'my-insert-tab
- "C-u" 'evil-scroll-up
- "C-h C-m" 'describe-mode
- "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
-
-(general-define-key
- :states '(insert)
- :keymaps 'override
- "C-u" 'evil-delete-back-to-indentation
- "s-Y" 'xah-copy-to-register-1
- "s-P" 'xah-paste-from-register-1
- "s-p" 'yank-from-kill-ring
- "s-." 'ace-window)
-
-(general-define-key
- :states '(normal visual)
- :keymaps 'override
- :prefix "SPC"
- "SPC"  'projectile-find-file
- "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
- "hm" 'describe-mode
- ;; ;; Presentation
- ;; ("SPC t b" . presentation-mode)
- ;; ;; TODO move to treemacs
- ;; ;; Treemacs
- ;; ("SPC o p"   . treemacs)
- ;; ("SPC t a" . treemacs-add-project-to-workspace)
- ;; ("SPC o P" . treemacs-find-file)
- ;; ;; Window
- "wr" 'evil-window-rotate-downwards
- "wv" 'evil-window-vsplit
- "ws" 'evil-window-split
- ;; ;; Buffers
- "b ]" 'next-buffer
- "b [" 'previous-buffer
- "." 'find-file
- "hv" 'describe-variable
- "hf" 'describe-function
- "hF" 'describe-face
- "bO" 'kill-other-buff
- "tl" 'global-display-line-numbers-mode
- "bn" 'evil-buffer-new
- "bq" 'kill-current-buffer
- "vl" 'visual-line-mode
- "C-u" 'evil-scroll-up
- ;; ("SPC g t" . git-timemachine)
- "ht" 'load-theme
- ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
- ;; ;; ("SPC b b" . persp-switch-to-buffer)
- ;; ("SPC TAB d" . persp-kill)
- ;; ;; Perspective keybindings
- ;; ("SPC TAB r" . persp-rename)
- ;; ("SPC TAB n" . persp-next)
- ;; ("SPC TAB p" . persp-prev)
- ;; ;; ("SPC TAB s" . persp-switch)
- ;; ("SPC TAB s" . persp-window-switch)
- )
-
-(general-define-key
- :keymaps 'minibuffer-mode-map
- "C-w" 'backward-kill-word
- "<escape>" 'keyboard-escape-quit
- "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
-
-(general-define-key
- :states '(visual normal)
- :keymaps 'override
- :prefix "\\"
-  "f" 'avy-goto-char
-  "b" 'my-switch-to-xwidget-buffer
-  "k" 'save-buffer-without-dtw
-  "w" 'avy-goto-word-0
-  "]" 'flycheck-next-error
-  "[" 'flycheck-previous-error
-  "d" 'dap-debug
-
-  "o" 'org-mode
-  "q" 'kill-current-buffer
-  "v" 'vterm
-  "`" 'vterm-toggle-cd
-  "i" 'git-messenger:popup-message
-  "t" 'google-translate-smooth-translate
-  "T" 'google-translate-query-translate
-  "a" 'counsel-org-agenda-headlines
-  "c" 'dired-create-empty-file
-  "p" 'format-all-buffer
-  "s" 'publish-org-blog
-  "g" 'ace-window
-  ;; Evil
-  "=" 'evil-record-macro
-  "-" 'evil-execute-macro
-  "0" 'my-toggle-default-browser
-  "h" 'lsp-ui-doc-show
-  "e" 'lsp-treemacs-errors-list
-  "l" 'lsp-execute-code-action
-  "r" 'treemacs-select-window
-  "m" 'toggle-maximize-buffer)
-
 (use-package general
   :config
   (general-define-key
@@ -657,6 +639,10 @@ Argument APPEARANCE should be light or dark."
    "SPC"  'projectile-find-file
    "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
    "hm" 'describe-mode
+   "bI" 'ibuffer
+   "vtt" 'my-toggle-transparency
+   "+" 'narrow-to-region
+   "-" 'widen
    ;; ;; Presentation
    ;; ("SPC t b" . presentation-mode)
    ;; ;; TODO move to treemacs
@@ -710,10 +696,6 @@ Argument APPEARANCE should be light or dark."
 (use-package reverse-im
   :config
   (reverse-im-activate "russian-computer"))
-
-(define-key dired-mode-map (kbd "SPC") nil)
-(setq insert-directory-program "gls" dired-use-ls-dired t)
-(use-package dired+)
 
 (use-package dirvish
   :init
@@ -807,6 +789,153 @@ Argument APPEARANCE should be light or dark."
 (use-package secret-mode
   :defer t)
 
+(use-package doom-lib
+  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
+
+(defface +workspace-tab-selected-face
+  '((t :inherit nano-face-header-popout))
+  "Face for selected persp tab bar"
+  :group 'persp-tabbar)
+
+(defface +workspace-tab-face
+  '((t :inherit nano-face-popout ))
+  "Face for persp tab bar"
+  :group 'persp-tabbar)
+
+(defvar +workspaces-main "main"
+  "The name of the primary and initial workspace, which cannot be deleted.")
+
+(defvar +workspaces-switch-project-function #'doom-project-find-file
+  "The function to run after `projectile-switch-project' or
+`counsel-projectile-switch-project'. This function must take one argument: the
+new project directory.")
+
+(defvar +workspaces-on-switch-project-behavior 'non-empty
+  "Controls the behavior of workspaces when switching to a new project.")
+
+(use-package persp-mode
+  :bind (("s-1" . +workspace/switch-to-0)
+         ("s-2" . +workspace/switch-to-1)
+         ("s-3" . +workspace/switch-to-2)
+         ("s-4" . +workspace/switch-to-3)
+         ("s-5" . +workspace/switch-to-4)
+         ("s-6" . +workspace/switch-to-5)
+         ("s-7" . +workspace/switch-to-6)
+         ("s-8" . +workspace/switch-to-7)
+         ("s-9" . +workspace/switch-to-8)
+         :map evil-normal-state-map
+         ("SPC b b" . persp-switch-to-buffer)
+         ("SPC b k" . persp-kill-buffer)
+         ("SPC <tab> c" . persp-copy)
+         ("SPC <tab> k" . persp-kill)
+         ("SPC <tab> S" . +workspace/save)
+         ("SPC <tab> L" . +workspace/load)
+         ("SPC <tab> d" . +workspace/delete)
+         ("SPC <tab> r" . +workspace/rename)
+         ("SPC <tab> s" . persp-switch)
+         ("SPC <tab> n" . +workspace/new)
+         ("SPC <tab> o" . +workspace/other)
+         ("SPC <tab> <tab>" . +workspace/display)
+         ("SPC b i" . (lambda (arg)
+                        (interactive "P")
+                        (with-persp-buffer-list () (ibuffer arg)))))
+  :init
+  (add-hook 'window-setup-hook (lambda () (persp-mode 1)))
+	:custom
+  (persp-autokill-buffer-on-remove 'kill-weak)
+  (persp-reset-windows-on-nil-window-conf nil)
+  (persp-add-buffer-on-after-change-major-mode t)
+  (persp-nil-hidden t)
+  (persp-auto-save-fname "autosave")
+  (persp-save-dir (concat default-directory "workspaces/"))
+  (persp-set-last-persp-for-new-frames t)
+  (persp-switch-to-added-buffer nil)
+  (persp-kill-foreign-buffer-behaviour 'kill)
+  (persp-remove-buffers-from-nil-persp-behaviour nil)
+  (persp-auto-resume-time -1) ; Don't auto-load on startup
+  (persp-auto-save-opt (if noninteractive 0 1))
+  :config
+  (set-persp-parameter 'dont-save-to-file t nil)
+  (defvar after-switch-to-buffer-functions nil)
+  (defvar after-display-buffer-functions nil)
+  
+  (if (fboundp 'advice-add)
+      ;;Modern way
+      (progn
+        (defun after-switch-to-buffer-adv (&rest r)
+          (apply #'run-hook-with-args 'after-switch-to-buffer-functions r))
+        (defun after-display-buffer-adv (&rest r)
+          (apply #'run-hook-with-args 'after-display-buffer-functions r))
+        (advice-add #'switch-to-buffer :after #'after-switch-to-buffer-adv)
+        (advice-add #'display-buffer   :after #'after-display-buffer-adv)))
+  (persp-mode 1)
+  (add-hook 'after-switch-to-buffer-functions
+              #'(lambda (bn) (when (and persp-mode
+                                        (not persp-temporarily-display-buffer))
+                               (persp-add-buffer bn))))
+  (add-hook! '(persp-mode-hook persp-after-load-state-functions)
+    (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
+      (when persp-mode
+        (dolist (frame (frame-list))
+          (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+            ;; Take extra steps to ensure no frame ends up in the nil perspective
+            (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+                                    +workspaces-main)
+                                frame))))))
+  
+  (add-hook! 'persp-mode-hook
+    (defun +workspaces-init-first-workspace-h (&rest _)
+      "Ensure a main workspace exists."
+      (when persp-mode
+        (let (persp-before-switch-functions)
+          ;; Try our best to hide the nil perspective.
+          (when (equal (car persp-names-cache) persp-nil-name)
+            (pop persp-names-cache))
+          ;; ...and create a *real* main workspace to fill this role.
+          (unless (or (persp-get-by-name +workspaces-main)
+                      ;; Start from 2 b/c persp-mode counts the nil workspace
+                      (> (hash-table-count *persp-hash*) 2))
+            (persp-add-new +workspaces-main))
+          ;; HACK Fix #319: the warnings buffer gets swallowed when creating
+          ;;      `+workspaces-main', so display it ourselves, if it exists.
+          (when-let (warnings (get-buffer "*Warnings*"))
+            (save-excursion
+              (display-buffer-in-side-window
+               warnings '((window-height . shrink-window-if-larger-than-buffer))))))))
+    (defun +workspaces-init-persp-mode-h ()
+      (cond (persp-mode
+             ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
+             ;; errors when switching between perspective (their buffers are
+             ;; serialized by name and persp-mode expects them to have the same
+             ;; name when restored).
+             (when uniquify-buffer-name-style
+               (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
+             (setq uniquify-buffer-name-style nil)
+             ;; Ensure `persp-kill-buffer-query-function' is last
+             (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
+             (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
+             ;; Restrict buffer list to workspace
+             (advice-add #'doom-buffer-list :override #'+workspace-buffer-list))
+            (t
+             (when +workspace--old-uniquify-style
+               (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
+             (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
+  )
+
+(use-package persp-mode-project-bridge
+  :after persp-mode
+  :config
+  (with-eval-after-load "persp-mode-projectile-bridge-autoloads"
+    (add-hook 'persp-mode-projectile-bridge-mode-hook
+              #'(lambda ()
+                  (if persp-mode-projectile-bridge-mode
+                      (persp-mode-projectile-bridge-find-perspectives-for-all-buffers)
+                    (persp-mode-projectile-bridge-kill-perspectives))))
+    (add-hook 'after-init-hook
+              #'(lambda ()
+                  (persp-mode-projectile-bridge-mode 1))
+              t)))
+
 (use-package yasnippet
   :defer 2
   :config
@@ -847,8 +976,7 @@ Argument APPEARANCE should be light or dark."
   :config
   (autopair-global-mode))
 
-(use-package tree-sitter-langs
-  :defer t)
+(use-package tree-sitter-langs)
 
 (use-package tree-sitter
   :after tree-sitter-langs
@@ -1109,32 +1237,15 @@ Argument APPEARANCE should be light or dark."
   (require 'dap-go)
   (require 'dap-node))
 
-(use-package vundo
-  :defer 1
-  :config
-  ;; Take less on-screen space.
-  (setq vundo-compact-display t)
+(use-package undo-fu
+  :defer t
+  :bind (:map evil-normal-state-map
+              ("u" . undo-fu-only-undo)
+              ("C-r" . undo-fu-only-redo)))
 
-  ;; Better contrasting highlight.
-  (custom-set-faces
-   '(vundo-node ((t (:foreground "#808080"))))
-   '(vundo-stem ((t (:foreground "#808080"))))
-   '(vundo-highlight ((t (:foreground "#FFFF00")))))
-
-  ;; Use `HJKL` VIM-like motion, also Home/End to jump around.
-  (define-key vundo-mode-map (kbd "l") #'vundo-forward)
-  (define-key vundo-mode-map (kbd "<right>") #'vundo-forward)
-  (define-key vundo-mode-map (kbd "h") #'vundo-backward)
-  (define-key vundo-mode-map (kbd "<left>") #'vundo-backward)
-  (define-key vundo-mode-map (kbd "j") #'vundo-next)
-  (define-key vundo-mode-map (kbd "<down>") #'vundo-next)
-  (define-key vundo-mode-map (kbd "k") #'vundo-previous)
-  (define-key vundo-mode-map (kbd "<up>") #'vundo-previous)
-  (define-key vundo-mode-map (kbd "<home>") #'vundo-stem-root)
-  (define-key vundo-mode-map (kbd "<end>") #'vundo-stem-end)
-  (define-key vundo-mode-map (kbd "q") #'vundo-quit)
-  (define-key vundo-mode-map (kbd "C-g") #'vundo-quit)
-  (define-key vundo-mode-map (kbd "RET") #'vundo-confirm))
+(use-package undo-fu-session
+  :init
+  (global-undo-fu-session-mode))
 
 (use-package evil-surround
   :config
@@ -1142,6 +1253,7 @@ Argument APPEARANCE should be light or dark."
 
 (use-package copilot
   :defer 5
+  :straight (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
   :bind
   ("s-]" . copilot-next-completion)
   ("s-[" . copilot-previous-completion)
@@ -1259,7 +1371,7 @@ Argument APPEARANCE should be light or dark."
   :config
   (set-face-foreground 'git-gutter:modified +m-color-main) ;; background color
   (set-face-foreground 'git-gutter:added +m-color-green)
-  (set-face-foreground 'git-gutter:deleted +m-color-red)
+  (set-face-foreground 'git-gutter:deleted +m-color-secondary)
   :init
   (global-git-gutter-mode))
 
@@ -2003,14 +2115,13 @@ Argument APPEARANCE should be light or dark."
   :bind (("s-i" . consult-imenu)
          ("s-f" . consult-line)
          :map evil-normal-state-map
-         ("SPC b b" . consult-buffer)
+         ("SPC b B" . consult-buffer)
          ("SPC /" . consult-ripgrep)
          ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
          ("SPC s i" . consult-imenu)
          ("SPC RET" . consult-bookmark)
          ("SPC f r" . consult-recent-file)
          ("SPC f P" . counsel-projectile-recentf)
-         ("SPC /" . counsel-projectile-rg)
          ("SPC SPC" . projectile-find-file))           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
@@ -2109,9 +2220,8 @@ Argument APPEARANCE should be light or dark."
   (embark-collect-mode . consult-preview-at-point-mode))
 
 (use-package all-the-icons-completion
-  :after vertico
   :hook (vertico-mode . all-the-icons-completion-mode)
-  :config
+  :init
   (all-the-icons-completion-mode))
 
 (use-package pdf-view
