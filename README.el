@@ -49,7 +49,17 @@
 
 (use-package doom-lib
   :ensure t
-  :straight (doom-lib :host github :repo "hlissner/doom-emacs" :files ("lisp/doom-lib.el")))
+  :straight (doom-lib
+             :host github
+             :repo "hlissner/doom-emacs"
+             :files ("lisp/doom-lib.el" "lisp/lib/buffers.el")))
+
+(defmacro pushnew! (place &rest values)
+  "Push VALUES sequentially into PLACE, if they aren't already present.
+This is a variadic `cl-pushnew'."
+  (let ((var (make-symbol "result")))
+    `(dolist (,var (list ,@values) (with-no-warnings ,place))
+       (cl-pushnew ,var ,place :test #'equal))))
 
 (defun doom-unquote (exp)
   "Return EXP unquoted."
@@ -424,6 +434,22 @@ Version 2015-12-08"
 ;;    :config
 ;;    (nano-command-mode))
 
+(defun nano-modeline-default-mode ()
+  (let ((buffer-name (format-mode-line "%b"))
+        (mode-name   (nano-mode-name))
+        (branch      (vc-branch))
+        (position    (format-mode-line "%l:%c")))
+    (nano-modeline-compose (nano-modeline-status)
+                           buffer-name
+                           (concat "(" mode-name
+                                   (when branch (concat ", " (propertize branch 'face 'italic)))
+                                   ")"
+                                   (when mode-line-misc-info
+                                     (propertize
+                                      (format " [%s] " mode-line-misc-info)
+                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic))))
+                           position)))
+
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
 (defconst jetbrains-ligature-mode--ligatures
@@ -514,50 +540,6 @@ Argument APPEARANCE should be light or dark."
   (global-hl-todo-mode 1)
   (hl-todo-mode))
 
-(use-package evil-collection
-  :after evil
-  :config
-  (evil-collection-init)
-  (evil-commentary-mode))
-
-(use-package evil
-  :init
-  (setq evil-want-keybinding nil)
-  (evil-mode 1)
-  :config
-  (evil-set-undo-system 'undo-redo)
-  (setq-default evil-kill-on-visual-paste nil)
-  (evil-mode 1))
-
-(use-package bm
-:defer t
-:custom-face
-(bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
-:bind (("C-M-n" . bm-next)
-        ("C-M-p" . bm-previous)
-        ("s-b" . bm-toggle)))
-
-(use-package avy
-:defer t
-:bind (:map evil-normal-state-map
-        ("f" . avy-goto-word-1)
-        ("SPC k l" . avy-kill-whole-line)
-        ("SPC k r" . avy-kill-region))
-:custom
-(avy-single-candidate-jump t)
-(avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
-
-(use-package ace-window
-:bind (:map evil-normal-state-map
-            ("s-." . ace-window))
-:defer t)
-
-(use-package evil-matchit
-:defer t)
-
-(evilmi-load-plugin-rules '(ng2-html-mode) '(html))
-(global-evil-matchit-mode 1)
-
 (use-package which-key
   :defer 2
   :config
@@ -580,11 +562,13 @@ Argument APPEARANCE should be light or dark."
    "C-w" 'backward-kill-word
    "s-w" 'evil-window-delete
    "C-h C-k" 'describe-key-briefly
+   "C-h C-b" 'describe-keymap
    "\t" 'google-translate-smooth-translate
    "s-<backspace>" 'evil-delete-back-to-indentation
    "C-<tab>" 'my-insert-tab
    "C-u" 'evil-scroll-up
    "C-h C-m" 'describe-mode
+   "s-n" 'evil-buffer-new
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
    :states '(insert)
@@ -595,8 +579,12 @@ Argument APPEARANCE should be light or dark."
    "s-p" 'yank-from-kill-ring
    "s-." 'ace-window)
   (general-define-key
-   :keymaps 'minibuffer-mode-map
+   :keymaps '(minibuffer-local-map read--expression-map)
    "C-w" 'backward-kill-word
+   "C-k" 'previous-history-element
+   "C-p" 'previous-history-element
+   "C-j" 'next-history-element
+   "C-n" 'next-history-element
    "<escape>" 'keyboard-escape-quit
    "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
@@ -697,6 +685,56 @@ Argument APPEARANCE should be light or dark."
   :config
   (reverse-im-activate "russian-computer"))
 
+(use-package evil-collection
+  :after evil
+  :config
+  (evil-collection-init)
+  (evil-commentary-mode))
+
+(use-package evil
+  :init
+  (setq evil-want-keybinding nil)
+  (evil-mode 1)
+  :config
+  (evil-set-undo-system 'undo-redo)
+  (setq-default evil-kill-on-visual-paste nil)
+  (evil-mode 1))
+
+(use-package bm
+:defer t
+:custom-face
+(bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
+:bind (("C-M-n" . bm-next)
+        ("C-M-p" . bm-previous)
+        ("s-b" . bm-toggle)))
+
+(use-package avy
+  :defer t
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "f" 'avy-goto-word-1
+           "SPC k l" 'avy-kill-whole-line
+           "SPC k r" 'avy-kill-region)
+  (:keymaps 'override
+            "C-l" 'avy-goto-char)
+  :custom
+  (avy-single-candidate-jump t)
+  (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
+
+(use-package ace-window
+:bind (:map evil-normal-state-map
+            ("s-." . ace-window))
+:defer t)
+
+(use-package evil-matchit
+:defer t)
+
+(evilmi-load-plugin-rules '(ng2-html-mode) '(html))
+(global-evil-matchit-mode 1)
+
+(setq insert-directory-program "gls" dired-use-ls-dired t)
+
 (use-package dirvish
   :init
   (dirvish-override-dired-mode)
@@ -758,30 +796,35 @@ Argument APPEARANCE should be light or dark."
 
 (use-package vterm
   :defer t
-  :bind (:map evil-normal-state-map
-              ("SPC o v" . vterm)))
+  :general (:states '(normal visual)
+                    :keymaps 'vterm-mode-map
+                    "SPC ov" 'vterm))
 
 (use-package vterm-toggle
-  :defer t
-  :bind (:map evil-normal-state-map
-              ("SPC t ]" . vterm-toggle-forward)
-              ("SPC t [" . vterm-toggle-backward)
-              ("SPC t n" . (lambda () (interactive)
-                             (let ((current-buffer-name (buffer-name)))
-                               (vterm-toggle--new)
-                               (delete-window)
-                               (display-buffer current-buffer-name)
-                               (vterm-toggle-forward))))
-              ("SPC t x" . (lambda (args) (interactive "P")
-                             (when (string-match "vterm" (buffer-name))
-                               (let ((kill-buffer-query-functions nil))
-                                 (kill-this-buffer)
-                                 (+vterm/toggle args)))))
-              ("SPC o h" . (lambda () (interactive)
-                             (+vterm/toggle t)))
-              ("SPC t h" . vterm-toggle-hide)
-              ("SPC o t" . vterm-toggle-cd)
-              ("SPC t k" . my-open-kitty-right-here))
+  :after vterm
+  :general (:states '(normal visual)
+           :keymaps 'override
+           "SPC oh" (lambda () (interactive)
+                      (+vterm/toggle t))
+           "SPC th" 'vterm-toggle-hide
+           "SPC ot" 'vterm-toggle-cd
+           "SPC tk" 'my-open-kitty-right-here)
+  (:states '(normal visual)
+           :keymaps 'vterm-mode-map
+           "SPC t]" 'vterm-toggle-forward
+           "SPC t[" 'vterm-toggle-backward
+           "SPC tn" (lambda () (interactive)
+                      (let ((current-buffer-name (buffer-name)))
+                        (vterm-toggle--new)
+                        (delete-window)
+                        (display-buffer current-buffer-name)
+                        (vterm-toggle-forward)))
+           "SPC tx" (lambda (args) (interactive "P")
+                      (when (string-match "vterm" (buffer-name))
+                        (let ((kill-buffer-query-functions nil))
+                          (kill-this-buffer)
+                          (+vterm/toggle args)))))
+
   :config
   (setq vterm-kill-buffer-on-exit nil)
   (setq vterm-toggle-scope 'project))
@@ -789,9 +832,14 @@ Argument APPEARANCE should be light or dark."
 (use-package secret-mode
   :defer t)
 
-(use-package doom-workspaces
-  :ensure t
-  :straight (doom-workspaces :host github :repo "hlissner/doom-emacs" :files ("modules/ui/workspaces/autoload/workspaces.el")))
+(load "~/pure-emacs/vendor/doom-workspaces.el")
+;; (use-package doom-workspaces
+;;   :straight (doom-workspaces
+;;              :host github
+;;              :repo "hlissner/doom-emacs"
+;;              :files ("modules/ui/workspaces/autoload/*.el"
+;;                      "modules/ui/workspaces/*.el")
+;;              :build (autoloads)))
 
 (defface +workspace-tab-selected-face
   '((t :inherit nano-face-header-popout))
@@ -814,7 +862,10 @@ new project directory.")
 (defvar +workspaces-on-switch-project-behavior 'non-empty
   "Controls the behavior of workspaces when switching to a new project.")
 
+(use-package workgroups)
+
 (use-package persp-mode
+  :after workgroups
   :bind (("s-1" . +workspace/switch-to-0)
          ("s-2" . +workspace/switch-to-1)
          ("s-3" . +workspace/switch-to-2)
@@ -834,7 +885,7 @@ new project directory.")
          ("SPC <tab> d" . +workspace/delete)
          ("SPC <tab> r" . +workspace/rename)
          ("SPC <tab> s" . persp-switch)
-         ("SPC <tab> n" . +workspace/new)
+         ("SPC <tab> n" . +workspace/quick-new)
          ("SPC <tab> o" . +workspace/other)
          ("SPC <tab> <tab>" . +workspace/display)
          ("SPC b i" . (lambda (arg)
@@ -870,15 +921,10 @@ new project directory.")
         (advice-add #'switch-to-buffer :after #'after-switch-to-buffer-adv)
         (advice-add #'display-buffer   :after #'after-display-buffer-adv)))
   (persp-mode 1)
-  (add-hook 'after-switch-to-buffer-functions
-              #'(lambda (bn) (when (and persp-mode
-                                        (not persp-temporarily-display-buffer))
-                               (persp-add-buffer bn))))
-  (dotimes (i 9)
-    (defalias (intern (format "+workspace/switch-to-%d" i))
-      (lambda () (interactive) (+workspace/switch-to i))
-      (format "Switch to workspace #%d" (1+ i))))
-  
+  ;; (add-hook 'after-switch-to-buffer-functions
+  ;;             #'(lambda (bn) (when (and persp-mode
+  ;;                                       (not persp-temporarily-display-buffer))
+  ;;                              (persp-add-buffer bn))))
   (add-hook! '(persp-mode-hook persp-after-load-state-functions)
     (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
       (when persp-mode
@@ -925,7 +971,82 @@ new project directory.")
             (t
              (when +workspace--old-uniquify-style
                (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
-             (advice-remove #'doom-buffer-list #'+workspace-buffer-list))))))
+             (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
+  (defun +workspace/quick-new ()
+    "Create new workspace quickly"
+    (interactive)
+    (let ((name (format "#%s" (+workspace--generate-id))))
+      (persp-switch name)
+      (switch-to-buffer (doom-fallback-buffer))
+      (+workspace/display))))
+
+(defun +ibuffer/visit-workspace-buffer (&optional select-first)
+  "Visit buffer, but switch to its workspace if it exists."
+  (interactive "P")
+  (let ((buf (ibuffer-current-buffer t)))
+    (unless (buffer-live-p buf)
+      (user-error "Not a valid or live buffer: %s" buf))
+    (if-let (workspaces
+             (cl-loop for wk in (+workspace-list)
+                      if (+workspace-contains-buffer-p buf wk)
+                      collect wk))
+        (+workspace-switch
+         (if (and (not select-first) (cdr workspaces))
+             (or (completing-read "Select workspace: " (mapcar #'persp-name workspaces))
+                 (user-error "Aborted"))
+           (persp-name (car workspaces))))
+      ;; Or add the buffer to the current workspace
+      (persp-add-buffer buf))
+    (switch-to-buffer buf)))
+
+(use-package ibuffer
+  :defer t
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC bI" 'projectile-ibuffer
+           "SPC bi" 'ibuffer)
+  (:states '(normal visual)
+           :keymaps 'ibuffer-mode-map
+           "<return>" '+ibuffer/visit-workspace-buffer))
+
+(with-eval-after-load "ibuffer"
+  (require 'ibuf-ext)
+
+  (define-ibuffer-filter persp
+      "Toggle current view to buffers of current perspective."
+    (:description "persp-mode"
+     :reader (persp-prompt nil nil (safe-persp-name (get-frame-persp)) t))
+    (find buf (safe-persp-buffers (persp-get-by-name qualifier))))
+
+  (defun persp-add-ibuffer-group ()
+    (let ((perspslist (mapcar #'(lambda (pn)
+                                  (list pn (cons 'persp pn)))
+                              (nconc
+                               (delete* persp-nil-name
+                                        (persp-names-current-frame-fast-ordered)
+                                        :test 'string=)
+                               (list persp-nil-name)))))
+      (setq ibuffer-saved-filter-groups
+            (delete* "persp-mode" ibuffer-saved-filter-groups
+                     :test 'string= :key 'car))
+      (push
+       (cons "persp-mode" perspslist)
+       ibuffer-saved-filter-groups)))
+
+  (defun persp-ibuffer-visit-buffer ()
+    (let ((buf (ibuffer-current-buffer t))
+          (persp-name (get-text-property
+                       (line-beginning-position) 'ibuffer-filter-group)))
+      (persp-switch persp-name)
+      (switch-to-buffer buf)))
+
+  (define-key ibuffer-mode-map (kbd "RET") 'persp-ibuffer-visit-buffer)
+
+  (add-hook 'ibuffer-mode-hook
+            #'(lambda ()
+                (persp-add-ibuffer-group)
+                (ibuffer-switch-to-saved-filter-groups "persp-mode"))))
 
 (use-package persp-mode-project-bridge
   :after persp-mode
@@ -953,7 +1074,7 @@ new project directory.")
 (use-package format-all
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
-  :hook ((json-mode go-mode dart-mode) . format-all-mode)
+  :hook ((json-mode go-mode dart-mode emacs-lisp-mode) . format-all-mode)
   :config
   (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
   (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
@@ -1054,6 +1175,13 @@ new project directory.")
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
+(defun @find-definition ()
+  "Find lsp definition when lsp exist and enabled, or find evil definition."
+  (interactive)
+  (cond ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
+        ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
+        (t (evil-goto-definition))))
+
 (use-package lsp
   :hook ((clojure-mode
           scss-mode
@@ -1068,13 +1196,17 @@ new project directory.")
           python-mode
           dart-mode
           typescript-tsx-mode) . lsp-deferred)
-  :bind (:map evil-normal-state-map
-              ("SPC f n" . flycheck-next-error)
-              ("g i" . lsp-goto-implementation)
-              ("SPC l a" . lsp-execute-code-action)
-              ("SPC l r" . lsp-find-references)
-              ("SPC l w" . lsp-restart-workspace)
-              ("SPC r l" . lsp))
+  :general (:states '(normal visual)
+                    :keymaps 'override
+                    "SPC fn" 'flycheck-next-error
+                    "gi" 'p-goto-implementation
+                    "SPC la" 'lsp-execute-code-action
+                    "SPC lr" 'lsp-find-references
+                    "SPC lw" 'lsp-restart-workspace
+                    "SPC rl" 'lsp
+                    "gd" '@find-definition
+                    "SPC la" 'lsp-execute-code-action
+                    "SPC cr" 'lsp-rename)
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
@@ -1333,6 +1465,19 @@ new project directory.")
 
 (use-package magit
   :defer t
+  :general
+  (:keymaps 'magit-mode-map
+            :states '(normal visual)
+            "C-1" 'magit-section-show-level-1
+            "C-2" 'magit-section-show-level-2
+            "C-3" 'magit-section-show-level-3
+            "C-4" 'magit-section-show-level-4
+            "1" 'digit-argument
+            "2" 'digit-argument
+            "3" 'digit-argument
+            "4" 'digit-argument
+            "SPC f" 'magit-fetch
+            "f" 'evil-avy-goto-word-1)
   :bind (:map magit-mode-map
               ("s-<return>" . magit-diff-visit-worktree-file)
               :map evil-normal-state-map
@@ -1428,6 +1573,11 @@ new project directory.")
 
   (global-blamer-mode 1))
 
+(use-package git-timemachine
+  :defer t
+  :bind (:map evil-normal-state-map
+              ("SPC g t" . git-timemachine)))
+
 (use-package paren-face :defer t)
 
 (use-package elisp-mode
@@ -1443,7 +1593,10 @@ new project directory.")
          ("C-c c" . counsel-outline)
          ("C-c e" . outline-hide-entry)
          ("C-c t" . outline-toggle-children)
-         ("C-c b" . outline-cycle-buffer))
+         ("C-c b" . outline-cycle-buffer)
+         ;; TODO: eval buffer or region 
+         ("C-c C-c" . eval-buffer))
+
   :config
   (add-hook 'emacs-lisp-mode-hook (lambda () (setq rainbow-delimiters-mode -1))))
 
@@ -1464,7 +1617,7 @@ new project directory.")
 
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
-  :defer 10
+  :defer t
   :custom
   (lsp-clients-typescript-server-args '("--stdio"))
   :config
@@ -1492,7 +1645,22 @@ new project directory.")
   :defer t)
 
 (use-package nodejs-repl
-  :defer t)
+  :ensure t
+  :general 
+  (:states '(normal visual)
+    :keymaps 'override
+           "SPC rn" 'nodejs-repl)
+  :defer t
+  :config
+  (defun @open-nodejs-repl-here ()
+    "Open nodejs repl inside current buffer!"
+    (interactive)
+    (let ((nodejs-repl-buffer-name "*nodejs*"))
+      (if (get-buffer nodejs-repl-buffer-name)
+          (switch-to-buffer nodejs-repl-buffer-name)
+        (progn
+          (switch-to-buffer nodejs-repl-buffer-name)
+          (nodejs-repl))))))
 
 (use-package go-playground
   :defer t)
@@ -1525,6 +1693,25 @@ new project directory.")
   (setq rustic-format-on-save t
         rustic-format-display-method 'ignore)
   (add-hook 'rustic-mode-hook 'rk/rustic-mode-hook))
+
+(defun @open-ipython-repl-here ()
+  "Open python repl inside current buffer!"
+  (interactive)
+  (let ((python-repl-buffer-name "*Python*"))
+    (if (get-buffer python-repl-buffer-name)
+        (switch-to-buffer python-repl-buffer-name)
+      (progn
+        (switch-to-buffer python-repl-buffer-name)
+        (run-python)))))
+
+(use-package python
+  :defer t
+  :general
+  (:states '(normal visual)
+    :keymaps 'override
+    "SPC r p" '@open-ipython-repl-here)
+  :config
+  (setq python-shell-interpreter "ipython"))
 
 (use-package python-mode
   :defer t
@@ -1821,9 +2008,7 @@ new project directory.")
   :after org
   :hook (org-mode . org-superstar-mode)
   :config
-  (setq org-directory "~/Yandex.Disk.localized/Dropbox/org")
-  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
-                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
+  (setq org-directory "~/Yandex.Disk.localized/Dropbox/org"))
 
 (use-package org-roam
   :after org
@@ -1852,6 +2037,7 @@ new project directory.")
 
 (use-package org-yt
   :after org
+  :straight (:host github :repo "TobiasZawada/org-yt")
   :config
   (defun org-image-link (protocol link _description)
     "Interpret LINK as base64-encoded image data."
@@ -1906,6 +2092,12 @@ new project directory.")
               ("<C-return>" . +org/insert-item-below)
               ("<C-S-return>" . +org/insert-item-above))
   :straight (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
+
+(use-package org-agenda
+  :defer t
+  :config
+  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
+                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
 
 (defun my-set-spellfu-faces ()
   "Set faces for correct spell-fu working"
@@ -2114,7 +2306,16 @@ new project directory.")
 
   ;; The :init configuration is always executed (Not lazy!)
   :init
-  (marginalia-mode))
+  (marginalia-mode)
+  :config
+  (pushnew! marginalia-command-categories
+          '(+default/find-file-under-here . file)
+          '(flycheck-error-list-set-filter . builtin)
+          '(persp-switch-to-buffer . buffer)
+          '(projectile-find-file . project-file)
+          '(projectile-recentf . project-file)
+          '(projectile-switch-to-buffer . buffer)
+          '(projectile-switch-project . project-file)))
 
 (use-package consult
   :defer t
