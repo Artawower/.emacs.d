@@ -1143,14 +1143,13 @@ I didn't use treemacs anymore, but sometime
 (use-package vterm
   :defer t
   :general (:states '(normal visual)
-                    :keymaps 'vterm-mode-map
                     "SPC ov" 'vterm))
 #+END_SRC
 
 *** Vterm toggle
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package vterm-toggle
-  :after vterm
+  :defer t
   :general (:states '(normal visual)
            :keymaps 'override
            "SPC oh" (lambda () (interactive)
