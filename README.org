@@ -16,7 +16,8 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 * Initial configs
 ** Warning level
 #+BEGIN_SRC emacs-lisp
-  (setq warning-minimum-level :emergency)
+(setq warning-minimum-level :emergency)
+(setq warning-suppress-log-types '((comp) (undo discard-info)))
 #+END_SRC
 ** Garbage collector
 #+BEGIN_SRC emacs-lisp
@@ -2088,6 +2089,8 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
             "C-2" 'magit-section-show-level-2
             "C-3" 'magit-section-show-level-3
             "C-4" 'magit-section-show-level-4
+            "q" 'kill-current-buffer
+            "Q" 'bury-buffer
             "1" 'digit-argument
             "2" 'digit-argument
             "3" 'digit-argument
