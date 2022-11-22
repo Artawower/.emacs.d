@@ -444,10 +444,11 @@ Version 2015-12-08"
                            (concat "(" mode-name
                                    (when branch (concat ", " (propertize branch 'face 'italic)))
                                    ")"
-                                   (when mode-line-misc-info
+                                   (when (and (boundp 'wakatime-current-session) wakatime-current-session)
                                      (propertize
-                                      (format " [%s] " mode-line-misc-info)
-                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic))))
+                                      (format " [%s] " wakatime-current-session)
+                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic)))
+                                   )
                            position)))
 
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
@@ -625,6 +626,7 @@ Argument APPEARANCE should be light or dark."
    :keymaps 'override
    :prefix "SPC"
    "SPC"  'projectile-find-file
+   "tr" 'read-only-mode
    "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
    "hm" 'describe-mode
    "bI" 'ibuffer
@@ -797,11 +799,10 @@ Argument APPEARANCE should be light or dark."
 (use-package vterm
   :defer t
   :general (:states '(normal visual)
-                    :keymaps 'vterm-mode-map
                     "SPC ov" 'vterm))
 
 (use-package vterm-toggle
-  :after vterm
+  :defer t
   :general (:states '(normal visual)
            :keymaps 'override
            "SPC oh" (lambda () (interactive)
@@ -898,6 +899,7 @@ new project directory.")
   (persp-reset-windows-on-nil-window-conf nil)
   (persp-add-buffer-on-after-change-major-mode t)
   (persp-nil-hidden t)
+  (persp-nil-name "default")
   (persp-auto-save-fname "autosave")
   (persp-save-dir (concat default-directory "workspaces/"))
   (persp-set-last-persp-for-new-frames t)
@@ -1075,10 +1077,11 @@ new project directory.")
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
   :hook ((json-mode go-mode dart-mode emacs-lisp-mode) . format-all-mode)
-  :config
-  (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
-  (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
-  (add-to-list '+format-on-save-enabled-modes 'js2-mode t))
+  ;; :config
+  ;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
+  ;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
+  ;; (add-to-list '+format-on-save-enabled-modes 'js2-mode t)
+)
 
 (use-package prettier
   :defer t
@@ -1086,11 +1089,16 @@ new project directory.")
          ("\+p" . prettier-prettify))
   :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode))
 
-(use-package flymake
-  :after evil
+(use-package flycheck
   :bind (:map evil-normal-state-map
-         ("C-f ]" . flymake-goto-next-error)
-         ("C-f [" . flymake-goto-prev-error)))
+              ("SPC f ]" . flycheck-next-error)
+              ("SPC f [" . flycheck-previous-error)
+              ("SPC e l" . flycheck-list-errors))
+  :init
+  (global-flycheck-mode)
+  :config
+  (flycheck-add-mode 'javascript-eslint 'web-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-mode))
 
 (use-package flymake-diagnostic-at-point
   :after flymake
@@ -1183,6 +1191,7 @@ new project directory.")
         (t (evil-goto-definition))))
 
 (use-package lsp
+  :after flycheck
   :hook ((clojure-mode
           scss-mode
           go-mode
@@ -1234,6 +1243,7 @@ new project directory.")
   (require 'flycheck)
   (require 'lsp-diagnostics)
   (lsp-diagnostics-flycheck-enable)
+  (mapc #'lsp-flycheck-add-mode '(typescript-mode js-mode css-mode vue-html-mode))
   ;; Golang
   (defun lsp-go-install-save-hooks ()
     (flycheck-add-next-checker 'lsp '(warning . go-gofmt) 'append)
@@ -1431,6 +1441,13 @@ new project directory.")
                                             (copilot-clear-overlay)))
   ;; (copilot-clear-overlay)) nil t)
   )
+
+(use-package electric
+  :config
+  (setq electric-pair-preserve-balance t
+        electric-pair-delete-adjacent-pairs nil
+        electric-pair-open-newline-between-pairs nil)
+  (electric-pair-mode 1))
 
 (use-package turbo-log
   :defer t
@@ -2201,6 +2218,14 @@ new project directory.")
   :config
   (global-wakatime-mode))
 
+(use-package wakatime-ui
+  :after wakatime-mode
+  :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
+  :custom
+  (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
+  :config
+  (wakatime-ui-mode))
+
 (recentf-mode)
 
 (use-package projectile
@@ -2208,6 +2233,16 @@ new project directory.")
   (:states 'normal
            "SPC pa" 'projectile-add-known-project)
   :config
+  (defun @set-perps-workspace-name-by-switched-project ()
+    "Set perps workspace name by switched project"
+    (interactive)
+    (message "project changed")
+    (when (and (bound-and-true-p persp-mode)
+               (bound-and-true-p projectile-mode))
+      (persp-rename (projectile-project-name))))
+  
+  (add-hook 'projectile-after-switch-project-hook
+            #'@set-perps-workspace-name-by-switched-project)
   (projectile-mode +1))
 
 (use-package helpful
@@ -2220,6 +2255,7 @@ new project directory.")
 
 (use-package vertico
   :bind (:map evil-normal-state-map
+              ("SPC ;" . vertico-repeat-last)
               ("SPC '" . vertico-repeat)
               ("SPC f P" . (lambda ()
                              (interactive)
@@ -2319,17 +2355,17 @@ new project directory.")
 
 (use-package consult
   :defer t
-  :bind (("s-i" . consult-imenu)
-         ("s-f" . consult-line)
-         :map evil-normal-state-map
-         ("SPC b B" . consult-buffer)
-         ("SPC /" . consult-ripgrep)
-         ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
-         ("SPC s i" . consult-imenu)
-         ("SPC RET" . consult-bookmark)
-         ("SPC f r" . consult-recent-file)
-         ("SPC f P" . counsel-projectile-recentf)
-         ("SPC SPC" . projectile-find-file))           ;; needed by consult-line to detect isearch
+  :general (:states '(normal visual)
+            :keymaps 'override
+                    "s-f" 'consult-line
+                    "SPC bB" 'consult-buffer
+                    "SPC /" 'consult-ripgrep
+                    "SPC *" (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol)))
+                    "SPC si" 'consult-imenu
+                    "SPC RET" 'consult-bookmark
+                    "SPC fr" 'consult-recent-file
+                    "SPC fP" 'counsel-projectile-recentf
+                    "SPC SPC" 'projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -2401,8 +2437,10 @@ new project directory.")
 
 (use-package consult-projectile
   :general (:states 'normal
-                    "SPC p p" 'consult-projectile-switch-project
-                    "SPC p a" 'projectile-add-known-project)
+                    "SPC pp" 'consult-projectile-switch-project
+                    "SPC pa" 'projectile-add-known-project)
+  :config
+  (setq consult-projectile-use-projectile-switch-project t)
   :defer t)
 
 (use-package embark

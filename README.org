@@ -1,4 +1,4 @@
-PROPERTIES:
+:PROPERTIES:
 :header-args: :tangle yes
 :END:
 
@@ -623,6 +623,7 @@ Small patch for define face
 
 #+END_SRC
 
+**** Modeline patch
 Patch for modeline for support mode-line-misc-info
 
 #+BEGIN_SRC emacs-lisp :results silent
@@ -636,10 +637,11 @@ Patch for modeline for support mode-line-misc-info
                            (concat "(" mode-name
                                    (when branch (concat ", " (propertize branch 'face 'italic)))
                                    ")"
-                                   (when mode-line-misc-info
+                                   (when (and (boundp 'wakatime-current-session) wakatime-current-session)
                                      (propertize
-                                      (format " [%s] " mode-line-misc-info)
-                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic))))
+                                      (format " [%s] " wakatime-current-session)
+                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic)))
+                                   )
                            position)))
 #+END_SRC
 
@@ -842,6 +844,7 @@ Argument APPEARANCE should be light or dark."
  :keymaps 'override
  :prefix "SPC"
  "SPC"  'projectile-find-file
+ "tr" 'read-only-mode
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
  "bI" 'ibuffer
@@ -1221,6 +1224,7 @@ Something like screensaver
 (persp-reset-windows-on-nil-window-conf nil)
 (persp-add-buffer-on-after-change-major-mode t)
 (persp-nil-hidden t)
+(persp-nil-name "default")
 (persp-auto-save-fname "autosave")
 (persp-save-dir (concat default-directory "workspaces/"))
 (persp-set-last-persp-for-new-frames t)
@@ -1495,10 +1499,11 @@ This function also stolen from doom emacs. It provide functionality for automati
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
   :hook ((json-mode go-mode dart-mode emacs-lisp-mode) . format-all-mode)
-  :config
-  (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
-  (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
-  (add-to-list '+format-on-save-enabled-modes 'js2-mode t))
+  ;; :config
+  ;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
+  ;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
+  ;; (add-to-list '+format-on-save-enabled-modes 'js2-mode t)
+)
 #+END_SRC
 
 *** Prettier
@@ -1511,7 +1516,10 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 
 ** Flychek. Error checker
-*** TODO Flymake
+*** HOLD Flymake
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
   (use-package flymake
     :after evil
@@ -1519,17 +1527,19 @@ This function also stolen from doom emacs. It provide functionality for automati
            ("C-f ]" . flymake-goto-next-error)
            ("C-f [" . flymake-goto-prev-error)))
 #+END_SRC
-*** HOLD Flycheck
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+BEGIN_SRC emacs-lisp
+*** Flycheck
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package flycheck
-  :defer 2
   :bind (:map evil-normal-state-map
               ("SPC f ]" . flycheck-next-error)
               ("SPC f [" . flycheck-previous-error)
-              ("SPC e l" . flycheck-list-errors)))
+              ("SPC e l" . flycheck-list-errors))
+  :init
+  (global-flycheck-mode)
+  :config
+  (flycheck-add-mode 'javascript-eslint 'web-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-mode))
+
 #+END_SRC
 
 ** Flymake posframe
@@ -1665,6 +1675,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 *** Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp
+  :after flycheck
   :hook ((clojure-mode
           scss-mode
           go-mode
@@ -1716,6 +1727,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (require 'flycheck)
   (require 'lsp-diagnostics)
   (lsp-diagnostics-flycheck-enable)
+  (mapc #'lsp-flycheck-add-mode '(typescript-mode js-mode css-mode vue-html-mode))
   ;; Golang
   (defun lsp-go-install-save-hooks ()
     (flycheck-add-next-checker 'lsp '(warning . go-gofmt) 'append)
@@ -2015,6 +2027,16 @@ cause its simple, and it works in all cases.
   :config
   (autopair-global-mode))
 #+END_SRC
+*** Electric pair
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package electric
+  :config
+  (setq electric-pair-preserve-balance t
+        electric-pair-delete-adjacent-pairs nil
+        electric-pair-open-newline-between-pairs nil)
+  (electric-pair-mode 1))
+#+END_SRC
+
 
 ** Quick log inserting
 #+BEGIN_SRC emacs-lisp
@@ -2049,12 +2071,11 @@ cause its simple, and it works in all cases.
 #+END_SRC
 ** Case converter
 Allow to transform PASCAL_CASE -> camelCase -> snake_case
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package string-inflection
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 #+END_SRC
-
 * GIT
 ** Magit
 #+BEGIN_SRC emacs-lisp :results silent
@@ -3074,26 +3095,55 @@ Dependency
 #+END_SRC
 * Tools
 ** Wakatime. Be productive.
+*** Main package
 #+BEGIN_SRC emacs-lisp
 (use-package wakatime-mode
   :defer 2
   :config
   (global-wakatime-mode))
 #+END_SRC
+*** Ui 
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package wakatime-ui
+  :after wakatime-mode
+  :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
+  :custom
+  (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
+  :config
+  (wakatime-ui-mode))
+#+END_SRC
+
 ** Recent
 #+BEGIN_SRC emacs-lisp
 (recentf-mode)
 #+END_SRC
 
 ** Projectile
-#+BEGIN_SRC emacs-lisp
+*** Projectile package
+#+BEGIN_SRC emacs-lisp :noweb yes
   (use-package projectile
     :general
     (:states 'normal
              "SPC pa" 'projectile-add-known-project)
     :config
+    <<projectile-persp-hook>>
     (projectile-mode +1))
 #+END_SRC
+*** Projectil persp hook
+#+NAME: projectile-persp-hook
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun @set-perps-workspace-name-by-switched-project ()
+  "Set perps workspace name by switched project"
+  (interactive)
+  (message "project changed")
+  (when (and (bound-and-true-p persp-mode)
+             (bound-and-true-p projectile-mode))
+    (persp-rename (projectile-project-name))))
+
+(add-hook 'projectile-after-switch-project-hook
+          #'@set-perps-workspace-name-by-switched-project)
+#+END_SRC
+
 ** Helpful
 #+BEGIN_SRC emacs-lisp
   (use-package helpful
@@ -3110,6 +3160,7 @@ Dependency
 #+BEGIN_SRC emacs-lisp
   (use-package vertico
     :bind (:map evil-normal-state-map
+                ("SPC ;" . vertico-repeat-last)
                 ("SPC '" . vertico-repeat)
                 ("SPC f P" . (lambda ()
                                (interactive)
@@ -3222,17 +3273,17 @@ Dependency
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package consult
   :defer t
-  :bind (("s-i" . consult-imenu)
-         ("s-f" . consult-line)
-         :map evil-normal-state-map
-         ("SPC b B" . consult-buffer)
-         ("SPC /" . consult-ripgrep)
-         ("SPC *" . (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol))))
-         ("SPC s i" . consult-imenu)
-         ("SPC RET" . consult-bookmark)
-         ("SPC f r" . consult-recent-file)
-         ("SPC f P" . counsel-projectile-recentf)
-         ("SPC SPC" . projectile-find-file))           ;; needed by consult-line to detect isearch
+  :general (:states '(normal visual)
+            :keymaps 'override
+                    "s-f" 'consult-line
+                    "SPC bB" 'consult-buffer
+                    "SPC /" 'consult-ripgrep
+                    "SPC *" (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol)))
+                    "SPC si" 'consult-imenu
+                    "SPC RET" 'consult-bookmark
+                    "SPC fr" 'consult-recent-file
+                    "SPC fP" 'counsel-projectile-recentf
+                    "SPC SPC" 'projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -3303,13 +3354,16 @@ Dependency
   )
 #+END_SRC
 ** Projectile
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package consult-projectile
   :general (:states 'normal
-                    "SPC p p" 'consult-projectile-switch-project
-                    "SPC p a" 'projectile-add-known-project)
+                    "SPC pp" 'consult-projectile-switch-project
+                    "SPC pa" 'projectile-add-known-project)
+  :config
+  (setq consult-projectile-use-projectile-switch-project t)
   :defer t)
 #+END_SRC
+
 ** Embark
 #+BEGIN_SRC emacs-lisp
   (use-package embark
