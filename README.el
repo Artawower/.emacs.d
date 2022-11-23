@@ -1,4 +1,5 @@
 (setq warning-minimum-level :emergency)
+(setq warning-suppress-log-types '((comp) (undo discard-info)))
 
 (let* ((normal-gc-cons-threshold (* 20 1024 1024))
      (init-gc-cons-threshold (* 128 1024 1024)))
@@ -46,6 +47,15 @@
 
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
+
+(setq @scratch-dir "~/tmp/scratches")
+
+(when (eq system-type 'darwin)
+  (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  (setq browse-url-generic-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+        browse-url-browser-function 'browse-url-generic))
+
+(set-default 'truncate-lines t)
 
 (use-package doom-lib
   :ensure t
@@ -267,21 +277,6 @@ Version 2015-12-08"
   (when (buffer-file-name)
     (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
 
-(defun my-vterm-change-current-directory-to-active-buffer-pwd ()
-  "Just exec CD to pwd of active buffer."
-  (interactive)
-  (when-let* ((file-name (buffer-file-name))
-              (file-dir (file-name-directory file-name))
-              (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
-    (message "FILE: %s" file-dir)
-    (save-window-excursion
-      (switch-to-first-matching-buffer "vterm")
-      (vterm-send-C-c)
-      (vterm-send-string (concat "cd " file-dir))
-      (vterm-send-return)
-      )
-    (evil-window-down 1)))
-
 (defun my-forge-browse-buffer-file ()
   (interactive)
   (browse-url
@@ -350,6 +345,9 @@ Version 2015-12-08"
   (insert "\t"))
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
+(add-to-list 'default-frame-alist '(ns-appearance . dark))
 
 (setq +m-color-main "#61AFEF"
       +m-color-secondary "#FF3399"
@@ -554,14 +552,13 @@ Argument APPEARANCE should be light or dark."
 (global-set-key (kbd "C-S-j") 'enlarge-window)
 (global-set-key (kbd "<C-S-down>") 'enlarge-window)
 (global-set-key (kbd "C-S-k") 'shrink-window)
-(global-set-key (kbd "s-y") 'yas-expand)
 
 (use-package general
   :config
   (general-define-key
    :keymaps 'override
    "C-w" 'backward-kill-word
-   "s-w" 'evil-window-delete
+   "s-w" '+workspace/close-window-or-workspace
    "C-h C-k" 'describe-key-briefly
    "C-h C-b" 'describe-keymap
    "\t" 'google-translate-smooth-translate
@@ -573,9 +570,8 @@ Argument APPEARANCE should be light or dark."
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
    :states '(insert)
-   :keymaps 'override
    "C-u" 'evil-delete-back-to-indentation
-   "s-Y" 'xah-copy-to-register-1
+   "s-y" 'yas-expand
    "s-P" 'xah-paste-from-register-1
    "s-p" 'yank-from-kill-ring
    "s-." 'ace-window)
@@ -584,6 +580,8 @@ Argument APPEARANCE should be light or dark."
    "C-w" 'backward-kill-word
    "C-k" 'previous-history-element
    "C-p" 'previous-history-element
+   ;; "<tab>" 'completion-at-point
+   ;; "<tab>" 'completion-at-point
    "C-j" 'next-history-element
    "C-n" 'next-history-element
    "<escape>" 'keyboard-escape-quit
@@ -633,6 +631,9 @@ Argument APPEARANCE should be light or dark."
    "vtt" 'my-toggle-transparency
    "+" 'narrow-to-region
    "-" 'widen
+   "er" 'eval-region
+   "TODO: main ti" 'my-insert-todo-by-current-git-branch
+  
    ;; ;; Presentation
    ;; ("SPC t b" . presentation-mode)
    ;; ;; TODO move to treemacs
@@ -698,6 +699,22 @@ Argument APPEARANCE should be light or dark."
   (setq evil-want-keybinding nil)
   (evil-mode 1)
   :config
+  (define-key evil-visual-state-map (kbd ">") 'djoyner/evil-shift-right-visual)
+  (define-key evil-visual-state-map (kbd "<") 'djoyner/evil-shift-left-visual)
+  (define-key evil-visual-state-map [tab] 'djoyner/evil-shift-right-visual)
+  (define-key evil-visual-state-map [S-tab] 'djoyner/evil-shift-left-visual)
+  
+  (defun djoyner/evil-shift-left-visual ()
+    (interactive)
+    (evil-shift-left (region-beginning) (region-end))
+    (evil-normal-state)
+    (evil-visual-restore))
+  
+  (defun djoyner/evil-shift-right-visual ()
+    (interactive)
+    (evil-shift-right (region-beginning) (region-end))
+    (evil-normal-state)
+    (evil-visual-restore))
   (evil-set-undo-system 'undo-redo)
   (setq-default evil-kill-on-visual-paste nil)
   (evil-mode 1))
@@ -718,7 +735,7 @@ Argument APPEARANCE should be light or dark."
            "f" 'avy-goto-word-1
            "SPC k l" 'avy-kill-whole-line
            "SPC k r" 'avy-kill-region)
-  (:keymaps 'override
+  (:keymaps '(minibuffer-local-mode-map read--expression-map)
             "C-l" 'avy-goto-char)
   :custom
   (avy-single-candidate-jump t)
@@ -799,17 +816,37 @@ Argument APPEARANCE should be light or dark."
 (use-package vterm
   :defer t
   :general (:states '(normal visual)
-                    "SPC ov" 'vterm))
+                    "SPC ov" 'vterm)
+  (:keymaps '(vterm-mode-map vterm-copy-map)
+            "C-u" 'vterm--self-insert))
+
+(defun @vterm-change-current-directory-to-active-buffer-pwd ()
+  "Just exec CD to pwd of active buffer."
+  (interactive)
+  (when-let* ((file-name (buffer-file-name))
+              (file-dir (file-name-directory file-name))
+              (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
+    (message "FILE: %s" file-dir)
+    ;; (save-window-excursion
+      (vterm-toggle-show)
+      (switch-to-first-matching-buffer "vterm")
+      (evil-insert 0)
+      (vterm-send-C-c)
+      (vterm-send-string (concat "cd " file-dir))
+      (vterm-send-return)
+      ;; )
+    (evil-window-down 1)))
 
 (use-package vterm-toggle
   :defer t
   :general (:states '(normal visual)
-           :keymaps 'override
-           "SPC oh" (lambda () (interactive)
-                      (+vterm/toggle t))
-           "SPC th" 'vterm-toggle-hide
-           "SPC ot" 'vterm-toggle-cd
-           "SPC tk" 'my-open-kitty-right-here)
+                    :keymaps 'override
+                    "SPC oh" (lambda () (interactive)
+                               (+vterm/toggle t))
+                    "SPC th" 'vterm-toggle-hide
+                    "SPC ot" 'vterm-toggle-cd
+                    "SPC oT" '@vterm-change-current-directory-to-active-buffer-pwd
+                    "SPC tk" 'my-open-kitty-right-here)
   (:states '(normal visual)
            :keymaps 'vterm-mode-map
            "SPC t]" 'vterm-toggle-forward
@@ -828,7 +865,21 @@ Argument APPEARANCE should be light or dark."
 
   :config
   (setq vterm-kill-buffer-on-exit nil)
-  (setq vterm-toggle-scope 'project))
+  (setq vterm-toggle-scope 'project)
+  (setq vterm-toggle-fullscreen-p nil)
+  (add-to-list 'display-buffer-alist
+               '((lambda (buffer-or-name _)
+                     (let ((buffer (get-buffer buffer-or-name)))
+                       (with-current-buffer buffer
+                         (or (equal major-mode 'vterm-mode)
+                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+                  (display-buffer-reuse-window display-buffer-at-bottom)
+                  ;;(display-buffer-reuse-window display-buffer-in-direction)
+                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
+                  ;;(direction . bottom)
+                  ;;(dedicated . t) ;dedicated is supported in emacs27
+                  (reusable-frames . visible)
+                  (window-height . 0.3))))
 
 (use-package secret-mode
   :defer t)
@@ -877,17 +928,22 @@ new project directory.")
          ("s-8" . +workspace/switch-to-7)
          ("s-9" . +workspace/switch-to-8)
          :map evil-normal-state-map
-         ("SPC b b" . persp-switch-to-buffer)
-         ("SPC b k" . persp-kill-buffer)
-         ("SPC <tab> c" . persp-copy)
-         ("SPC <tab> k" . persp-kill)
-         ("SPC <tab> S" . +workspace/save)
-         ("SPC <tab> L" . +workspace/load)
-         ("SPC <tab> d" . +workspace/delete)
-         ("SPC <tab> r" . +workspace/rename)
-         ("SPC <tab> s" . persp-switch)
-         ("SPC <tab> n" . +workspace/quick-new)
-         ("SPC <tab> o" . +workspace/other)
+         ;; ("SPC bb" . persp-switch-to-buffer)
+         ("SPC bb" . consult-projectile-switch-to-buffer)
+         ("SPC bk" . persp-kill-buffer)
+         ("SPC pc" . persp-copy)
+         ("SPC pk" . persp-kill)
+         ("SPC pS" . +workspace/save)
+         ("SPC ps" . persp-save-state-to-file)
+         ("SPC pL" . +workspace/load)
+         ("SPC pl" . persp-load-state-from-file)
+         ("SPC pd" . +workspace/delete)
+         ("SPC <tab>d" . +workspace/delete)
+         ("SPC pr" . +workspace/rename)
+         ("SPC pj" . persp-switch)
+         ("SPC pn" . +workspace/quick-new)
+         ("SPC <tab>n" . +workspace/quick-new)
+         ("SPC po" . +workspace/other)
          ("SPC <tab> <tab>" . +workspace/display)
          ("SPC b i" . (lambda (arg)
                         (interactive "P")
@@ -1064,6 +1120,73 @@ new project directory.")
                   (persp-mode-projectile-bridge-mode 1))
               t)))
 
+(add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
+
+(defun @quick-scratch-buffer (&optional same-window-p)
+  "Create a scratch buffer and switch to it in insert mode."
+  (interactive)
+  (let* ((buffer-name "*quick:scratch*")
+         (buffer (get-buffer-create buffer-name)))
+    (with-current-buffer buffer
+      (funcall
+       (if same-window-p
+           #'switch-to-buffer
+         #'pop-to-buffer)
+       buffer))
+    ;; (add-hook 'kill-buffer-hook #'@save-quick-scratch-buffer nil t)
+    ;; (add-hook 'focus-out-hook #'@save-quick-scratch-buffer nil t)
+    (add-hook 'window-selection-change-functions #'@save-quick-scratch-buffer)
+    ;; (add-hook 'window-buffer-change-functions #'@save-quick-scratch-buffer nil t)
+    (add-hook 'server-visit-hook #'@save-quick-scratch-buffer nil t)
+    ;; (add-hook 'kill-buffer-query-functions #'@save-quick-scratch-buffer nil t)
+
+    (@read-quick-scratch)
+    (evil-insert-state)))
+
+(general-define-key
+ :states '(normal visual)
+ :keymaps 'override
+ "SPC x" '@quick-scratch-buffer)
+
+(defun @read-quick-scratch ()
+  "Read quick scratch buffer from file."
+  (interactive)
+  (let* ((scratch-name (if (bound-and-true-p projectile-mode)
+                           (projectile-project-name)
+                         "scratch"))
+         (smart-scratch-file (expand-file-name (concat scratch-name ".el")
+                                               @scratch-dir)))
+    (make-directory @scratch-dir t)
+    (when (file-readable-p smart-scratch-file)
+      (message "Reading %s" smart-scratch-file)
+      (cl-destructuring-bind (content point mode)
+          (with-temp-buffer
+            (save-excursion (insert-file-contents smart-scratch-file))
+            (read (current-buffer)))
+        (erase-buffer)
+        (funcall mode)
+        (insert content)
+        (goto-char point)
+        t))))
+
+(defun @save-quick-scratch-buffer (&optional _)
+  "Save the current buffer to `@scratch-dir'."
+	(interactive)
+  (message "save func")
+  (let ((content (buffer-substring-no-properties (point-min) (point-max)))
+        (point (point))
+        (mode major-mode)
+        (scratch-name (if (bound-and-true-p projectile-mode)
+                          (projectile-project-name)
+                        "scratch")))
+    (with-temp-file
+        (expand-file-name (concat scratch-name ".el")
+                          @scratch-dir)
+      (prin1 (list content
+                   point
+                   mode)
+             (current-buffer)))))
+
 (use-package yasnippet
   :defer 2
   :config
@@ -1099,10 +1222,6 @@ new project directory.")
   :config
   (flycheck-add-mode 'javascript-eslint 'web-mode)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
-
-(use-package flymake-diagnostic-at-point
-  :after flymake
-  :hook (flmake-mode . flymake-diagnostic-at-point-mode))
 
 (use-package autopair
   :defer t
@@ -1168,6 +1287,18 @@ new project directory.")
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
   (evil-make-overriding-map corfu-map))
 
+(defun corfu-enable-in-minibuffer ()
+  "Enable Corfu in the minibuffer if `completion-at-point' is bound."
+  (when (where-is-internal #'completion-at-point (list (current-local-map)))
+    ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
+    (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
+                corfu-popupinfo-delay nil)
+    (corfu-mode 1)))
+
+(add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
+
+(global-company-mode -1)
+
 (use-package corfu-doc
   :after corfu
   :straight (corfu-doc :type git :host github :repo "galeo/corfu-doc")
@@ -1182,6 +1313,10 @@ new project directory.")
   (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+(show-paren-mode 1)
+(custom-set-faces
+ `(show-paren-mismatch ((t (:foreground ,+m-color-secondary)))))
 
 (defun @find-definition ()
   "Find lsp definition when lsp exist and enabled, or find evil definition."
@@ -1401,12 +1536,13 @@ new project directory.")
 (use-package copilot
   :defer 5
   :straight (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
-  :bind
-  ("s-]" . copilot-next-completion)
-  ("s-[" . copilot-previous-completion)
-  ("s-l" . copilot-accept-completion)
-  ("s-j" . copilot-complete)
-  ("s-;" . copilot-accept-completion-by-word)
+  :general
+  (:keymaps 'override
+            "s-]" 'copilot-next-completion
+            "s-[" 'copilot-previous-completion
+            "s-l" 'copilot-accept-completion
+            "s-j" 'copilot-complete
+            "s-;" 'copilot-accept-completion-by-word)
   ;; :custom
   ;; (copilot-idle-delay 0.5)
   :config
@@ -1489,6 +1625,8 @@ new project directory.")
             "C-2" 'magit-section-show-level-2
             "C-3" 'magit-section-show-level-3
             "C-4" 'magit-section-show-level-4
+            "q" 'kill-current-buffer
+            "Q" 'bury-buffer
             "1" 'digit-argument
             "2" 'digit-argument
             "3" 'digit-argument
@@ -1866,9 +2004,15 @@ new project directory.")
   :mode (("\\.org$" . org-mode))
   :general
   (:states '(normal)
+           :keymaps 'override
            "SPC m t" 'org-todo
            "SPC m n" 'org-store-link
-           "SPC m l l" 'org-insert-link)
+           "SPC m l l" 'org-insert-link
+           "SPC nl" 'org-store-link
+           "SPC mlt" 'org-toggle-link-display)
+  (:states '(normal)
+           :keymaps 'org-mode-map
+           "<return>" '+org/dwim-at-point)
   :bind (:map evil-normal-state-map
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
@@ -2265,7 +2409,9 @@ new project directory.")
               :map vertico-map
               ("C-j" . vertico-next)
               ("C-k" . vertico-previous)
-              ("C-SPC" . vertico-quick-jump)
+              ("C-n" . vertico-next-group)
+              ("C-p" . vertico-previous-group)
+              ("C-l" . vertico-quick-jump)
               ("C-d" . vertico-scroll-up)
               ("C-u" . vertico-scroll-down)
               ("C-o" . embark-act)
@@ -2289,6 +2435,9 @@ new project directory.")
   (vertico-buffer-mode -1)
   (setq vertico-cycle t)
   :config
+  (setq read-file-name-completion-ignore-case t
+        read-buffer-completion-ignore-case t
+        completion-ignore-case t)
   (add-hook 'minibuffer-setup-hook 'vertico-repeat-save))
 
 (use-package vertico-repeat
@@ -2354,9 +2503,8 @@ new project directory.")
           '(projectile-switch-project . project-file)))
 
 (use-package consult
-  :defer t
   :general (:states '(normal visual)
-            :keymaps 'override
+                    :keymaps 'override
                     "s-f" 'consult-line
                     "SPC bB" 'consult-buffer
                     "SPC /" 'consult-ripgrep
@@ -2364,8 +2512,8 @@ new project directory.")
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC fr" 'consult-recent-file
-                    "SPC fP" 'counsel-projectile-recentf
-                    "SPC SPC" 'projectile-find-file)           ;; needed by consult-line to detect isearch
+                    "SPC fP" 'consult-projectile-recentf
+                    "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -2383,7 +2531,7 @@ new project directory.")
 
   ;; Optionally tweak the register preview window.
   ;; This adds thin lines, sorting and hides the mode line of the window.
-  (advice-add #'register-preview :override #'consult-register-window)
+  ;; (advice-add #'register-preview :override #'consult-register-window)
 
   ;; Optionally replace `completing-read-multiple' with an enhanced version.
   ;; (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
@@ -2404,40 +2552,40 @@ new project directory.")
   ;; For some commands and buffer sources it is useful to configure the
   ;; :preview-key on a per-command basis using the `consult-customize' macro.
   (consult-customize
-   consult-theme
-   :preview-key '(:debounce 0.2 any)
-   consult-ripgrep consult-git-grep consult-grep
-   consult-bookmark consult-recent-file consult-xref
-   consult--source-recent-file consult--source-project-recent-file consult--source-bookmark
-   :preview-key (kbd "M-."))
+   consult-projectile-find-file consult-git-grep consult-grep consult-projectile-recentf consult-ripgrep
+   consult-bookmark consult-recent-file consult-xref consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; my/command-wrapping-consult    ;; disable auto previews inside my command
+   :preview-key (list :debounce 0.5 (kbd "C-=")))
 
-  ;; Optionally configure the narrowing key.
-  ;; Both < and C-+ work reasonably well.
-  (setq consult-narrow-key "<") ;; (kbd "C-+")
+   ;; Optionally configure the narrowing key.
+   ;; Both < and C-+ work reasonably well.
+   (setq consult-narrow-key "<") ;; (kbd "C-SPC")
 
-  ;; Optionally make narrowing help available in the minibuffer.
-  ;; You may want to use `embark-prefix-help-command' or which-key instead.
-  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+   ;; Optionally make narrowing help available in the minibuffer.
+   ;; You may want to use `embark-prefix-help-command' or which-key instead.
+   ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
 
-  ;; Optionally configure a function which returns the project root directory.
-  ;; There are multiple reasonable alternatives to chose from.
+   ;; Optionally configure a function which returns the project root directory.
+   ;; There are multiple reasonable alternatives to chose from.
         ;;;; 1. project.el (project-roots)
-  (setq consult-project-root-function
-        (lambda ()
-          (when-let (project (project-current))
-            (car (project-roots project)))))
+   (setq consult-project-root-function
+         (lambda ()
+           (when-let (project (project-current))
+             (car (project-roots project)))))
         ;;;; 2. projectile.el (projectile-project-root)
-  ;; (autoload 'projectile-project-root "projectile")
-  ;; (setq consult-project-root-function #'projectile-project-root)
+   ;; (autoload 'projectile-project-root "projectile")
+   ;; (setq consult-project-root-function #'projectile-project-root)
         ;;;; 3. vc.el (vc-root-dir)
-  ;; (setq consult-project-root-function #'vc-root-dir)
+   ;; (setq consult-project-root-function #'vc-root-dir)
         ;;;; 4. locate-dominating-file
-  ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
-  )
+   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
+   )
 
 (use-package consult-projectile
   :general (:states 'normal
                     "SPC pp" 'consult-projectile-switch-project
+                    "SPC pi" 'projectile-invalidate-cache
                     "SPC pa" 'projectile-add-known-project)
   :config
   (setq consult-projectile-use-projectile-switch-project t)
@@ -2446,14 +2594,18 @@ new project directory.")
 (use-package embark
   :custom
   (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
-  :bind
-  (("C-." . embark-act)         ;; pick some comfortable binding
-   ("C-;" . embark-dwim)        ;; good alternative: M-.
-   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
-
-  :init
-  ;; Optionally replace the key help with a completing-read interface
-  (setq prefix-help-command #'embark-prefix-help-command))
+  :general
+  ("C-." 'embark-act         ;; pick some comfortable binding
+   "C-;" 'embark-dwim        ;; good alternative: M-.
+   "C-h B" 'embark-bindings)
+  (:keymaps '(minibuffer-local-mode-map read--expression-map vertico-map)
+            ;; "C-SPC" '+vertico/embark-preview
+            ;; "C-SPC" 'consult-preview-at-point
+            ;; "C-SPC" 'consult--buffer-preview
+            "C-<return>" '+vertico/embark-preview)
+:init
+;; Optionally replace the key help with a completing-read interface
+(setq prefix-help-command #'embark-prefix-help-command))
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult
@@ -2464,8 +2616,15 @@ new project directory.")
   :hook
   (embark-collect-mode . consult-preview-at-point-mode))
 
+(defun +vertico/embark-preview ()
+  "Previews candidate in vertico buffer, unless it's a consult command"
+  (interactive)
+  (unless (bound-and-true-p consult--preview-function)
+    (save-selected-window
+      (let ((embark-quit-after-action nil))
+        (embark-dwim)))))
+
 (use-package all-the-icons-completion
-  :hook (vertico-mode . all-the-icons-completion-mode)
   :init
   (all-the-icons-completion-mode))
 

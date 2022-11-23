@@ -86,6 +86,25 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
 #+END_SRC
+** Variables
+*** Quick note
+#+BEGIN_SRC emacs-lisp :results silent
+(setq @scratch-dir "~/tmp/scratches")
+#+END_SRC
+
+*** Browser
+#+BEGIN_SRC emacs-lisp :results silent
+(when (eq system-type 'darwin)
+  (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  (setq browse-url-generic-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+        browse-url-browser-function 'browse-url-generic))
+#+END_SRC
+
+*** Truncate lines
+#+BEGIN_SRC emacs-lisp :results silent
+(set-default 'truncate-lines t)
+#+END_SRC
+
 
 * Libs (functions and macros)
 ** Doom libs (honestly spizjeno)
@@ -371,23 +390,8 @@ Copy full path
   (when (buffer-file-name)
     (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
 #+END_SRC
-** Open vterm for current buffer
-#+BEGIN_SRC emacs-lisp
-(defun my-vterm-change-current-directory-to-active-buffer-pwd ()
-  "Just exec CD to pwd of active buffer."
-  (interactive)
-  (when-let* ((file-name (buffer-file-name))
-              (file-dir (file-name-directory file-name))
-              (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
-    (message "FILE: %s" file-dir)
-    (save-window-excursion
-      (switch-to-first-matching-buffer "vterm")
-      (vterm-send-C-c)
-      (vterm-send-string (concat "cd " file-dir))
-      (vterm-send-return)
-      )
-    (evil-window-down 1)))
-#+END_SRC
+
+
 ** Forge open remote file
 #+BEGIN_SRC emacs-lisp
 (defun my-forge-browse-buffer-file ()
@@ -497,6 +501,13 @@ Uncomment when u need to profile ;p
 ** Full size from startup
 #+BEGIN_SRC emacs-lisp :results silent
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
+#+END_SRC
+** Titlebar color
+Very pretty titlebar for Mac os
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ns-auto-titlebar
+  :config
+  (when (eq system-type 'darwin) (ns-auto-titlebar-mode)))
 #+END_SRC
 
 ** Variables
@@ -805,7 +816,6 @@ Argument APPEARANCE should be light or dark."
   (global-set-key (kbd "C-S-j") 'enlarge-window)
   (global-set-key (kbd "<C-S-down>") 'enlarge-window)
   (global-set-key (kbd "C-S-k") 'shrink-window)
-  (global-set-key (kbd "s-y") 'yas-expand)
 #+END_SRC
 ** General
 *** Global keys
@@ -814,7 +824,7 @@ Argument APPEARANCE should be light or dark."
 (general-define-key
  :keymaps 'override
  "C-w" 'backward-kill-word
- "s-w" 'evil-window-delete
+ "s-w" '+workspace/close-window-or-workspace
  "C-h C-k" 'describe-key-briefly
  "C-h C-b" 'describe-keymap
  "\t" 'google-translate-smooth-translate
@@ -830,16 +840,15 @@ Argument APPEARANCE should be light or dark."
 #+BEGIN_SRC emacs-lisp :exports none :tangle no
 (general-define-key
  :states '(insert)
- :keymaps 'override
  "C-u" 'evil-delete-back-to-indentation
- "s-Y" 'xah-copy-to-register-1
+ "s-y" 'yas-expand
  "s-P" 'xah-paste-from-register-1
  "s-p" 'yank-from-kill-ring
  "s-." 'ace-window)
 #+END_SRC
 *** Evil. Normal state map.
 #+NAME: evil-spc-mode-map 
-#+BEGIN_SRC emacs-lisp :exports none :tangle no
+#+BEGIN_SRC emacs-lisp :exports none :tangle no :results silent
 (general-define-key
  :states '(normal visual)
  :keymaps 'override
@@ -852,6 +861,9 @@ Argument APPEARANCE should be light or dark."
  "vtt" 'my-toggle-transparency
  "+" 'narrow-to-region
  "-" 'widen
+ "er" 'eval-region
+ "TODO: main ti" 'my-insert-todo-by-current-git-branch
+
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
  ;; ;; TODO move to treemacs
@@ -890,7 +902,15 @@ Argument APPEARANCE should be light or dark."
  )
 #+END_SRC
 
-#+RESULTS: evil-spc-mode-map
+#+NAME: evil-normal-insert-mode-map
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(general-define-key
+ :states '(normal visual)
+ :keymaps 'override
+ "s-Y" 'xah-copy-to-register-1
+ "s-r" (lambda () (interactive) (set-mark-command nil) (evil-avy-goto-char))
+ "s-P" 'xah-paste-from-register-1)
+#+END_SRC
 
 *** Minibuffer mode map
 #+NAME: general-minibuffer-mode-map
@@ -900,6 +920,8 @@ Argument APPEARANCE should be light or dark."
  "C-w" 'backward-kill-word
  "C-k" 'previous-history-element
  "C-p" 'previous-history-element
+ ;; "<tab>" 'completion-at-point
+ ;; "<tab>" 'completion-at-point
  "C-j" 'next-history-element
  "C-n" 'next-history-element
  "<escape>" 'keyboard-escape-quit
@@ -951,6 +973,7 @@ Argument APPEARANCE should be light or dark."
   <<general-global-mode-map>>
   <<general-evil-insert-mode-map>>
   <<general-minibuffer-mode-map>>
+  <<evil-normal-insert-mode-map>>
   <<general-normal-leader-mode-map>>
   <<evil-spc-mode-map>>
 
@@ -980,7 +1003,28 @@ Argument APPEARANCE should be light or dark."
 
 * Navigation
 ** Evil
-#+BEGIN_SRC emacs-lisp
+Patch for recover visual line after shifting
+#+NAME: evil-shifting-config
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(define-key evil-visual-state-map (kbd ">") 'djoyner/evil-shift-right-visual)
+(define-key evil-visual-state-map (kbd "<") 'djoyner/evil-shift-left-visual)
+(define-key evil-visual-state-map [tab] 'djoyner/evil-shift-right-visual)
+(define-key evil-visual-state-map [S-tab] 'djoyner/evil-shift-left-visual)
+
+(defun djoyner/evil-shift-left-visual ()
+  (interactive)
+  (evil-shift-left (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+
+(defun djoyner/evil-shift-right-visual ()
+  (interactive)
+  (evil-shift-right (region-beginning) (region-end))
+  (evil-normal-state)
+  (evil-visual-restore))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
     (use-package evil-collection
       :after evil
       :config
@@ -992,6 +1036,7 @@ Argument APPEARANCE should be light or dark."
       (setq evil-want-keybinding nil)
       (evil-mode 1)
       :config
+      <<evil-shifting-config>>
       (evil-set-undo-system 'undo-redo)
       (setq-default evil-kill-on-visual-paste nil)
       (evil-mode 1))
@@ -1025,7 +1070,7 @@ Bookmark for navigation inside file
            "f" 'avy-goto-word-1
            "SPC k l" 'avy-kill-whole-line
            "SPC k r" 'avy-kill-region)
-  (:keymaps 'override
+  (:keymaps '(minibuffer-local-mode-map read--expression-map)
             "C-l" 'avy-goto-char)
   :custom
   (avy-single-candidate-jump t)
@@ -1147,20 +1192,62 @@ I didn't use treemacs anymore, but sometime
 (use-package vterm
   :defer t
   :general (:states '(normal visual)
-                    "SPC ov" 'vterm))
+                    "SPC ov" 'vterm)
+  (:keymaps '(vterm-mode-map vterm-copy-map)
+            "C-u" 'vterm--self-insert))
 #+END_SRC
 
 *** Vterm toggle
+**** Open vterm for current buffer
 #+BEGIN_SRC emacs-lisp :results silent
+(defun @vterm-change-current-directory-to-active-buffer-pwd ()
+  "Just exec CD to pwd of active buffer."
+  (interactive)
+  (when-let* ((file-name (buffer-file-name))
+              (file-dir (file-name-directory file-name))
+              (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
+    (message "FILE: %s" file-dir)
+    ;; (save-window-excursion
+      (vterm-toggle-show)
+      (switch-to-first-matching-buffer "vterm")
+      (evil-insert 0)
+      (vterm-send-C-c)
+      (vterm-send-string (concat "cd " file-dir))
+      (vterm-send-return)
+      ;; )
+    (evil-window-down 1)))
+#+END_SRC
+**** Open vterm at bottom position
+#+NAME: vterm-open-bottom-config
+#+BEGIN_SRC emacs-lisp :results silent :tangle no :exports no
+(setq vterm-toggle-fullscreen-p nil)
+(add-to-list 'display-buffer-alist
+             '((lambda (buffer-or-name _)
+                   (let ((buffer (get-buffer buffer-or-name)))
+                     (with-current-buffer buffer
+                       (or (equal major-mode 'vterm-mode)
+                           (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+                (display-buffer-reuse-window display-buffer-at-bottom)
+                ;;(display-buffer-reuse-window display-buffer-in-direction)
+                ;;display-buffer-in-direction/direction/dedicated is added in emacs27
+                ;;(direction . bottom)
+                ;;(dedicated . t) ;dedicated is supported in emacs27
+                (reusable-frames . visible)
+                (window-height . 0.3)))
+#+END_SRC
+
+**** Vterm package
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package vterm-toggle
   :defer t
   :general (:states '(normal visual)
-           :keymaps 'override
-           "SPC oh" (lambda () (interactive)
-                      (+vterm/toggle t))
-           "SPC th" 'vterm-toggle-hide
-           "SPC ot" 'vterm-toggle-cd
-           "SPC tk" 'my-open-kitty-right-here)
+                    :keymaps 'override
+                    "SPC oh" (lambda () (interactive)
+                               (+vterm/toggle t))
+                    "SPC th" 'vterm-toggle-hide
+                    "SPC ot" 'vterm-toggle-cd
+                    "SPC oT" '@vterm-change-current-directory-to-active-buffer-pwd
+                    "SPC tk" 'my-open-kitty-right-here)
   (:states '(normal visual)
            :keymaps 'vterm-mode-map
            "SPC t]" 'vterm-toggle-forward
@@ -1179,7 +1266,8 @@ I didn't use treemacs anymore, but sometime
 
   :config
   (setq vterm-kill-buffer-on-exit nil)
-  (setq vterm-toggle-scope 'project))
+  (setq vterm-toggle-scope 'project)
+  <<vterm-open-bottom-config>>)
 #+END_SRC
 
 ** Secret mode
@@ -1355,17 +1443,22 @@ new project directory.")
          ("s-8" . +workspace/switch-to-7)
          ("s-9" . +workspace/switch-to-8)
          :map evil-normal-state-map
-         ("SPC b b" . persp-switch-to-buffer)
-         ("SPC b k" . persp-kill-buffer)
-         ("SPC <tab> c" . persp-copy)
-         ("SPC <tab> k" . persp-kill)
-         ("SPC <tab> S" . +workspace/save)
-         ("SPC <tab> L" . +workspace/load)
-         ("SPC <tab> d" . +workspace/delete)
-         ("SPC <tab> r" . +workspace/rename)
-         ("SPC <tab> s" . persp-switch)
-         ("SPC <tab> n" . +workspace/quick-new)
-         ("SPC <tab> o" . +workspace/other)
+         ;; ("SPC bb" . persp-switch-to-buffer)
+         ("SPC bb" . consult-projectile-switch-to-buffer)
+         ("SPC bk" . persp-kill-buffer)
+         ("SPC pc" . persp-copy)
+         ("SPC pk" . persp-kill)
+         ("SPC pS" . +workspace/save)
+         ("SPC ps" . persp-save-state-to-file)
+         ("SPC pL" . +workspace/load)
+         ("SPC pl" . persp-load-state-from-file)
+         ("SPC pd" . +workspace/delete)
+         ("SPC <tab>d" . +workspace/delete)
+         ("SPC pr" . +workspace/rename)
+         ("SPC pj" . persp-switch)
+         ("SPC pn" . +workspace/quick-new)
+         ("SPC <tab>n" . +workspace/quick-new)
+         ("SPC po" . +workspace/other)
          ("SPC <tab> <tab>" . +workspace/display)
          ("SPC b i" . (lambda (arg)
                         (interactive "P")
@@ -1459,7 +1552,6 @@ This function also stolen from doom emacs. It provide functionality for automati
                 (ibuffer-switch-to-saved-filter-groups "persp-mode"))))
 #+END_SRC
 
-
 *** Projectile integration with workspaces
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package persp-mode-project-bridge
@@ -1477,6 +1569,85 @@ This function also stolen from doom emacs. It provide functionality for automati
               t)))
 #+END_SRC
 
+
+** Notes
+*** Quick scratch note
+Display buffer of quick note always at bottom
+#+BEGIN_SRC emacs-lisp :results silent
+(add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
+#+END_SRC
+Function for creating quick note
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @quick-scratch-buffer (&optional same-window-p)
+  "Create a scratch buffer and switch to it in insert mode."
+  (interactive)
+  (let* ((buffer-name "*quick:scratch*")
+         (buffer (get-buffer-create buffer-name)))
+    (with-current-buffer buffer
+      (funcall
+       (if same-window-p
+           #'switch-to-buffer
+         #'pop-to-buffer)
+       buffer))
+    ;; (add-hook 'kill-buffer-hook #'@save-quick-scratch-buffer nil t)
+    ;; (add-hook 'focus-out-hook #'@save-quick-scratch-buffer nil t)
+    (add-hook 'window-selection-change-functions #'@save-quick-scratch-buffer)
+    ;; (add-hook 'window-buffer-change-functions #'@save-quick-scratch-buffer nil t)
+    (add-hook 'server-visit-hook #'@save-quick-scratch-buffer nil t)
+    ;; (add-hook 'kill-buffer-query-functions #'@save-quick-scratch-buffer nil t)
+
+    (@read-quick-scratch)
+    (evil-insert-state)))
+
+(general-define-key
+ :states '(normal visual)
+ :keymaps 'override
+ "SPC x" '@quick-scratch-buffer)
+#+END_SRC
+Make scratch note persistent
+#+BEGIN_SRC emacs-lisp :results silent :results none
+(defun @read-quick-scratch ()
+  "Read quick scratch buffer from file."
+  (interactive)
+  (let* ((scratch-name (if (bound-and-true-p projectile-mode)
+                           (projectile-project-name)
+                         "scratch"))
+         (smart-scratch-file (expand-file-name (concat scratch-name ".el")
+                                               @scratch-dir)))
+    (make-directory @scratch-dir t)
+    (when (file-readable-p smart-scratch-file)
+      (message "Reading %s" smart-scratch-file)
+      (cl-destructuring-bind (content point mode)
+          (with-temp-buffer
+            (save-excursion (insert-file-contents smart-scratch-file))
+            (read (current-buffer)))
+        (erase-buffer)
+        (funcall mode)
+        (insert content)
+        (goto-char point)
+        t))))
+#+END_SRC
+
+Save persist buffer
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @save-quick-scratch-buffer (&optional _)
+  "Save the current buffer to `@scratch-dir'."
+	(interactive)
+  (message "save func")
+  (let ((content (buffer-substring-no-properties (point-min) (point-max)))
+        (point (point))
+        (mode major-mode)
+        (scratch-name (if (bound-and-true-p projectile-mode)
+                          (projectile-project-name)
+                        "scratch")))
+    (with-temp-file
+        (expand-file-name (concat scratch-name ".el")
+                          @scratch-dir)
+      (prin1 (list content
+                   point
+                   mode)
+             (current-buffer)))))
+#+END_SRC
 
 
 * Programming
@@ -1543,7 +1714,10 @@ This function also stolen from doom emacs. It provide functionality for automati
 
 #+END_SRC
 
-** Flymake posframe
+*** HOLD Flymake posframe
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
   (use-package flymake-diagnostic-at-point
     :after flymake
@@ -1623,6 +1797,26 @@ This function also stolen from doom emacs. It provide functionality for automati
     (evil-make-overriding-map corfu-map))
 #+END_SRC
 
+Enable in minibuffer
+#+BEGIN_SRC emacs-lisp :results silent
+(defun corfu-enable-in-minibuffer ()
+  "Enable Corfu in the minibuffer if `completion-at-point' is bound."
+  (when (where-is-internal #'completion-at-point (list (current-local-map)))
+    ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
+    (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
+                corfu-popupinfo-delay nil)
+    (corfu-mode 1)))
+
+(add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
+#+END_SRC
+
+Disalbe company mode
+#+BEGIN_SRC emacs-lisp :results silent
+(global-company-mode -1)
+#+END_SRC
+
+
+
 #+RESULTS:
 : completion-at-point
 
@@ -1646,6 +1840,13 @@ This function also stolen from doom emacs. It provide functionality for automati
     (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
 #+END_SRC
+** Paren checker
+#+BEGIN_SRC emacs-lisp :results silent
+(show-paren-mode 1)
+(custom-set-faces
+ `(show-paren-mismatch ((t (:foreground ,+m-color-secondary)))))
+#+END_SRC
+
 ** HOLD Eglot
 :PROPERTIES:
 :header-args: :tangle no
@@ -1956,12 +2157,13 @@ Package for quick editing/deleting brackets and bracket-likes symbols
 (use-package copilot
   :defer 5
   :straight (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
-  :bind
-  ("s-]" . copilot-next-completion)
-  ("s-[" . copilot-previous-completion)
-  ("s-l" . copilot-accept-completion)
-  ("s-j" . copilot-complete)
-  ("s-;" . copilot-accept-completion-by-word)
+  :general
+  (:keymaps 'override
+            "s-]" 'copilot-next-completion
+            "s-[" 'copilot-previous-completion
+            "s-l" 'copilot-accept-completion
+            "s-j" 'copilot-complete
+            "s-;" 'copilot-accept-completion-by-word)
   ;; :custom
   ;; (copilot-idle-delay 0.5)
   :config
@@ -1997,6 +2199,9 @@ Package for quick editing/deleting brackets and bracket-likes symbols
   ;; (copilot-clear-overlay)) nil t)
   )
 #+END_SRC
+
+#+RESULTS:
+
 ** Autopairs
 *** HOLD Electric
 :PROPERTIES:
@@ -2677,9 +2882,15 @@ For install type ~npm install -g @volar/server~
   :mode (("\\.org$" . org-mode))
   :general
   (:states '(normal)
+           :keymaps 'override
            "SPC m t" 'org-todo
            "SPC m n" 'org-store-link
-           "SPC m l l" 'org-insert-link)
+           "SPC m l l" 'org-insert-link
+           "SPC nl" 'org-store-link
+           "SPC mlt" 'org-toggle-link-display)
+  (:states '(normal)
+           :keymaps 'org-mode-map
+           "<return>" '+org/dwim-at-point)
   :bind (:map evil-normal-state-map
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
@@ -2782,6 +2993,10 @@ For install type ~npm install -g @volar/server~
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu"))))
 #+END_SRC
+
+#+RESULTS:
+: org-previous-visible-heading
+
 ** Ligatures for org mode
 #+BEGIN_SRC emacs-lisp
 (add-hook 'org-mode-hook (lambda ()
@@ -3161,79 +3376,84 @@ Dependency
 * Completion
 ** Vertico
 #+BEGIN_SRC emacs-lisp
-  (use-package vertico
-    :bind (:map evil-normal-state-map
-                ("SPC ;" . vertico-repeat-last)
-                ("SPC '" . vertico-repeat)
-                ("SPC f P" . (lambda ()
-                               (interactive)
-                               (call-interactively 'find-file)
-                               (kill-whole-line)
-                               (insert "~/pure-emacs")))
-                :map vertico-map
-                ("C-j" . vertico-next)
-                ("C-k" . vertico-previous)
-                ("C-SPC" . vertico-quick-jump)
-                ("C-d" . vertico-scroll-up)
-                ("C-u" . vertico-scroll-down)
-                ("C-o" . embark-act)
-                ("C-q" . vertico-exit-input)
-                ("C-n" . vertico-next-group)
-                ("C-p" . vertico-previous-group)
-                ("<escape>" . abort-minibuffers)
-                ("C-d" . (lambda ()
-                           (interactive)
-                           (kill-whole-line)
-                           (insert "~/")))
-                ("C-o" . (lambda ()
-                           (interactive)
-                           (embark-act)))
-                ("C-r" . (lambda ()
-                           (interactive)
-                           (kill-whole-line)
-                           (insert "/"))))
-    :init
-    (vertico-mode)
-    (vertico-buffer-mode -1)
-    (setq vertico-cycle t)
-    :config
-    (add-hook 'minibuffer-setup-hook 'vertico-repeat-save))
+(use-package vertico
+  :bind (:map evil-normal-state-map
+              ("SPC ;" . vertico-repeat-last)
+              ("SPC '" . vertico-repeat)
+              ("SPC f P" . (lambda ()
+                             (interactive)
+                             (call-interactively 'find-file)
+                             (kill-whole-line)
+                             (insert "~/pure-emacs")))
+              :map vertico-map
+              ("C-j" . vertico-next)
+              ("C-k" . vertico-previous)
+              ("C-n" . vertico-next-group)
+              ("C-p" . vertico-previous-group)
+              ("C-l" . vertico-quick-jump)
+              ("C-d" . vertico-scroll-up)
+              ("C-u" . vertico-scroll-down)
+              ("C-o" . embark-act)
+              ("C-q" . vertico-exit-input)
+              ("C-n" . vertico-next-group)
+              ("C-p" . vertico-previous-group)
+              ("<escape>" . abort-minibuffers)
+              ("C-d" . (lambda ()
+                         (interactive)
+                         (kill-whole-line)
+                         (insert "~/")))
+              ("C-o" . (lambda ()
+                         (interactive)
+                         (embark-act)))
+              ("C-r" . (lambda ()
+                         (interactive)
+                         (kill-whole-line)
+                         (insert "/"))))
+  :init
+  (vertico-mode)
+  (vertico-buffer-mode -1)
+  (setq vertico-cycle t)
+  :config
+  (setq read-file-name-completion-ignore-case t
+        read-buffer-completion-ignore-case t
+        completion-ignore-case t)
+  (add-hook 'minibuffer-setup-hook 'vertico-repeat-save))
 
-  (use-package vertico-repeat
-    :after vertico)
+(use-package vertico-repeat
+  :after vertico)
 
-  (use-package orderless
-    :init
-    (setq completion-styles '(orderless)
-          completion-category-defaults nil
-          completion-category-overrides '((file (styles partial-completion)))))
+(use-package orderless
+  :init
+  (setq completion-styles '(orderless)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
 
-  ;; Persist history over Emacs restarts. Vertico sorts by history position.
-  (use-package savehist
-    :init
-    (savehist-mode))
+;; Persist history over Emacs restarts. Vertico sorts by history position.
+(use-package savehist
+  :init
+  (savehist-mode))
 
-  ;; A few more useful configurations...
-  (use-package emacs
-    :init
-    ;; Add prompt indicator to `completing-read-multiple'.
-    ;; Alternatively try `consult-completing-read-multiple'.
-    (defun crm-indicator (args)
-      (cons (concat "[CRM] " (car args)) (cdr args)))
-    (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+;; A few more useful configurations...
+(use-package emacs
+  :init
+  ;; Add prompt indicator to `completing-read-multiple'.
+  ;; Alternatively try `consult-completing-read-multiple'.
+  (defun crm-indicator (args)
+    (cons (concat "[CRM] " (car args)) (cdr args)))
+  (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
 
-    ;; Do not allow the cursor in the minibuffer prompt
-    (setq minibuffer-prompt-properties
-          '(read-only t cursor-intangible t face minibuffer-prompt))
-    (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+  ;; Do not allow the cursor in the minibuffer prompt
+  (setq minibuffer-prompt-properties
+        '(read-only t cursor-intangible t face minibuffer-prompt))
+  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
 
-    ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
-    ;; Vertico commands are hidden in normal buffers.
-    ;; (setq read-extended-command-predicate
-    ;;       #'command-completion-default-include-p)
+  ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
+  ;; Vertico commands are hidden in normal buffers.
+  ;; (setq read-extended-command-predicate
+  ;;       #'command-completion-default-include-p)
 
-    ;; Enable recursive minibuffers
-    (setq enable-recursive-minibuffers t))
+  ;; Enable recursive minibuffers
+  (setq enable-recursive-minibuffers t))
 #+END_SRC
 
 #+RESULTS:
@@ -3275,9 +3495,8 @@ Dependency
 ** Consult
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package consult
-  :defer t
   :general (:states '(normal visual)
-            :keymaps 'override
+                    :keymaps 'override
                     "s-f" 'consult-line
                     "SPC bB" 'consult-buffer
                     "SPC /" 'consult-ripgrep
@@ -3285,8 +3504,8 @@ Dependency
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC fr" 'consult-recent-file
-                    "SPC fP" 'counsel-projectile-recentf
-                    "SPC SPC" 'projectile-find-file)           ;; needed by consult-line to detect isearch
+                    "SPC fP" 'consult-projectile-recentf
+                    "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -3304,7 +3523,7 @@ Dependency
 
   ;; Optionally tweak the register preview window.
   ;; This adds thin lines, sorting and hides the mode line of the window.
-  (advice-add #'register-preview :override #'consult-register-window)
+  ;; (advice-add #'register-preview :override #'consult-register-window)
 
   ;; Optionally replace `completing-read-multiple' with an enhanced version.
   ;; (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
@@ -3325,42 +3544,42 @@ Dependency
   ;; For some commands and buffer sources it is useful to configure the
   ;; :preview-key on a per-command basis using the `consult-customize' macro.
   (consult-customize
-   consult-theme
-   :preview-key '(:debounce 0.2 any)
-   consult-ripgrep consult-git-grep consult-grep
-   consult-bookmark consult-recent-file consult-xref
-   consult--source-recent-file consult--source-project-recent-file consult--source-bookmark
-   :preview-key (kbd "M-."))
+   consult-projectile-find-file consult-git-grep consult-grep consult-projectile-recentf consult-ripgrep
+   consult-bookmark consult-recent-file consult-xref consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; my/command-wrapping-consult    ;; disable auto previews inside my command
+   :preview-key (list :debounce 0.2 (kbd "C-SPC")))
 
-  ;; Optionally configure the narrowing key.
-  ;; Both < and C-+ work reasonably well.
-  (setq consult-narrow-key "<") ;; (kbd "C-+")
+   ;; Optionally configure the narrowing key.
+   ;; Both < and C-+ work reasonably well.
+   (setq consult-narrow-key "<") ;; (kbd "C-SPC")
 
-  ;; Optionally make narrowing help available in the minibuffer.
-  ;; You may want to use `embark-prefix-help-command' or which-key instead.
-  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+   ;; Optionally make narrowing help available in the minibuffer.
+   ;; You may want to use `embark-prefix-help-command' or which-key instead.
+   ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
 
-  ;; Optionally configure a function which returns the project root directory.
-  ;; There are multiple reasonable alternatives to chose from.
+   ;; Optionally configure a function which returns the project root directory.
+   ;; There are multiple reasonable alternatives to chose from.
         ;;;; 1. project.el (project-roots)
-  (setq consult-project-root-function
-        (lambda ()
-          (when-let (project (project-current))
-            (car (project-roots project)))))
+   (setq consult-project-root-function
+         (lambda ()
+           (when-let (project (project-current))
+             (car (project-roots project)))))
         ;;;; 2. projectile.el (projectile-project-root)
-  ;; (autoload 'projectile-project-root "projectile")
-  ;; (setq consult-project-root-function #'projectile-project-root)
+   ;; (autoload 'projectile-project-root "projectile")
+   ;; (setq consult-project-root-function #'projectile-project-root)
         ;;;; 3. vc.el (vc-root-dir)
-  ;; (setq consult-project-root-function #'vc-root-dir)
+   ;; (setq consult-project-root-function #'vc-root-dir)
         ;;;; 4. locate-dominating-file
-  ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
-  )
+   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
+   )
 #+END_SRC
 ** Projectile
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package consult-projectile
   :general (:states 'normal
                     "SPC pp" 'consult-projectile-switch-project
+                    "SPC pi" 'projectile-invalidate-cache
                     "SPC pa" 'projectile-add-known-project)
   :config
   (setq consult-projectile-use-projectile-switch-project t)
@@ -3369,30 +3588,46 @@ Dependency
 
 ** Embark
 #+BEGIN_SRC emacs-lisp
-  (use-package embark
-    :custom
-    (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
-    :bind
-    (("C-." . embark-act)         ;; pick some comfortable binding
-     ("C-;" . embark-dwim)        ;; good alternative: M-.
-     ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+(use-package embark
+  :custom
+  (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
+  :general
+  ("C-." 'embark-act         ;; pick some comfortable binding
+   "C-;" 'embark-dwim        ;; good alternative: M-.
+   "C-h B" 'embark-bindings)
+  (:keymaps '(minibuffer-local-mode-map read--expression-map vertico-map)
+            ;; "C-SPC" '+vertico/embark-preview
+            ;; "C-SPC" 'consult-preview-at-point
+            ;; "C-SPC" 'consult--buffer-preview
+            "C-<return>" '+vertico/embark-preview)
+:init
+;; Optionally replace the key help with a completing-read interface
+(setq prefix-help-command #'embark-prefix-help-command))
 
-    :init
-    ;; Optionally replace the key help with a completing-read interface
-    (setq prefix-help-command #'embark-prefix-help-command))
-
-  ;; Consult users will also want the embark-consult package.
-  (use-package embark-consult
-    :after (embark consult)
-    :demand t ; only necessary if you have the hook below
-    ;; if you want to have consult previews as you move around an
-    ;; auto-updating embark collect buffer
-    :hook
-    (embark-collect-mode . consult-preview-at-point-mode))
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :after (embark consult)
+  :demand t ; only necessary if you have the hook below
+  ;; if you want to have consult previews as you move around an
+  ;; auto-updating embark collect buffer
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
 #+END_SRC
 
 #+RESULTS:
-| consult-preview-at-point-mode | embark-consult--upgrade-markers |
+: embark-prefix-help-command
+
+TODO: delete
+Preview
+#+BEGIN_SRC emacs-lisp :results silent
+(defun +vertico/embark-preview ()
+  "Previews candidate in vertico buffer, unless it's a consult command"
+  (interactive)
+  (unless (bound-and-true-p consult--preview-function)
+    (save-selected-window
+      (let ((embark-quit-after-action nil))
+        (embark-dwim)))))
+#+END_SRC
 
 ** Vertico posframe
 :PROPERTIES:
@@ -3433,7 +3668,6 @@ Dependency
 ** Icons
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package all-the-icons-completion
-  :hook (vertico-mode . all-the-icons-completion-mode)
   :init
   (all-the-icons-completion-mode))
 #+END_SRC
@@ -3445,4 +3679,11 @@ Dependency
   :defer t
   :hook (pdf-view-mode . pdf-view-themed-minor-mode))
 #+END_SRC
+
+
+
+
+
+* Playground
+TODO: make it persistent
 
