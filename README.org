@@ -1,7 +1,4 @@
-:PROPERTIES:
-:header-args: :tangle yes
-:END:
-
+~/pure-emacs
 #+TITLE: My awesome Emacs cofiguration ^__^
 #+STARTUP: content
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
@@ -391,6 +388,34 @@ Copy full path
     (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
 #+END_SRC
 
+** Delete current file
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @delete-this-file (&optional path force-p)
+  "Delete PATH, kill its buffers and expunge it from vc/magit cache.
+If PATH is not specified, default to the current buffer's file.
+If FORCE-P, delete without confirmation."
+  (interactive
+   (list (buffer-file-name (buffer-base-buffer))
+         current-prefix-arg))
+  (let* ((path (or path (buffer-file-name (buffer-base-buffer))))
+         (short-path (and path (abbreviate-file-name path))))
+    (unless path
+      (user-error "Buffer is not visiting any file"))
+    (unless (file-exists-p path)
+      (error "File doesn't exist: %s" path))
+    (unless (or force-p (y-or-n-p (format "Really delete %S?" short-path)))
+      (user-error "Aborted"))
+    (let ((buf (current-buffer)))
+      (unwind-protect
+          (progn (delete-file path t) t)
+        (if (file-exists-p path)
+            (error "Failed to delete %S" short-path)
+          ;; Ensures that windows displaying this buffer will be switched to
+          ;; real buffers (`doom-real-buffer-p')
+          (doom/kill-this-buffer-in-all-windows buf t)
+          (doom-files--update-refs path)
+          (message "Deleted %S" short-path))))))
+#+END_SRC
 
 ** Forge open remote file
 #+BEGIN_SRC emacs-lisp
@@ -487,12 +512,16 @@ For correct work you need to install sass-lint-auto-fix
 :END:
 Uncomment when u need to profile ;p
 *** Profiler
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp
 (use-package explain-pause-mode
   :defer t)
 #+END_SRC
 *** Package startup speed
-#+BEGIN_SRC emacs-lisp :tangle no
+#+BEGIN_SRC emacs-lisp 
 (use-package esup)
 ;; (package! benchmark-init
 #+END_SRC
@@ -512,12 +541,13 @@ Very pretty titlebar for Mac os
 
 ** Variables
 #+BEGIN_SRC emacs-lisp
-  (setq +m-color-main "#61AFEF"
-        +m-color-secondary "#FF3399"
-        +m-color-yellow "#FFAA00"
-        +m-color-blue "#00AEE8"
-        +m-color-cyan "#00CED1"
-        +m-color-green "#00D364")
+(setq +m-color-main "#61AFEF"
+      +m-color-secondary "#FF3399"
+      +m-color-yellow "#FFAA00"
+      +m-color-blue "#00AEE8"
+      +m-color-cyan "#00CED1"
+      +m-color-green "#00D364"
+      +org-todo-onhold "#FFAA00")
 #+END_SRC
 ** HOLD Modeline
 :PROPERTIES:
@@ -565,6 +595,11 @@ Very pretty titlebar for Mac os
   :defer t
   :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
 #+END_SRC
+** Pixel scroll
+#+BEGIN_SRC emacs-lisp :results silent
+(pixel-scroll-mode)
+#+END_SRC
+
 
 * Theme
 ** Paddings
@@ -830,9 +865,9 @@ Argument APPEARANCE should be light or dark."
  "\t" 'google-translate-smooth-translate
  "s-<backspace>" 'evil-delete-back-to-indentation
  "C-<tab>" 'my-insert-tab
- "C-u" 'evil-scroll-up
  "C-h C-m" 'describe-mode
  "s-n" 'evil-buffer-new
+ "C-x C-o" 'company-complete
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 #+END_SRC
 *** Evil. Isert mode.
@@ -846,7 +881,7 @@ Argument APPEARANCE should be light or dark."
  "s-p" 'yank-from-kill-ring
  "s-." 'ace-window)
 #+END_SRC
-*** Evil. Normal state map.
+*** Evil. Normal space state map.
 #+NAME: evil-spc-mode-map 
 #+BEGIN_SRC emacs-lisp :exports none :tangle no :results silent
 (general-define-key
@@ -859,10 +894,11 @@ Argument APPEARANCE should be light or dark."
  "hm" 'describe-mode
  "bI" 'ibuffer
  "vtt" 'my-toggle-transparency
+ "fD" '@delete-this-file
  "+" 'narrow-to-region
  "-" 'widen
  "er" 'eval-region
- "TODO: main ti" 'my-insert-todo-by-current-git-branch
+ "ti" 'my-insert-todo-by-current-git-branch
 
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
@@ -878,6 +914,8 @@ Argument APPEARANCE should be light or dark."
  ;; ;; Buffers
  "b ]" 'next-buffer
  "b [" 'previous-buffer
+ "]" 'next-buffer
+ "[" 'previous-buffer
  "." 'find-file
  "hv" 'describe-variable
  "hf" 'describe-function
@@ -887,7 +925,6 @@ Argument APPEARANCE should be light or dark."
  "bn" 'evil-buffer-new
  "bq" 'kill-current-buffer
  "vl" 'visual-line-mode
- "C-u" 'evil-scroll-up
  ;; ("SPC g t" . git-timemachine)
  "ht" 'load-theme
  ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
@@ -901,12 +938,13 @@ Argument APPEARANCE should be light or dark."
  ;; ("SPC TAB s" . persp-window-switch)
  )
 #+END_SRC
-
+*** Evil normal/visual state map
 #+NAME: evil-normal-insert-mode-map
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
 (general-define-key
  :states '(normal visual)
  :keymaps 'override
+ "C-u" 'evil-scroll-up
  "s-Y" 'xah-copy-to-register-1
  "s-r" (lambda () (interactive) (set-mark-command nil) (evil-avy-goto-char))
  "s-P" 'xah-paste-from-register-1)
@@ -916,10 +954,11 @@ Argument APPEARANCE should be light or dark."
 #+NAME: general-minibuffer-mode-map
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
 (general-define-key
- :keymaps '(minibuffer-local-map read--expression-map)
+ :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map)
  "C-w" 'backward-kill-word
  "C-k" 'previous-history-element
  "C-p" 'previous-history-element
+ "C-u" 'evil-delete-back-to-indentation
  ;; "<tab>" 'completion-at-point
  ;; "<tab>" 'completion-at-point
  "C-j" 'next-history-element
@@ -1094,6 +1133,17 @@ Bookmark for navigation inside file
 (evilmi-load-plugin-rules '(ng2-html-mode) '(html))
 (global-evil-matchit-mode 1)
 #+END_SRC
+** Better jump
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package better-jumper
+  :after evil
+  :general (:states '(normal, visual)
+            "C-o" 'better-jumper-jump-backward
+            "C-i" 'better-jumper-jump-forward)
+  :config
+  (better-jumper-mode +1))
+#+END_SRC
+
 
 * Common emacs packages
 ** Files
@@ -1206,7 +1256,6 @@ I didn't use treemacs anymore, but sometime
   (when-let* ((file-name (buffer-file-name))
               (file-dir (file-name-directory file-name))
               (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
-    (message "FILE: %s" file-dir)
     ;; (save-window-excursion
       (vterm-toggle-show)
       (switch-to-first-matching-buffer "vterm")
@@ -1322,6 +1371,7 @@ Something like screensaver
 (persp-remove-buffers-from-nil-persp-behaviour nil)
 (persp-auto-resume-time -1) ; Don't auto-load on startup
 (persp-auto-save-opt (if noninteractive 0 1))
+(persp-save-dir "~/tmp/workspaces/")
 #+END_SRC
 **** Buffers
 Add new buffer to current persp
@@ -1430,6 +1480,7 @@ new project directory.")
 #+END_SRC
 
 **** Persp mode package
+TODO: change binding to general
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package persp-mode
   :after workgroups
@@ -1575,6 +1626,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 Display buffer of quick note always at bottom
 #+BEGIN_SRC emacs-lisp :results silent
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
+(add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
 #+END_SRC
 Function for creating quick note
 #+BEGIN_SRC emacs-lisp :results silent
@@ -1633,7 +1685,6 @@ Save persist buffer
 (defun @save-quick-scratch-buffer (&optional _)
   "Save the current buffer to `@scratch-dir'."
 	(interactive)
-  (message "save func")
   (let ((content (buffer-substring-no-properties (point-min) (point-max)))
         (point (point))
         (mode major-mode)
@@ -1735,36 +1786,80 @@ Save persist buffer
 #+END_SRC
 ** AST. Tree sitter.
 #+BEGIN_SRC emacs-lisp
-  (use-package tree-sitter-langs)
+(use-package tree-sitter-langs
+  :after spell-fu)
 
-  (use-package tree-sitter
-    :after tree-sitter-langs
-    :hook ((go-mode
-            typescript-mode
-            css-mode
-            typescript-tsx-mode
-            html-mode
-            scss-mode
-            ng2-mode
-            js-mode
-            python-mode
-            rust-mode
-            ng2-ts-mode
-            ng2-html-mode) . tree-sitter-hl-mode)
-    :config
-    (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
-    (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
-    (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
-    (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
-    (tree-sitter-require 'tsx)
-    (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
+(defun init-tree-sitter-hl-mode ()
+  "Function for init tree-sitter-hl-mode in correct order.
 
-  (use-package tree-edit
+This need for correct highlighting of incorrect spell-fu faces."
+  (tree-sitter-hl-mode -1)
+  (my-set-spellfu-faces)
+  (tree-sitter-hl-mode))
 
-    :defer t)
+(use-package tree-sitter
+  :after tree-sitter-langs
+  :hook ((go-mode
+          typescript-mode
+          css-mode
+          typescript-tsx-mode
+          html-mode
+          scss-mode
+          ng2-mode
+          js-mode
+          python-mode
+          rust-mode
+          ng2-ts-mode
+          ng2-html-mode) . init-tree-sitter-hl-mode)
+  :config
+  (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
+  (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
+  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+  (tree-sitter-require 'tsx)
+  (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
+
+(use-package tree-edit
+
+  :defer t)
 #+END_SRC
+
+#+RESULTS:
+
 ** Autocomplete
-*** Corfu
+*** Company mode
+**** Company package
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package company
+  :defer t
+  :bind (:map evil-insert-state-map
+              ("C-'" . company-yasnippet)
+              ("C-x C-o" . company-complete)
+         :map company-active-map
+         ("<escape>" . (lambda () (interactive)
+                         (company-cancel)
+                         (evil-normal-state))))
+  :config
+  (setq company-idle-delay 0.2)
+  (setq company-quick-access-modifier 'super)
+  (setq company-show-quick-access t)
+  (setq company-minimum-prefix-length 1)
+  (setq company-dabbrev-char-regexp "[A-z:-]")
+  (custom-set-variables
+   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
+   '(company-quick-access-modifier 'super)))
+#+END_SRC
+**** Company box
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package company-box
+  :hook (company-mode . company-box-mode))
+#+END_SRC
+
+*** HOLD Corfu
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp
   (use-package corfu
     ;; Optional customizations
@@ -1811,8 +1906,10 @@ Enable in minibuffer
 #+END_SRC
 
 Disalbe company mode
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
 (global-company-mode -1)
+(company-mode -1)
+(add-hook 'prog-mode-hook (lambda () (company-mode -1)))
 #+END_SRC
 
 
@@ -1820,7 +1917,7 @@ Disalbe company mode
 #+RESULTS:
 : completion-at-point
 
-*** Corfu doc
+**** Corfu doc
 #+BEGIN_SRC emacs-lisp
   (use-package corfu-doc
     :after corfu
@@ -1830,6 +1927,29 @@ Disalbe company mode
                 ("M-j" . corfu-doc-scroll-down)
                 ("M-k" . corfu-doc-scroll-up)))
 #+END_SRC
+*** HOLD Cape
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+Use company backends for corfu
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package cape
+  :commands (cape-dabbrev cape-file cape-keyword cape-symbol cape-abbrev
+                          cape-ispell cape-line cape-dict cape-tex cape-sgml
+                          cape-rfc1345)
+  :init
+  ;; Use Company backends as Capfs.
+  (setq-local completion-at-point-functions
+              ;; TODO add more capfs here
+              (mapcar #'cape-company-to-capf
+                      (list #'company-files #'company-ispell #'company-dabbrev
+                            #'company-elisp #'company-css #'company-etags
+                            #'company-R-library #'company-R-args #'company-R-objects
+                            ;; #'company-anaconda #'company-lua #'company-shell
+                            ))))
+#+END_SRC
+
 *** Pretty icon
 #+BEGIN_SRC emacs-lisp
   (use-package kind-icon
@@ -1911,6 +2031,8 @@ Disalbe company mode
   (lsp-modeline-diagnostics-scope :workspace)
   (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
+  ;; (lsp-completion-provider :none)
+  (lsp-completion-provider :capf)
   ;; Disable bottom help info
   (lsp-signature-render-documentation nil)
   (lsp-signature-auto-activate nil)
@@ -1952,6 +2074,11 @@ Disalbe company mode
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
   (set-face-attribute 'lsp-face-highlight-textual nil :background "#c0caf5")
+  ;; Install corfu completion for lsp
+  ;; (defun corfu-lsp-setup ()
+  ;; (setq-local completion-styles '(orderless basic)
+  ;;             completion-category-defaults nil))
+  ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
   (setq lsp-eldoc-hook nil))
 #+END_SRC
 
@@ -2016,7 +2143,12 @@ Disalbe company mode
       (when (re-search-backward (rx bol (group "/" (+ any)) eol))
         (list (match-string 1))))))
 #+END_SRC
-**** Setup compilation errors
+*** Buffer position
+#+BEGIN_SRC emacs-lisp :results silent
+(add-to-list 'display-buffer-alist '("^\\*compilation\\*$" . (display-buffer-at-bottom)))
+#+END_SRC
+
+*** Setup compilation errors
 #+BEGIN_SRC emacs-lisp
 (defun @setup-compilation-errors ()
       (setq compilation-scroll-output t)
@@ -2052,13 +2184,24 @@ Disalbe company mode
   ;; (add-to-list 'compilation-error-regexp-alist '("[[:blank:]]*\\([/_\\.[:alnum:]-]+\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\): Error.*$"))
   (add-to-list 'compilation-error-regexp-alist 'dart-analyze)
   (add-to-list 'compilation-error-regexp-alist-alist '(dart-analyze "\\([^ ]*\\.dart\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
+#+END_SRC
 
+*** Compile paclage
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package compile
   :defer t
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC cc" 'compile
+           "SPC cC" 'recompile
+           "SPC cv" (lambda ()
+                      (interactive)
+                      (compilation-display-error)
+                      (+select-window-by-name "*compilation.*")))
   :config
   (@setup-compilation-errors))
 #+END_SRC
-
 
 
 ** Collaborations
@@ -2193,7 +2336,6 @@ Package for quick editing/deleting brackets and bracket-likes symbols
                                             (setq blamer--block-render-p t)
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
-                                            (message "Okay, now blamer should works correctly!")
                                             (setq blamer--block-render-p nil)
                                             (copilot-clear-overlay)))
   ;; (copilot-clear-overlay)) nil t)
@@ -2248,6 +2390,7 @@ cause its simple, and it works in all cases.
 #+BEGIN_SRC emacs-lisp
 (use-package turbo-log
   :defer t
+  :straight (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
          ("C-s-h" . turbo-log-comment-all-logs)
@@ -2267,6 +2410,10 @@ cause its simple, and it works in all cases.
    :post-insert-hooks (prettier-prettify lsp)
    :msg-format-template "'🦄: %s'"))
 #+END_SRC
+
+#+RESULTS:
+: turbo-log-paste-as-logger-immediately
+
 *** Automatic rename html/xml tags
 #+BEGIN_SRC emacs-lisp
 (use-package auto-rename-tag
@@ -2296,11 +2443,13 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
             "C-4" 'magit-section-show-level-4
             "q" 'kill-current-buffer
             "Q" 'bury-buffer
+            "Z" 'magit-stash
+            "zz" 'evil-scroll-line-to-center
             "1" 'digit-argument
             "2" 'digit-argument
             "3" 'digit-argument
             "4" 'digit-argument
-            "SPC f" 'magit-fetch
+            "P" 'magit-fetch
             "f" 'evil-avy-goto-word-1)
   :bind (:map magit-mode-map
               ("s-<return>" . magit-diff-visit-worktree-file)
@@ -2791,14 +2940,20 @@ For install type ~npm install -g @volar/server~
   :hook (dart-mode . flutter-test-mode))
 #+END_SRC
 *** Flutter mdoe
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package flutter
   :after dart-mode
-  :bind (:map dart-mode-map
-              ("C-c C-r" . #'flutter-run-or-hot-reload))
+  :general
+  (:keymaps 'dart-mode-map
+            "C-c C-r" #'flutter-run-or-hot-reload)
+  (:states '(normal visual)
+           :keymaps 'dart-mode-map
+           "SPC m f R" #'flutter-run
+           "SPC m f r" #'flutter-run-or-hot-reload)
   :custom
   (flutter-sdk-path "/Applications/flutter/"))
 #+END_SRC
+
 
 ** LUA mode
 #+BEGIN_SRC emacs-lisp
@@ -3324,6 +3479,7 @@ Dependency
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package wakatime-ui
   :after wakatime-mode
+  :ensure t
   :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
@@ -3353,12 +3509,15 @@ Dependency
 (defun @set-perps-workspace-name-by-switched-project ()
   "Set perps workspace name by switched project"
   (interactive)
-  (message "project changed")
+(message "PROJECTIL SWITCHED")
   (when (and (bound-and-true-p persp-mode)
              (bound-and-true-p projectile-mode))
     (persp-rename (projectile-project-name))))
 
 (add-hook 'projectile-after-switch-project-hook
+          #'@set-perps-workspace-name-by-switched-project)
+
+(add-hook 'projectile-find-file-hook
           #'@set-perps-workspace-name-by-switched-project)
 #+END_SRC
 
@@ -3380,11 +3539,6 @@ Dependency
   :bind (:map evil-normal-state-map
               ("SPC ;" . vertico-repeat-last)
               ("SPC '" . vertico-repeat)
-              ("SPC f P" . (lambda ()
-                             (interactive)
-                             (call-interactively 'find-file)
-                             (kill-whole-line)
-                             (insert "~/pure-emacs")))
               :map vertico-map
               ("C-j" . vertico-next)
               ("C-k" . vertico-previous)
@@ -3499,12 +3653,16 @@ Dependency
                     :keymaps 'override
                     "s-f" 'consult-line
                     "SPC bB" 'consult-buffer
+                    "SPC fP" (lambda ()
+                                (interactive)
+                                (call-interactively 'find-file)
+                                (kill-whole-line)
+                                (insert "~/pure-emacs"))
                     "SPC /" 'consult-ripgrep
-                    "SPC *" (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol)))
+                    "SPC *" (lambda () (interactive) (consult-ripgrep nil (thing-at-point 'symbol)))
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC fr" 'consult-recent-file
-                    "SPC fP" 'consult-projectile-recentf
                     "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
@@ -3550,29 +3708,29 @@ Dependency
    ;; my/command-wrapping-consult    ;; disable auto previews inside my command
    :preview-key (list :debounce 0.2 (kbd "C-SPC")))
 
-   ;; Optionally configure the narrowing key.
-   ;; Both < and C-+ work reasonably well.
-   (setq consult-narrow-key "<") ;; (kbd "C-SPC")
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; (kbd "C-SPC")
 
-   ;; Optionally make narrowing help available in the minibuffer.
-   ;; You may want to use `embark-prefix-help-command' or which-key instead.
-   ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
 
-   ;; Optionally configure a function which returns the project root directory.
-   ;; There are multiple reasonable alternatives to chose from.
+  ;; Optionally configure a function which returns the project root directory.
+  ;; There are multiple reasonable alternatives to chose from.
         ;;;; 1. project.el (project-roots)
-   (setq consult-project-root-function
-         (lambda ()
-           (when-let (project (project-current))
-             (car (project-roots project)))))
+  (setq consult-project-root-function
+        (lambda ()
+          (when-let (project (project-current))
+            (car (project-roots project)))))
         ;;;; 2. projectile.el (projectile-project-root)
-   ;; (autoload 'projectile-project-root "projectile")
-   ;; (setq consult-project-root-function #'projectile-project-root)
+  ;; (autoload 'projectile-project-root "projectile")
+  ;; (setq consult-project-root-function #'projectile-project-root)
         ;;;; 3. vc.el (vc-root-dir)
-   ;; (setq consult-project-root-function #'vc-root-dir)
+  ;; (setq consult-project-root-function #'vc-root-dir)
         ;;;; 4. locate-dominating-file
-   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
-   )
+  ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
+  )
 #+END_SRC
 ** Projectile
 #+BEGIN_SRC emacs-lisp :results silent
@@ -3583,11 +3741,12 @@ Dependency
                     "SPC pa" 'projectile-add-known-project)
   :config
   (setq consult-projectile-use-projectile-switch-project t)
+  (add-to-list 'projectile-globally-ignored-directories "node_modules")
   :defer t)
 #+END_SRC
 
 ** Embark
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package embark
   :custom
   (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
@@ -3599,6 +3758,7 @@ Dependency
             ;; "C-SPC" '+vertico/embark-preview
             ;; "C-SPC" 'consult-preview-at-point
             ;; "C-SPC" 'consult--buffer-preview
+ 						"C-u" 'evil-delete-back-to-indentation
             "C-<return>" '+vertico/embark-preview)
 :init
 ;; Optionally replace the key help with a completing-read interface
@@ -3614,8 +3774,6 @@ Dependency
   (embark-collect-mode . consult-preview-at-point-mode))
 #+END_SRC
 
-#+RESULTS:
-: embark-prefix-help-command
 
 TODO: delete
 Preview

@@ -277,6 +277,32 @@ Version 2015-12-08"
   (when (buffer-file-name)
     (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
 
+(defun @delete-this-file (&optional path force-p)
+  "Delete PATH, kill its buffers and expunge it from vc/magit cache.
+If PATH is not specified, default to the current buffer's file.
+If FORCE-P, delete without confirmation."
+  (interactive
+   (list (buffer-file-name (buffer-base-buffer))
+         current-prefix-arg))
+  (let* ((path (or path (buffer-file-name (buffer-base-buffer))))
+         (short-path (and path (abbreviate-file-name path))))
+    (unless path
+      (user-error "Buffer is not visiting any file"))
+    (unless (file-exists-p path)
+      (error "File doesn't exist: %s" path))
+    (unless (or force-p (y-or-n-p (format "Really delete %S?" short-path)))
+      (user-error "Aborted"))
+    (let ((buf (current-buffer)))
+      (unwind-protect
+          (progn (delete-file path t) t)
+        (if (file-exists-p path)
+            (error "Failed to delete %S" short-path)
+          ;; Ensures that windows displaying this buffer will be switched to
+          ;; real buffers (`doom-real-buffer-p')
+          (doom/kill-this-buffer-in-all-windows buf t)
+          (doom-files--update-refs path)
+          (message "Deleted %S" short-path))))))
+
 (defun my-forge-browse-buffer-file ()
   (interactive)
   (browse-url
@@ -346,15 +372,17 @@ Version 2015-12-08"
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
-(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
-(add-to-list 'default-frame-alist '(ns-appearance . dark))
+(use-package ns-auto-titlebar
+  :config
+  (when (eq system-type 'darwin) (ns-auto-titlebar-mode)))
 
 (setq +m-color-main "#61AFEF"
       +m-color-secondary "#FF3399"
       +m-color-yellow "#FFAA00"
       +m-color-blue "#00AEE8"
       +m-color-cyan "#00CED1"
-      +m-color-green "#00D364")
+      +m-color-green "#00D364"
+      +org-todo-onhold "#FFAA00")
 
 (use-package all-the-icons-dired
   :after dired
@@ -564,9 +592,9 @@ Argument APPEARANCE should be light or dark."
    "\t" 'google-translate-smooth-translate
    "s-<backspace>" 'evil-delete-back-to-indentation
    "C-<tab>" 'my-insert-tab
-   "C-u" 'evil-scroll-up
    "C-h C-m" 'describe-mode
    "s-n" 'evil-buffer-new
+   "C-x C-o" 'company-complete
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
    :states '(insert)
@@ -576,16 +604,24 @@ Argument APPEARANCE should be light or dark."
    "s-p" 'yank-from-kill-ring
    "s-." 'ace-window)
   (general-define-key
-   :keymaps '(minibuffer-local-map read--expression-map)
+   :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map)
    "C-w" 'backward-kill-word
    "C-k" 'previous-history-element
    "C-p" 'previous-history-element
+   "C-u" 'evil-delete-back-to-indentation
    ;; "<tab>" 'completion-at-point
    ;; "<tab>" 'completion-at-point
    "C-j" 'next-history-element
    "C-n" 'next-history-element
    "<escape>" 'keyboard-escape-quit
    "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
+  (general-define-key
+   :states '(normal visual)
+   :keymaps 'override
+   "C-u" 'evil-scroll-up
+   "s-Y" 'xah-copy-to-register-1
+   "s-r" (lambda () (interactive) (set-mark-command nil) (evil-avy-goto-char))
+   "s-P" 'xah-paste-from-register-1)
   (general-define-key
    :states '(visual normal)
    :keymaps 'override
@@ -629,10 +665,11 @@ Argument APPEARANCE should be light or dark."
    "hm" 'describe-mode
    "bI" 'ibuffer
    "vtt" 'my-toggle-transparency
+   "fD" '@delete-this-file
    "+" 'narrow-to-region
    "-" 'widen
    "er" 'eval-region
-   "TODO: main ti" 'my-insert-todo-by-current-git-branch
+   "ti" 'my-insert-todo-by-current-git-branch
   
    ;; ;; Presentation
    ;; ("SPC t b" . presentation-mode)
@@ -657,7 +694,6 @@ Argument APPEARANCE should be light or dark."
    "bn" 'evil-buffer-new
    "bq" 'kill-current-buffer
    "vl" 'visual-line-mode
-   "C-u" 'evil-scroll-up
    ;; ("SPC g t" . git-timemachine)
    "ht" 'load-theme
    ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
@@ -752,6 +788,14 @@ Argument APPEARANCE should be light or dark."
 (evilmi-load-plugin-rules '(ng2-html-mode) '(html))
 (global-evil-matchit-mode 1)
 
+(use-package better-jumper
+  :after evil
+  :general (:states '(normal, visual)
+            "C-o" 'better-jumper-jump-backward
+            "C-i" 'better-jumper-jump-forward)
+  :config
+  (better-jumper-mode +1))
+
 (setq insert-directory-program "gls" dired-use-ls-dired t)
 
 (use-package dirvish
@@ -826,7 +870,6 @@ Argument APPEARANCE should be light or dark."
   (when-let* ((file-name (buffer-file-name))
               (file-dir (file-name-directory file-name))
               (file-dir (replace-regexp-in-string " " "\\\\\  " file-dir)))
-    (message "FILE: %s" file-dir)
     ;; (save-window-excursion
       (vterm-toggle-show)
       (switch-to-first-matching-buffer "vterm")
@@ -1172,7 +1215,6 @@ new project directory.")
 (defun @save-quick-scratch-buffer (&optional _)
   "Save the current buffer to `@scratch-dir'."
 	(interactive)
-  (message "save func")
   (let ((content (buffer-substring-no-properties (point-min) (point-max)))
         (point (point))
         (mode major-mode)
@@ -1229,7 +1271,16 @@ new project directory.")
   :config
   (autopair-global-mode))
 
-(use-package tree-sitter-langs)
+(use-package tree-sitter-langs
+  :after spell-fu)
+
+(defun init-tree-sitter-hl-mode ()
+  "Function for init tree-sitter-hl-mode in correct order.
+
+This need for correct highlighting of incorrect spell-fu faces."
+  (tree-sitter-hl-mode -1)
+  (my-set-spellfu-faces)
+  (tree-sitter-hl-mode))
 
 (use-package tree-sitter
   :after tree-sitter-langs
@@ -1244,7 +1295,7 @@ new project directory.")
           python-mode
           rust-mode
           ng2-ts-mode
-          ng2-html-mode) . tree-sitter-hl-mode)
+          ng2-html-mode) . init-tree-sitter-hl-mode)
   :config
   (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -1257,55 +1308,27 @@ new project directory.")
 
   :defer t)
 
-(use-package corfu
-  ;; Optional customizations
-  :defer 2
-  :custom
-  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
-  (corfu-auto t)                 ;; Enable auto completion
-  (corfu-commit-predicate nil)   ;; Do not commit selected candidates on next input
-  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
-  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
-  (corfu-auto-delay 0.1)
-  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
-
-  ;; Optionally use TAB for cycling, default is `corfu-complete'.
-  :bind (:map corfu-map
-         ("TAB" . corfu-next)
-         ([tab] . corfu-next)
-         ("C-j" . corfu-next)
-         ("C-k" . corfu-previous)
-         ("S-TAB" . corfu-previous)
-         ([backtab] . corfu-previous)
-         :map evil-insert-state-map
-         ("C-x C-o" . completion-at-point)
-         ("C-SPC" . completion-at-point))
-  :init
-	      (global-corfu-mode)
+(use-package company
+  :defer t
+  :bind (:map evil-insert-state-map
+              ("C-'" . company-yasnippet)
+              ("C-x C-o" . company-complete)
+         :map company-active-map
+         ("<escape>" . (lambda () (interactive)
+                         (company-cancel)
+                         (evil-normal-state))))
   :config
-  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-  (evil-make-overriding-map corfu-map))
+  (setq company-idle-delay 0.2)
+  (setq company-quick-access-modifier 'super)
+  (setq company-show-quick-access t)
+  (setq company-minimum-prefix-length 1)
+  (setq company-dabbrev-char-regexp "[A-z:-]")
+  (custom-set-variables
+   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
+   '(company-quick-access-modifier 'super)))
 
-(defun corfu-enable-in-minibuffer ()
-  "Enable Corfu in the minibuffer if `completion-at-point' is bound."
-  (when (where-is-internal #'completion-at-point (list (current-local-map)))
-    ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
-    (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
-                corfu-popupinfo-delay nil)
-    (corfu-mode 1)))
-
-(add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
-
-(global-company-mode -1)
-
-(use-package corfu-doc
-  :after corfu
-  :straight (corfu-doc :type git :host github :repo "galeo/corfu-doc")
-  :hook (corfu-mode . corfu-doc-mode)
-  :bind (:map corfu-map
-              ("M-j" . corfu-doc-scroll-down)
-              ("M-k" . corfu-doc-scroll-up)))
+(use-package company-box
+  :hook (company-mode . company-box-mode))
 
 (use-package kind-icon
   :after corfu
@@ -1360,6 +1383,8 @@ new project directory.")
   (lsp-modeline-diagnostics-scope :workspace)
   (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
+  ;; (lsp-completion-provider :none)
+  (lsp-completion-provider :capf)
   ;; Disable bottom help info
   (lsp-signature-render-documentation nil)
   (lsp-signature-auto-activate nil)
@@ -1401,6 +1426,11 @@ new project directory.")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
   (set-face-attribute 'lsp-face-highlight-textual nil :background "#c0caf5")
+  ;; Install corfu completion for lsp
+  ;; (defun corfu-lsp-setup ()
+  ;; (setq-local completion-styles '(orderless basic)
+  ;;             completion-category-defaults nil))
+  ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
   (setq lsp-eldoc-hook nil))
 
 (use-package lsp-yaml
@@ -1486,6 +1516,15 @@ new project directory.")
 
 (use-package compile
   :defer t
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC cc" 'compile
+           "SPC cC" 'recompile
+           "SPC cv" (lambda ()
+                      (interactive)
+                      (compilation-display-error)
+                      (+select-window-by-name "*compilation.*")))
   :config
   (@setup-compilation-errors))
 
@@ -1572,7 +1611,6 @@ new project directory.")
                                             (setq blamer--block-render-p t)
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
-                                            (message "Okay, now blamer should works correctly!")
                                             (setq blamer--block-render-p nil)
                                             (copilot-clear-overlay)))
   ;; (copilot-clear-overlay)) nil t)
@@ -1587,6 +1625,7 @@ new project directory.")
 
 (use-package turbo-log
   :defer t
+  :straight (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
          ("C-s-h" . turbo-log-comment-all-logs)
@@ -1631,7 +1670,7 @@ new project directory.")
             "2" 'digit-argument
             "3" 'digit-argument
             "4" 'digit-argument
-            "SPC f" 'magit-fetch
+            "P" 'magit-fetch
             "f" 'evil-avy-goto-word-1)
   :bind (:map magit-mode-map
               ("s-<return>" . magit-diff-visit-worktree-file)
@@ -1948,8 +1987,13 @@ new project directory.")
 
 (use-package flutter
   :after dart-mode
-  :bind (:map dart-mode-map
-              ("C-c C-r" . #'flutter-run-or-hot-reload))
+  :general
+  (:keymaps 'dart-mode-map
+            "C-c C-r" #'flutter-run-or-hot-reload)
+  (:states '(normal visual)
+           :keymaps 'dart-mode-map
+           "SPC m f R" #'flutter-run
+           "SPC m f r" #'flutter-run-or-hot-reload)
   :custom
   (flutter-sdk-path "/Applications/flutter/"))
 
@@ -2364,6 +2408,7 @@ new project directory.")
 
 (use-package wakatime-ui
   :after wakatime-mode
+  :ensure t
   :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
@@ -2380,7 +2425,6 @@ new project directory.")
   (defun @set-perps-workspace-name-by-switched-project ()
     "Set perps workspace name by switched project"
     (interactive)
-    (message "project changed")
     (when (and (bound-and-true-p persp-mode)
                (bound-and-true-p projectile-mode))
       (persp-rename (projectile-project-name))))
@@ -2508,7 +2552,7 @@ new project directory.")
                     "s-f" 'consult-line
                     "SPC bB" 'consult-buffer
                     "SPC /" 'consult-ripgrep
-                    "SPC *" (lambda () (interactive) (consult-git-grep nil (thing-at-point 'symbol)))
+                    "SPC *" (lambda () (interactive) (consult-ripgrep nil (thing-at-point 'symbol)))
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC fr" 'consult-recent-file
@@ -2556,7 +2600,7 @@ new project directory.")
    consult-bookmark consult-recent-file consult-xref consult--source-bookmark consult--source-file-register
    consult--source-recent-file consult--source-project-recent-file
    ;; my/command-wrapping-consult    ;; disable auto previews inside my command
-   :preview-key (list :debounce 0.5 (kbd "C-=")))
+   :preview-key (list :debounce 0.2 (kbd "C-SPC")))
 
    ;; Optionally configure the narrowing key.
    ;; Both < and C-+ work reasonably well.
@@ -2602,6 +2646,7 @@ new project directory.")
             ;; "C-SPC" '+vertico/embark-preview
             ;; "C-SPC" 'consult-preview-at-point
             ;; "C-SPC" 'consult--buffer-preview
+ 						"C-u" 'evil-delete-back-to-indentation
             "C-<return>" '+vertico/embark-preview)
 :init
 ;; Optionally replace the key help with a completing-read interface
