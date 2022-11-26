@@ -48,8 +48,6 @@
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
 
-(setq @scratch-dir "~/tmp/scratches")
-
 (when (eq system-type 'darwin)
   (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
   (setq browse-url-generic-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
@@ -370,6 +368,25 @@ If FORCE-P, delete without confirmation."
   (interactive)
   (insert "\t"))
 
+(defun @open-emacs-config ()
+  "Open folder with emacs config"
+  (interactive)
+  (call-interactively 'find-file)
+  (kill-whole-line)
+  (insert "~/pure-emacs"))
+
+(defun @switch-to-scratch ()
+  "Switch to scratch buffer"
+  (interactive)
+  (let* ((buffer-name "*scratch*")
+         (buffer-exist (get-buffer buffer-name))
+         (buffer (get-buffer-create buffer-name)))
+    (with-current-buffer buffer
+      (pop-to-buffer buffer)
+      (persistent-scratch-restore)
+      (evil-insert-state)
+)))
+
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (use-package ns-auto-titlebar
@@ -388,6 +405,10 @@ If FORCE-P, delete without confirmation."
   :after dired
   :hook (dired-mode . all-the-icons-dired-mode))
 
+(use-package rainbow-mode
+  :hook (((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode))
+  :defer 5)
+
 (use-package hl-todo
   :defer 2
   :config
@@ -405,6 +426,8 @@ If FORCE-P, delete without confirmation."
 (use-package rainbow-mode
   :defer t
   :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
+
+(pixel-scroll-mode)
 
 (fringe-mode '16)
 
@@ -685,6 +708,8 @@ Argument APPEARANCE should be light or dark."
    ;; ;; Buffers
    "b ]" 'next-buffer
    "b [" 'previous-buffer
+   "]" 'next-buffer
+   "[" 'previous-buffer
    "." 'find-file
    "hv" 'describe-variable
    "hf" 'describe-function
@@ -1007,6 +1032,7 @@ new project directory.")
   (persp-remove-buffers-from-nil-persp-behaviour nil)
   (persp-auto-resume-time -1) ; Don't auto-load on startup
   (persp-auto-save-opt (if noninteractive 0 1))
+  (persp-save-dir "~/tmp/workspaces/")
   :config
   (set-persp-parameter 'dont-save-to-file t nil)
   (defvar after-switch-to-buffer-functions nil)
@@ -1164,70 +1190,54 @@ new project directory.")
               t)))
 
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
+(add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
 
-(defun @quick-scratch-buffer (&optional same-window-p)
-  "Create a scratch buffer and switch to it in insert mode."
+(defun @save-scratch-buffer-p ()
+  "Return non-nil if the current buffer is the scratch buffer."
+  (and (get-buffer "*scratch*") (string= (buffer-name) "*scratch*")))
+
+(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
+
+(defun @persistent-scratch-save (&optional file)
+  "Save the current state of scratch buffers.
+When FILE is non-nil, the state is saved to FILE; when nil or when called
+interactively, the state is saved to `persistent-scratch-save-file'.
+What state exactly is saved is determined by `persistent-scratch-what-to-save'.
+
+When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
+`persistent-scratch-save-file' is stored in that directory, with a name
+representing the time of the last `persistent-scratch-new-backup' call."
   (interactive)
-  (let* ((buffer-name "*quick:scratch*")
-         (buffer (get-buffer-create buffer-name)))
-    (with-current-buffer buffer
-      (funcall
-       (if same-window-p
-           #'switch-to-buffer
-         #'pop-to-buffer)
-       buffer))
-    ;; (add-hook 'kill-buffer-hook #'@save-quick-scratch-buffer nil t)
-    ;; (add-hook 'focus-out-hook #'@save-quick-scratch-buffer nil t)
-    (add-hook 'window-selection-change-functions #'@save-quick-scratch-buffer)
-    ;; (add-hook 'window-buffer-change-functions #'@save-quick-scratch-buffer nil t)
-    (add-hook 'server-visit-hook #'@save-quick-scratch-buffer nil t)
-    ;; (add-hook 'kill-buffer-query-functions #'@save-quick-scratch-buffer nil t)
+  (when-let* ((actual-file (or file persistent-scratch-save-file))
+              (tmp-file (concat actual-file ".new"))
+              (old-umask (default-file-modes))
+              (str (persistent-scratch--save-state-to-string)))
 
-    (@read-quick-scratch)
-    (evil-insert-state)))
+    (message "STR: %s" str)
+    (set-default-file-modes #o600)
+    (unwind-protect
+        (let ((coding-system-for-write 'utf-8-unix))
+          (write-region str nil tmp-file nil 0))
+      (set-default-file-modes old-umask))
+    (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
+    (rename-file tmp-file actual-file t)
+    (when (called-interactively-p 'interactive)
+      (message "Wrote persistent-scratch file %s" actual-file)))
+  (unless file
+    (persistent-scratch--update-backup)
+    (persistent-scratch--cleanup-backups)))
 
-(general-define-key
- :states '(normal visual)
- :keymaps 'override
- "SPC x" '@quick-scratch-buffer)
+(advice-add 'persistent-scratch-save :override #'@persistent-scratch-save)
 
-(defun @read-quick-scratch ()
-  "Read quick scratch buffer from file."
-  (interactive)
-  (let* ((scratch-name (if (bound-and-true-p projectile-mode)
-                           (projectile-project-name)
-                         "scratch"))
-         (smart-scratch-file (expand-file-name (concat scratch-name ".el")
-                                               @scratch-dir)))
-    (make-directory @scratch-dir t)
-    (when (file-readable-p smart-scratch-file)
-      (message "Reading %s" smart-scratch-file)
-      (cl-destructuring-bind (content point mode)
-          (with-temp-buffer
-            (save-excursion (insert-file-contents smart-scratch-file))
-            (read (current-buffer)))
-        (erase-buffer)
-        (funcall mode)
-        (insert content)
-        (goto-char point)
-        t))))
-
-(defun @save-quick-scratch-buffer (&optional _)
-  "Save the current buffer to `@scratch-dir'."
-	(interactive)
-  (let ((content (buffer-substring-no-properties (point-min) (point-max)))
-        (point (point))
-        (mode major-mode)
-        (scratch-name (if (bound-and-true-p projectile-mode)
-                          (projectile-project-name)
-                        "scratch")))
-    (with-temp-file
-        (expand-file-name (concat scratch-name ".el")
-                          @scratch-dir)
-      (prin1 (list content
-                   point
-                   mode)
-             (current-buffer)))))
+(use-package persistent-scratch
+ :general
+ (:states '(normal visual)
+          :keymaps 'override
+          "SPC x" '@switch-to-scratch)
+  :config
+  (setq persistent-scratch-autosave-interval 5)
+  (persistent-scratch-setup-default)
+)
 
 (use-package yasnippet
   :defer 2
@@ -1479,6 +1489,8 @@ This need for correct highlighting of incorrect spell-fu faces."
       (when (re-search-backward (rx bol (group "/" (+ any)) eol))
         (list (match-string 1))))))
 
+(add-to-list 'display-buffer-alist '("^\\*compilation\\*$" . (display-buffer-at-bottom)))
+
 (defun @setup-compilation-errors ()
       (setq compilation-scroll-output t)
   (setq compilation-error-regexp-alist '())
@@ -1666,6 +1678,8 @@ This need for correct highlighting of incorrect spell-fu faces."
             "C-4" 'magit-section-show-level-4
             "q" 'kill-current-buffer
             "Q" 'bury-buffer
+            "Z" 'magit-stash
+            "zz" 'evil-scroll-line-to-center
             "1" 'digit-argument
             "2" 'digit-argument
             "3" 'digit-argument
@@ -2402,7 +2416,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (defun google-translate--search-tkk () "Search TKK." (list 430675 2721866130)))
 
 (use-package wakatime-mode
-  :defer 2
+  :defer 5
   :config
   (global-wakatime-mode))
 
@@ -2425,11 +2439,15 @@ This need for correct highlighting of incorrect spell-fu faces."
   (defun @set-perps-workspace-name-by-switched-project ()
     "Set perps workspace name by switched project"
     (interactive)
+  (message "PROJECTIL SWITCHED")
     (when (and (bound-and-true-p persp-mode)
                (bound-and-true-p projectile-mode))
       (persp-rename (projectile-project-name))))
   
   (add-hook 'projectile-after-switch-project-hook
+            #'@set-perps-workspace-name-by-switched-project)
+  
+  (add-hook 'projectile-find-file-hook
             #'@set-perps-workspace-name-by-switched-project)
   (projectile-mode +1))
 
@@ -2442,14 +2460,10 @@ This need for correct highlighting of incorrect spell-fu faces."
          ("SPC h ." . helpful-at-point)))
 
 (use-package vertico
+  :defer t
   :bind (:map evil-normal-state-map
               ("SPC ;" . vertico-repeat-last)
               ("SPC '" . vertico-repeat)
-              ("SPC f P" . (lambda ()
-                             (interactive)
-                             (call-interactively 'find-file)
-                             (kill-whole-line)
-                             (insert "~/pure-emacs")))
               :map vertico-map
               ("C-j" . vertico-next)
               ("C-k" . vertico-previous)
@@ -2528,6 +2542,7 @@ This need for correct highlighting of incorrect spell-fu faces."
                args)))
 
 (use-package marginalia
+  :after vertico
   ;; Either bind `marginalia-cycle` globally or only in the minibuffer
   :bind (("M-A" . marginalia-cycle)
          :map minibuffer-local-map
@@ -2547,16 +2562,17 @@ This need for correct highlighting of incorrect spell-fu faces."
           '(projectile-switch-project . project-file)))
 
 (use-package consult
+  :defer t
   :general (:states '(normal visual)
                     :keymaps 'override
                     "s-f" 'consult-line
                     "SPC bB" 'consult-buffer
+                    "SPC fP" '@open-emacs-config
                     "SPC /" 'consult-ripgrep
                     "SPC *" (lambda () (interactive) (consult-ripgrep nil (thing-at-point 'symbol)))
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC fr" 'consult-recent-file
-                    "SPC fP" 'consult-projectile-recentf
                     "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
@@ -2602,29 +2618,29 @@ This need for correct highlighting of incorrect spell-fu faces."
    ;; my/command-wrapping-consult    ;; disable auto previews inside my command
    :preview-key (list :debounce 0.2 (kbd "C-SPC")))
 
-   ;; Optionally configure the narrowing key.
-   ;; Both < and C-+ work reasonably well.
-   (setq consult-narrow-key "<") ;; (kbd "C-SPC")
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; (kbd "C-SPC")
 
-   ;; Optionally make narrowing help available in the minibuffer.
-   ;; You may want to use `embark-prefix-help-command' or which-key instead.
-   ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
 
-   ;; Optionally configure a function which returns the project root directory.
-   ;; There are multiple reasonable alternatives to chose from.
+  ;; Optionally configure a function which returns the project root directory.
+  ;; There are multiple reasonable alternatives to chose from.
         ;;;; 1. project.el (project-roots)
-   (setq consult-project-root-function
-         (lambda ()
-           (when-let (project (project-current))
-             (car (project-roots project)))))
+  (setq consult-project-root-function
+        (lambda ()
+          (when-let (project (project-current))
+            (car (project-roots project)))))
         ;;;; 2. projectile.el (projectile-project-root)
-   ;; (autoload 'projectile-project-root "projectile")
-   ;; (setq consult-project-root-function #'projectile-project-root)
+  ;; (autoload 'projectile-project-root "projectile")
+  ;; (setq consult-project-root-function #'projectile-project-root)
         ;;;; 3. vc.el (vc-root-dir)
-   ;; (setq consult-project-root-function #'vc-root-dir)
+  ;; (setq consult-project-root-function #'vc-root-dir)
         ;;;; 4. locate-dominating-file
-   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
-   )
+  ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
+  )
 
 (use-package consult-projectile
   :general (:states 'normal
@@ -2633,6 +2649,7 @@ This need for correct highlighting of incorrect spell-fu faces."
                     "SPC pa" 'projectile-add-known-project)
   :config
   (setq consult-projectile-use-projectile-switch-project t)
+  (add-to-list 'projectile-globally-ignored-directories "node_modules")
   :defer t)
 
 (use-package embark
