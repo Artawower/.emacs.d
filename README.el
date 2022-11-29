@@ -716,10 +716,8 @@ Argument APPEARANCE should be light or dark."
    "hv" 'describe-variable
    "hf" 'describe-function
    "hF" 'describe-face
-   "bO" 'kill-other-buff
    "tl" 'global-display-line-numbers-mode
    "bn" 'evil-buffer-new
-   "bq" 'kill-current-buffer
    "vl" 'visual-line-mode
    "ht" 'load-theme)
 
@@ -943,6 +941,15 @@ Argument APPEARANCE should be light or dark."
 (use-package secret-mode
   :defer t)
 
+(defun @persp-kill-other-buffers ()
+  "Kill all buffers except current buffer."
+  (interactive)
+  (let ((current-buffer (current-buffer)))
+    (mapc (lambda (buffer)
+            (unless (eq buffer current-buffer)
+              (kill-buffer buffer)))
+          (persp-buffer-list))))
+
 (load "~/pure-emacs/vendor/doom-workspaces.el")
 ;; (use-package doom-workspaces
 ;;   :straight (doom-workspaces
@@ -1003,6 +1010,7 @@ new project directory.")
          ("SPC pn" . +workspace/quick-new)
          ("SPC <tab>n" . +workspace/quick-new)
          ("SPC po" . +workspace/other)
+         ("SPC b O" . @persp-kill-other-buffers)
          ("SPC <tab> <tab>" . +workspace/display)
          ("SPC b i" . (lambda (arg)
                         (interactive "P")
@@ -1096,7 +1104,9 @@ new project directory.")
     (let ((name (format "#%s" (+workspace--generate-id))))
       (persp-switch name)
       (switch-to-buffer (doom-fallback-buffer))
-      (+workspace/display))))
+      (with-current-buffer (doom-fallback-buffer)
+        (delete-other-windows)
+        (+workspace/display)))))
 
 (defun +ibuffer/visit-workspace-buffer (&optional select-first)
   "Visit buffer, but switch to its workspace if it exists."
@@ -2080,6 +2090,7 @@ This need for correct highlighting of incorrect spell-fu faces."
            "SPC m n" 'org-store-link
            "SPC m l l" 'org-insert-link
            "SPC nl" 'org-store-link
+           "SPC dt" 'org-time-stamp-inactive
            "SPC mlt" 'org-toggle-link-display)
   (:states '(normal visual)
            :keymaps 'org-mode-map
@@ -2087,6 +2098,8 @@ This need for correct highlighting of incorrect spell-fu faces."
            "<return>" '+org/dwim-at-point)
   (:keymaps 'org-read-date-minibuffer-local-map
             "C-s" 'org-goto-calendar)
+  (:keymaps 'calendar-mode-map
+            "<return>" 'org-calendar-select)
 
   :bind (:map evil-normal-state-map
               ("SPC h ]" . org-next-visible-heading)
@@ -2174,6 +2187,7 @@ This need for correct highlighting of incorrect spell-fu faces."
    'org-babel-load-languages
    '((typescript . t)
      (js . t)
+     (python . t)
      (restclient . t)))
 
   (defun org-babel-execute:typescript (body params)

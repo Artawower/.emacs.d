@@ -525,6 +525,7 @@ TODO: check why it doesn;t work
 #+END_SRC
 
 
+
 * HOLD Performance
 Uncomment when u need to profile ;p
 *** Profiler
@@ -666,13 +667,13 @@ Small patch for define face
       :after nano-theme-dark
       :config
       (nano-theme)
-      (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+      (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146))
 
     (use-package nano-modeline
       :after nano-theme
       :config
       (setq nano-font-size 15)
-      (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 15")
+      (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 14")
       (nano-modeline-default-mode)
       (scroll-bar-mode -1))
 
@@ -942,10 +943,8 @@ Argument APPEARANCE should be light or dark."
  "hv" 'describe-variable
  "hf" 'describe-function
  "hF" 'describe-face
- "bO" 'kill-other-buff
  "tl" 'global-display-line-numbers-mode
  "bn" 'evil-buffer-new
- "bq" 'kill-current-buffer
  "vl" 'visual-line-mode
  "ht" 'load-theme)
 #+END_SRC
@@ -1102,6 +1101,8 @@ Bookmark for navigation inside file
 :defer t
 :custom-face
 (bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
+:custom
+(bm-in-lifo-order t)
 :bind (("C-M-n" . bm-next)
         ("C-M-p" . bm-previous)
         ("s-b" . bm-toggle)))
@@ -1338,6 +1339,18 @@ Something like screensaver
 #+END_SRC
 ** Workspace
 *** Persp mode
+**** Kill other buffers from current workspace
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @persp-kill-other-buffers ()
+  "Kill all buffers except current buffer."
+  (interactive)
+  (let ((current-buffer (current-buffer)))
+    (mapc (lambda (buffer)
+            (unless (eq buffer current-buffer)
+              (kill-buffer buffer)))
+          (persp-buffer-list))))
+#+END_SRC
+
 **** Persp doom configs
 #+BEGIN_SRC emacs-lisp :results silent
 (load "~/pure-emacs/vendor/doom-workspaces.el")
@@ -1474,6 +1487,8 @@ new project directory.")
            (advice-remove #'doom-buffer-list #'+workspace-buffer-list)))))
 #+END_SRC
 
+**** Create new workspace quickly
+
 #+NAME: workspaces-doom-patch
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
 (defun +workspace/quick-new ()
@@ -1482,7 +1497,9 @@ new project directory.")
   (let ((name (format "#%s" (+workspace--generate-id))))
     (persp-switch name)
     (switch-to-buffer (doom-fallback-buffer))
-    (+workspace/display)))
+    (with-current-buffer (doom-fallback-buffer)
+      (delete-other-windows)
+      (+workspace/display))))
 #+END_SRC
 
 **** Workgroups
@@ -1521,6 +1538,7 @@ TODO: change binding to general
          ("SPC pn" . +workspace/quick-new)
          ("SPC <tab>n" . +workspace/quick-new)
          ("SPC po" . +workspace/other)
+         ("SPC b O" . @persp-kill-other-buffers)
          ("SPC <tab> <tab>" . +workspace/display)
          ("SPC b i" . (lambda (arg)
                         (interactive "P")
@@ -2049,6 +2067,7 @@ Use company backends for corfu
   ;; Disable bottom help info
   (lsp-signature-render-documentation nil)
   (lsp-signature-auto-activate nil)
+  (lsp-enable-snippet nil)
   ;; (lsp-use-plists t)
   (lsp-enable-file-watchers nil)
   (lsp-file-watch-threshold 5000)
