@@ -371,9 +371,8 @@ If FORCE-P, delete without confirmation."
 (defun @open-emacs-config ()
   "Open folder with emacs config"
   (interactive)
-  (call-interactively 'find-file)
-  (kill-whole-line)
-  (insert "~/pure-emacs"))
+  (let ((default-directory "~/pure-emacs/"))
+    (call-interactively 'find-file)))
 
 (defun @switch-to-scratch ()
   "Switch to scratch buffer"
@@ -383,9 +382,12 @@ If FORCE-P, delete without confirmation."
          (buffer (get-buffer-create buffer-name)))
     (with-current-buffer buffer
       (pop-to-buffer buffer)
-      (persistent-scratch-restore)
+      (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
+        (persistent-scratch-restore))
       (evil-insert-state)
-)))
+      )))
+
+(setq use-package-verbose t)
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
@@ -719,18 +721,7 @@ Argument APPEARANCE should be light or dark."
    "bn" 'evil-buffer-new
    "bq" 'kill-current-buffer
    "vl" 'visual-line-mode
-   ;; ("SPC g t" . git-timemachine)
-   "ht" 'load-theme
-   ;; ;; ("SPC b b" . persp-ivy-switch-buffer)
-   ;; ;; ("SPC b b" . persp-switch-to-buffer)
-   ;; ("SPC TAB d" . persp-kill)
-   ;; ;; Perspective keybindings
-   ;; ("SPC TAB r" . persp-rename)
-   ;; ("SPC TAB n" . persp-next)
-   ;; ("SPC TAB p" . persp-prev)
-   ;; ;; ("SPC TAB s" . persp-switch)
-   ;; ("SPC TAB s" . persp-window-switch)
-   )
+   "ht" 'load-theme)
 
     (general-define-key
    :keymaps 'read-expression-map
@@ -906,7 +897,7 @@ Argument APPEARANCE should be light or dark."
     (evil-window-down 1)))
 
 (use-package vterm-toggle
-  :defer t
+  :defer 5
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC oh" (lambda () (interactive)
@@ -1189,6 +1180,15 @@ new project directory.")
                   (persp-mode-projectile-bridge-mode 1))
               t)))
 
+(use-package no-littering)
+(setq backup-directory-alist `(("." . "~/.emacs-saves")))
+(setq backup-by-copying t)
+
+(use-package origami
+  :defer t
+  :config
+  (global-origami-mode))
+
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
 (add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
 
@@ -1208,21 +1208,21 @@ When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
 `persistent-scratch-save-file' is stored in that directory, with a name
 representing the time of the last `persistent-scratch-new-backup' call."
   (interactive)
-  (when-let* ((actual-file (or file persistent-scratch-save-file))
-              (tmp-file (concat actual-file ".new"))
-              (old-umask (default-file-modes))
-              (str (persistent-scratch--save-state-to-string)))
+  (let* ((actual-file (or file persistent-scratch-save-file))
+         (tmp-file (concat actual-file ".new"))
+         (old-umask (default-file-modes))
+         (str (persistent-scratch--save-state-to-string)))
 
-    (message "STR: %s" str)
-    (set-default-file-modes #o600)
-    (unwind-protect
-        (let ((coding-system-for-write 'utf-8-unix))
-          (write-region str nil tmp-file nil 0))
-      (set-default-file-modes old-umask))
-    (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
-    (rename-file tmp-file actual-file t)
-    (when (called-interactively-p 'interactive)
-      (message "Wrote persistent-scratch file %s" actual-file)))
+    (unless (equal str "nil")
+            (set-default-file-modes #o600)
+            (unwind-protect
+                (let ((coding-system-for-write 'utf-8-unix))
+                  (write-region str nil tmp-file nil 0))
+              (set-default-file-modes old-umask))
+            (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
+            (rename-file tmp-file actual-file t)
+            (when (called-interactively-p 'interactive)
+              (message "Wrote persistent-scratch file %s" actual-file))))
   (unless file
     (persistent-scratch--update-backup)
     (persistent-scratch--cleanup-backups)))
@@ -1323,10 +1323,11 @@ This need for correct highlighting of incorrect spell-fu faces."
   :bind (:map evil-insert-state-map
               ("C-'" . company-yasnippet)
               ("C-x C-o" . company-complete)
-         :map company-active-map
-         ("<escape>" . (lambda () (interactive)
-                         (company-cancel)
-                         (evil-normal-state))))
+              :map company-active-map
+              ("C-w" . backward-kill-word)
+              ("<escape>" . (lambda () (interactive)
+                              (company-cancel)
+                              (evil-normal-state))))
   :config
   (setq company-idle-delay 0.2)
   (setq company-quick-access-modifier 'super)
@@ -1392,6 +1393,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-prefer-flymake nil)
   (lsp-modeline-diagnostics-scope :workspace)
   (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   ;; (lsp-completion-provider :none)
   (lsp-completion-provider :capf)
@@ -1441,6 +1443,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   ;; (setq-local completion-styles '(orderless basic)
   ;;             completion-category-defaults nil))
   ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
+  (@setup-compilation-errors)
   (setq lsp-eldoc-hook nil))
 
 (use-package lsp-yaml
@@ -1690,6 +1693,7 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("s-<return>" . magit-diff-visit-worktree-file)
               :map evil-normal-state-map
               ("SPC g g" . magit-status)
+              ("SPC g n" . magit-todo-list)
               ("SPC g i" . (lambda () (interactive) (wakatime-ui--clear-modeline) (magit-status))))
   :hook
   (magit-process-mode . compilation-minor-mode)
@@ -1707,6 +1711,13 @@ This need for correct highlighting of incorrect spell-fu faces."
    :before
    #'my-remove-cr)
   (setq magit-process-finish-apply-ansi-colors t))
+
+(use-package magit-todos
+  :defer t
+  :general
+  (:states '(normal visual)
+   :keymaps 'override
+   "SPC g n" 'magit-todos-list))
 
 (use-package gist                       ;
   :defer t
@@ -1830,7 +1841,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-clients-typescript-server-args '("--stdio"))
   :config
   (setq typescript-indent-level 2)
-  (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode)))
+  (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode))
+  (@setup-compilation-errors))
 
 (use-package ng2-mode
   :after typescript-mode
@@ -2005,8 +2017,9 @@ This need for correct highlighting of incorrect spell-fu faces."
   (:keymaps 'dart-mode-map
             "C-c C-r" #'flutter-run-or-hot-reload)
   (:states '(normal visual)
-           :keymaps 'dart-mode-map
-           "SPC m f R" #'flutter-run
+           :keymaps '(dart-mode-map flutter-mode-map)
+           "SPC m f s" #'flutter-run
+           "SPC m f R" #'flutter-hot-restart
            "SPC m f r" #'flutter-run-or-hot-reload)
   :custom
   (flutter-sdk-path "/Applications/flutter/"))
@@ -2061,16 +2074,20 @@ This need for correct highlighting of incorrect spell-fu faces."
 (use-package org
   :mode (("\\.org$" . org-mode))
   :general
-  (:states '(normal)
+  (:states '(normal visual)
            :keymaps 'override
            "SPC m t" 'org-todo
            "SPC m n" 'org-store-link
            "SPC m l l" 'org-insert-link
            "SPC nl" 'org-store-link
            "SPC mlt" 'org-toggle-link-display)
-  (:states '(normal)
+  (:states '(normal visual)
            :keymaps 'org-mode-map
+           "SPC dt" 'org-time-stamp-inactive
            "<return>" '+org/dwim-at-point)
+  (:keymaps 'org-read-date-minibuffer-local-map
+            "C-s" 'org-goto-calendar)
+
   :bind (:map evil-normal-state-map
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
