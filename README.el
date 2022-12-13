@@ -13,7 +13,8 @@
 
 (customize-set-variable 'package-archives
                         `(,@package-archives
-                          ("melpa" . "https://melpa.org/packages/")
+                          ("melpa" . "http://melpa.org/packages/")
+                          ;; ("melpa" . "http://melpa.milkbox.net/packages/")
                           ("melpa-stable" . "http://stable.melpa.org/packages/")
                           ("org" . "https://orgmode.org/elpa/")
                           ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
@@ -371,7 +372,7 @@ If FORCE-P, delete without confirmation."
 (defun @open-emacs-config ()
   "Open folder with emacs config"
   (interactive)
-  (let ((default-directory "~/pure-emacs/"))
+  (let ((default-directory "~/pure-emacs/README.org"))
     (call-interactively 'find-file)))
 
 (defun @switch-to-scratch ()
@@ -386,6 +387,15 @@ If FORCE-P, delete without confirmation."
         (persistent-scratch-restore))
       (evil-insert-state)
       )))
+
+(defun @run-sass-auto-fix ()
+  "Run sass auto fix if cli tool exist"
+  (interactive)
+  (save-window-excursion
+    (let ((default-directory (file-name-directory buffer-file-name)))
+      (async-shell-command "sass-lint-auto-fix")
+      ;; (revert-buffer-no-confirm)
+      (message "SASS FORMATTED"))))
 
 (setq use-package-verbose t)
 
@@ -408,8 +418,8 @@ If FORCE-P, delete without confirmation."
   :hook (dired-mode . all-the-icons-dired-mode))
 
 (use-package rainbow-mode
-  :hook (((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode))
-  :defer 5)
+  :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
+  :defer t)
 
 (use-package hl-todo
   :defer 2
@@ -462,13 +472,13 @@ If FORCE-P, delete without confirmation."
   :after nano-theme-dark
   :config
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146))
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146))
 
 (use-package nano-modeline
   :after nano-theme
   :config
   (setq nano-font-size 15)
-  (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 15")
+  (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 14")
   (nano-modeline-default-mode)
   (scroll-bar-mode -1))
 
@@ -501,6 +511,8 @@ If FORCE-P, delete without confirmation."
                                       'face `(:foreground ,+m-color-secondary :weight bold :slant italic)))
                                    )
                            position)))
+
+
 
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
@@ -536,7 +548,7 @@ If FORCE-P, delete without confirmation."
   (nano-theme-set-dark)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
   (@setup-org-mode-faces))
 
 (defun nano-change-theme-light ()
@@ -544,7 +556,7 @@ If FORCE-P, delete without confirmation."
   (nano-theme-set-light)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
   (@setup-org-mode-faces))
 
 (defun nano-change-theme ()
@@ -773,6 +785,8 @@ Argument APPEARANCE should be light or dark."
 :defer t
 :custom-face
 (bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
+:custom
+(bm-in-lifo-order t)
 :bind (("C-M-n" . bm-next)
         ("C-M-p" . bm-previous)
         ("s-b" . bm-toggle)))
@@ -804,13 +818,21 @@ Argument APPEARANCE should be light or dark."
 
 (use-package better-jumper
   :after evil
+  :defer 2
   :general (:states '(normal, visual)
             "C-o" 'better-jumper-jump-backward
             "C-i" 'better-jumper-jump-forward)
   :config
   (better-jumper-mode +1))
 
-(setq insert-directory-program "gls" dired-use-ls-dired t)
+(use-package dired
+  :defer t
+  :general
+  (:keymaps 'dired-mode-map
+            "C-c C-e" 'wdired-change-to-wdired-mode)
+  :config
+  (setq insert-directory-program "gls" dired-use-ls-dired t)
+  (add-hook 'dired-mode-hook 'auto-revert-mode))
 
 (use-package dirvish
   :init
@@ -871,12 +893,51 @@ Argument APPEARANCE should be light or dark."
    ("M-e" . dirvish-emerge-menu)
    ("M-j" . dirvish-fd-jump)))
 
-(use-package vterm
+(use-package treemacs
   :defer t
+  :bind (:map treemacs-mode-map
+              ("@" . evil-execute-macro))
+  :custom-face
+  (font-lock-doc-face ((t (:inherit nil))))
+  (doom-themes-treemacs-file-face ((t (:inherit font-lock-doc-face :slant italic))))
+  (doom-themes-treemacs-root-face ((t (:inherit nil :slant italic))))
+  (treemacs-root-face ((t (:inherit variable-pitch :slant italic))))
+  :custom
+  (treemacs-width 45)
+  :config
+  (setq doom-themes-treemacs-theme "doom-colors") ; use "doom-colors" for less minimal icon theme
+  ;; (doom-themes-treemacs-config)
+  ;; (doom-themes-org-config)
+)
+
+(defun @clear-term-history ()
+  "Clear terminal history inside vterm."
+  (interactive)
+  (when (eq major-mode 'vterm-mode)
+    (vterm--self-insert)
+    (vterm-send-string "clear")
+    (vterm-send-return)))
+  
+
+(advice-add 'vterm-clear-scrollback :before #'@clear-term-history)
+
+(use-package vterm 
+  :defer 5
   :general (:states '(normal visual)
                     "SPC ov" 'vterm)
   (:keymaps '(vterm-mode-map vterm-copy-map)
-            "C-u" 'vterm--self-insert))
+            "C-u" 'vterm--self-insert)
+  :config
+  (defun @clear-term-history ()
+    "Clear terminal history inside vterm."
+    (interactive)
+    (when (eq major-mode 'vterm-mode)
+      (vterm--self-insert)
+      (vterm-send-string "clear")
+      (vterm-send-return)))
+    
+  
+  (advice-add 'vterm-clear-scrollback :before #'@clear-term-history))
 
 (defun @vterm-change-current-directory-to-active-buffer-pwd ()
   "Just exec CD to pwd of active buffer."
@@ -944,11 +1005,14 @@ Argument APPEARANCE should be light or dark."
 (defun @persp-kill-other-buffers ()
   "Kill all buffers except current buffer."
   (interactive)
-  (let ((current-buffer (current-buffer)))
+  (let ((current-buffer (current-buffer))
+        (killed-buffer-count 0))
     (mapc (lambda (buffer)
             (unless (eq buffer current-buffer)
+              (setq killed-buffer-count (1+ killed-buffer-count))
               (kill-buffer buffer)))
-          (persp-buffer-list))))
+          (persp-buffer-list))
+    (message "Killed %s buffers" killed-buffer-count)))
 
 (load "~/pure-emacs/vendor/doom-workspaces.el")
 ;; (use-package doom-workspaces
@@ -984,37 +1048,41 @@ new project directory.")
 
 (use-package persp-mode
   :after workgroups
-  :bind (("s-1" . +workspace/switch-to-0)
-         ("s-2" . +workspace/switch-to-1)
-         ("s-3" . +workspace/switch-to-2)
-         ("s-4" . +workspace/switch-to-3)
-         ("s-5" . +workspace/switch-to-4)
-         ("s-6" . +workspace/switch-to-5)
-         ("s-7" . +workspace/switch-to-6)
-         ("s-8" . +workspace/switch-to-7)
-         ("s-9" . +workspace/switch-to-8)
-         :map evil-normal-state-map
-         ;; ("SPC bb" . persp-switch-to-buffer)
-         ("SPC bb" . consult-projectile-switch-to-buffer)
-         ("SPC bk" . persp-kill-buffer)
-         ("SPC pc" . persp-copy)
-         ("SPC pk" . persp-kill)
-         ("SPC pS" . +workspace/save)
-         ("SPC ps" . persp-save-state-to-file)
-         ("SPC pL" . +workspace/load)
-         ("SPC pl" . persp-load-state-from-file)
-         ("SPC pd" . +workspace/delete)
-         ("SPC <tab>d" . +workspace/delete)
-         ("SPC pr" . +workspace/rename)
-         ("SPC pj" . persp-switch)
-         ("SPC pn" . +workspace/quick-new)
-         ("SPC <tab>n" . +workspace/quick-new)
-         ("SPC po" . +workspace/other)
-         ("SPC b O" . @persp-kill-other-buffers)
-         ("SPC <tab> <tab>" . +workspace/display)
-         ("SPC b i" . (lambda (arg)
+  :general
+  (:keymaps 'override
+            "s-1" '+workspace/switch-to-0
+            "s-2" '+workspace/switch-to-1
+            "s-3" '+workspace/switch-to-2
+            "s-4" '+workspace/switch-to-3
+            "s-5" '+workspace/switch-to-4
+            "s-6" '+workspace/switch-to-5
+            "s-7" '+workspace/switch-to-6
+            "s-8" '+workspace/switch-to-7
+            "s-9" '+workspace/switch-to-8)
+  
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC bO" '@persp-kill-other-buffers
+            "SPC bb" 'consult-projectile-switch-to-buffer
+            "SPC bk" 'persp-kill-buffer
+            "SPC pc" 'persp-copy
+            "SPC pk" 'persp-kill
+            "SPC pS" '+workspace/save
+            "SPC ps" 'persp-save-state-to-file
+            "SPC pL" '+workspace/load
+            "SPC pl" 'persp-load-state-from-file
+            "SPC pd" '+workspace/delete
+            "SPC <tab>d" '+workspace/delete
+            "SPC pr" '+workspace/rename
+            "SPC pj" 'persp-switch
+            "SPC pn" '+workspace/quick-new
+            "SPC <tab>n" '+workspace/quick-new
+            "SPC po" '+workspace/other
+            "SPC b O" '@persp-kill-other-buffers
+            "SPC <tab> <tab>" '+workspace/display
+            "SPC b i" (lambda (arg)
                         (interactive "P")
-                        (with-persp-buffer-list () (ibuffer arg)))))
+                        (with-persp-buffer-list () (ibuffer arg))))
   :init
   (add-hook 'window-setup-hook (lambda () (persp-mode 1)))
 	:custom
@@ -1195,9 +1263,152 @@ new project directory.")
 (setq backup-by-copying t)
 
 (use-package origami
-  :defer t
+  :hook ((org-mode dart-mode yaml-mode) . origami-mode)
+  :after evil)
+
+(defun @fold-close-all ()
+  "Close all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-close-all))
+        (t (evil-close-folds))))
+
+(defun @fold-close ()
+  "Close the fold under the cursor."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-close))
+        (t (evil-close-fold))))
+
+
+(defun @fold-open-all ()
+  "Open all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-open-all))
+        (t (evil-open-folds))))
+
+(defun @fold-open ()
+  "Open the fold under the cursor."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-open))
+        (t (evil-open-fold))))
+
+(defun @fold-toggle-all ()
+  "Toggle all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle-all))
+        (t (evil-toggle-fold))))
+
+(defun @fold-toggle ()
+  "Toggle fold at point."
+
+  (interactive)
+  (save-excursion 
+    (end-of-line)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
+        (t (evil-toggle-fold)))))
+
+
+(defun @fold-next ()
+  "Go to the next fold."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-next-fold))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-next))
+        (t (evil-next-fold))))
+
+(defun @fold-previous ()
+  "Go to the previous fold."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-previous-fold))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-previous))
+        (t (evil-previous-fold))))
+
+(defun @ts-fold-init ()
+  "Init ts-fold."
+  (interactive)
+  (when (and (bound-and-true-p tree-sitter-mode)
+             (member major-mode '(ng2-ts-mode
+                                  typescript-mode
+                                  js-mode
+                                  python-mode
+                                  html-mode
+                                  json-mode
+                                  go-mode
+                                  scss-mode
+                                  css-mode
+                                  bash-mode)))
+    (ts-fold-mode 1)))
+
+(use-package ts-fold
+  :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :hook ((tree-sitter-mode
+          web-mode
+          ng2-html-mode
+          ng2-ts-mode
+          typescript-mode
+          js-mode
+          python-mode
+          html-mode
+          json-mode
+          go-mode
+          bash-mode
+          css-mode
+          scss-mode) . @ts-fold-init)
+  :general
+  (:keymaps 'override :states '(normal)
+            "zM" '@fold-close-all
+            "zm" '@fold-close
+            "zR" '@fold-open-all
+            "zr" '@fold-open
+            "zA" '@fold-toggle-all
+            "za" '@fold-toggle
+            "zj" '@fold-next
+            "zk" '@fold-previous)
   :config
-  (global-origami-mode))
+  (add-to-list 'ts-fold-range-alist '(ng2-ts-mode . ((export_clause . ts-fold-range-seq)
+                                                     (statement_block . ts-fold-range-seq)
+                                                     (comment . ts-fold-range-c-like-comment))) t)
+
+  (add-to-list 'ts-fold-range-alist '(web-mode . (html-mode
+                                                  (element . ts-fold-range-html)
+                                                  (comment ts-fold-range-seq 1 -1))))
+
+  (add-to-list 'ts-fold-range-alist '(ng2-html-mode . (html-mode
+                                                       (element . ts-fold-range-html)
+                                                       (comment ts-fold-range-seq 1 -1))))
+  (add-to-list 'ts-fold-range-alist '(scss-mode . ((keyframe_block_list . ts-fold-range-seq)
+                                                   (block . ts-fold-range-seq)
+                                                   (comment . ts-fold-range-c-like-comment))) t)
+
+  ;; TODO: DOESN'T WORK for scss, needs another rules (check it later for custom pareser)
+  (add-to-list 'ts-fold-range-alist '(scss-mode . (css-mode
+                                                   (keyframe_block_list . ts-fold-range-seq)
+                                                   (block . ts-fold-range-seq)
+                                                   (comment . ts-fold-range-c-like-comment))))
+
+
+  (add-to-list 'ts-fold-foldable-node-alist '(ng2-ts-mode comment statement_block export_clause))
+  (add-to-list 'ts-fold-foldable-node-alist '(web-mode comment element))
+  (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
+  (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
+
+(use-package ts-fold-indicators
+  :after ts-fold
+  :straight (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :config
+  (setq ts-fold-indicators-fringe 'right-fringe)
+  (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
 
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
 (add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
@@ -1271,8 +1482,10 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (use-package prettier
   :defer t
   :bind (:map evil-normal-state-map
-         ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode))
+              ("\+p" . prettier-prettify))
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode)
+  :config
+  (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 
 (use-package flycheck
   :bind (:map evil-normal-state-map
@@ -1282,6 +1495,10 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :init
   (global-flycheck-mode)
   :config
+  (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
+
   (flycheck-add-mode 'javascript-eslint 'web-mode)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
 
@@ -1303,14 +1520,16 @@ This need for correct highlighting of incorrect spell-fu faces."
   (tree-sitter-hl-mode))
 
 (use-package tree-sitter
-  :after tree-sitter-langs
+  :after (evil tree-sitter-langs)
   :hook ((go-mode
+          web-mode
           typescript-mode
           css-mode
           typescript-tsx-mode
           html-mode
           scss-mode
           ng2-mode
+          ng2-html-mode
           js-mode
           python-mode
           rust-mode
@@ -1318,6 +1537,7 @@ This need for correct highlighting of incorrect spell-fu faces."
           ng2-html-mode) . init-tree-sitter-hl-mode)
   :config
   (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
+  (push '(web-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -1338,9 +1558,12 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("<escape>" . (lambda () (interactive)
                               (company-cancel)
                               (evil-normal-state))))
+  :init
+  (setq lsp-completion-provider :capf)
   :config
   (setq company-idle-delay 0.2)
   (setq company-quick-access-modifier 'super)
+
   (setq company-show-quick-access t)
   (setq company-minimum-prefix-length 1)
   (setq company-dabbrev-char-regexp "[A-z:-]")
@@ -1368,6 +1591,15 @@ This need for correct highlighting of incorrect spell-fu faces."
   (cond ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
+
+(defun @lsp/uninstall-server (dir)
+  "Delete a LSP server from `lsp-server-install-dir'."
+  (interactive
+   (list (read-directory-name "Uninstall LSP server: " lsp-server-install-dir nil t)))
+  (unless (file-directory-p dir)
+    (user-error "Couldn't find %S directory" dir))
+  (delete-directory dir 'recursive)
+  (message "Uninstalled %S" (file-name-nondirectory dir)))
 
 (use-package lsp
   :after flycheck
@@ -1398,6 +1630,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
+  ;; (lsp-completion-provider :none)
   (lsp-enable-on-type-formatting nil)
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
@@ -1406,10 +1639,11 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   ;; (lsp-completion-provider :none)
-  (lsp-completion-provider :capf)
+  ;; (lsp-completion-provider :capf)
   ;; Disable bottom help info
   (lsp-signature-render-documentation nil)
   (lsp-signature-auto-activate nil)
+  (lsp-enable-snippet nil)
   ;; (lsp-use-plists t)
   (lsp-enable-file-watchers nil)
   (lsp-file-watch-threshold 5000)
@@ -1476,8 +1710,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   :hook (dart-mode . (lambda () (interactive)
                        (add-hook 'after-save-hook
                                  (lambda ()
-                                   (flutter-run-or-hot-reload)
-                                   ;; (flutter-hot-restart)
+                                   ;; (flutter-run-or-hot-reload)
+                                   (flutter-hot-restart)
                                    )
                                  t t)))
   :custom
@@ -1571,11 +1805,13 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("SPC d r" . dap-debug-recent)
               ("SPC d l" . dap-ui-locals)
               ("SPC d b" . dap-ui-breakpoints)
+              ("SPC d p" . dap-breakpoint-toggle)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
-              ("SPC d p" . (lambda () (interactive)
-                             (set-window-buffer nil (current-buffer))
-                             (dap-breakpoint-toggle)))
+              ;; TODO: REMOVE
+              ;; ("SPC d p" . (lambda () (interactive)
+              ;;                (set-window-buffer nil (current-buffer))
+              ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :init
   (dap-mode 1)
@@ -1637,9 +1873,9 @@ This need for correct highlighting of incorrect spell-fu faces."
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
-                                            (copilot-clear-overlay)))
+                                            (copilot-clear-overlay))))
   ;; (copilot-clear-overlay)) nil t)
-  )
+  ;; )
 
 (use-package electric
   :config
@@ -1741,6 +1977,21 @@ This need for correct highlighting of incorrect spell-fu faces."
          :map evil-normal-state-map
          ("SPC g l g" . gist-list)))
 
+(use-package jist
+  :ensure t
+  :custom
+  (jist-github-token (getenv "GITHUB_TOKEN"))
+  :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC gcl" 'jist-commit
+            "SPC glg" 'jist-list
+            "SPC gpg" 'jist-refetch-gists)
+  (:keymaps 'jist-gist-list-mode-map
+            :states '(normal visual)
+            "<return>" 'jist-browse-gist)
+  )
+
 (use-package git-gutter
   :after git-gutter-fringe
   :bind (:map evil-normal-state-map
@@ -1806,6 +2057,12 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :bind (:map evil-normal-state-map
               ("SPC g t" . git-timemachine)))
+
+(global-set-key (kbd "C-c l") 'smerge-keep-lower)
+(global-set-key (kbd "C-c u") 'smerge-keep-upper)
+(global-set-key (kbd "C-c a") 'smerge-keep-all)
+(global-set-key (kbd "C-c j") 'smerge-next)
+(global-set-key (kbd "C-c k") 'smerge-prev)
 
 (use-package paren-face :defer t)
 
@@ -1876,10 +2133,16 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package nodejs-repl
   :ensure t
-  :general 
+  :general
   (:states '(normal visual)
-    :keymaps 'override
+           :keymaps 'override
            "SPC rn" 'nodejs-repl)
+
+  (:states '(insert)
+           :keymaps 'nodejs-repl-mode-map
+           "C-j" 'comint-next-input
+           "C-k" 'comint-previous-input)
+
   :defer t
   :config
   (defun @open-nodejs-repl-here ()
@@ -1890,7 +2153,8 @@ This need for correct highlighting of incorrect spell-fu faces."
           (switch-to-buffer nodejs-repl-buffer-name)
         (progn
           (switch-to-buffer nodejs-repl-buffer-name)
-          (nodejs-repl))))))
+          (nodejs-repl)))))
+  (add-to-list 'display-buffer-alist '("^\\*nodejs\\*$" . (display-buffer-same-window))))
 
 (use-package go-playground
   :defer t)
@@ -2001,11 +2265,14 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package emmet-mode
   :hook ((scss-mode . emmet-mode) (css-mode . emmet-mode) (ng2-html-mode . emmet-mode) (html-mode . emmet-mode))
+  :general 
+  (:keymaps 'override
+   :states 'insert
+   "s-e" 'emmet-expand-line)
   :defer t)
 
 (use-package css-mode
   :defer 10
-  :hook ((css-mode . my-setup-tabnine) (scss-mode . my-setup-tabnine))
   :config
   (defun revert-buffer-no-confirm ()
     "Revert buffer without confirmation."
@@ -2095,6 +2362,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   (:states '(normal visual)
            :keymaps 'org-mode-map
            "SPC dt" 'org-time-stamp-inactive
+           "SPC st" 'org-set-tags-command
+           "SPC mx" 'org-toggle-checkbox
            "<return>" '+org/dwim-at-point)
   (:keymaps 'org-read-date-minibuffer-local-map
             "C-s" 'org-goto-calendar)
@@ -2453,7 +2722,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package wakatime-ui
   :after wakatime-mode
-  :ensure t
   :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
@@ -2540,7 +2808,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
-  :init
+  :config
   (savehist-mode))
 
 ;; A few more useful configurations...
@@ -2603,6 +2871,7 @@ This need for correct highlighting of incorrect spell-fu faces."
                     "SPC *" (lambda () (interactive) (consult-ripgrep nil (thing-at-point 'symbol)))
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
+                    "SPC cm" 'consult-mark
                     "SPC fr" 'consult-recent-file
                     "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
@@ -2724,3 +2993,34 @@ This need for correct highlighting of incorrect spell-fu faces."
 (use-package pdf-view
   :defer t
   :hook (pdf-view-mode . pdf-view-themed-minor-mode))
+
+(use-package pdf-tools
+  :ensure t
+  :defer t
+  :config
+  (pdf-tools-install))
+
+(use-package browse-hist
+  :ensure t
+  :general
+  (:keymaps '(normal visual)
+            :modes 'override
+            "SPC bh" 'browser-hist-search)
+  :custom
+  (browser-hist-default-browser 'brave)
+  :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
+
+(use-package epc
+  :defer t)
+
+(use-package chatgpt
+  :straight (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
+  :ensure t
+  :general
+  (:keymaps 'override
+            "s-d" 'chatgpt-query)
+  :init
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/")
+  :config
+   (require 'epc)
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))

@@ -29,17 +29,18 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 
 ** Melpa
 #+BEGIN_SRC emacs-lisp
-  (require 'package)
+(require 'package)
 
-  (customize-set-variable 'package-archives
-                          `(,@package-archives
-                            ("melpa" . "https://melpa.org/packages/")
-                            ("melpa-stable" . "http://stable.melpa.org/packages/")
-                            ("org" . "https://orgmode.org/elpa/")
-                            ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
-                            ))
-  (customize-set-variable 'package-enable-at-startup nil)
-  (package-initialize)
+(customize-set-variable 'package-archives
+                        `(,@package-archives
+                          ("melpa" . "http://melpa.org/packages/")
+                          ;; ("melpa" . "http://melpa.milkbox.net/packages/")
+                          ("melpa-stable" . "http://stable.melpa.org/packages/")
+                          ("org" . "https://orgmode.org/elpa/")
+                          ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
+                          ))
+(customize-set-variable 'package-enable-at-startup nil)
+(package-initialize)
 #+END_SRC
 
 ** Straight
@@ -204,7 +205,6 @@ list is returned as-is."
                collect (cadr hook)
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 #+END_SRC
-
 
 * Custom functions
 ** Org
@@ -504,7 +504,7 @@ TODO: check why it doesn;t work
 (defun @open-emacs-config ()
   "Open folder with emacs config"
   (interactive)
-  (let ((default-directory "~/pure-emacs/"))
+  (let ((default-directory "~/pure-emacs/README.org"))
     (call-interactively 'find-file)))
 #+END_SRC
 
@@ -524,7 +524,22 @@ TODO: check why it doesn;t work
       )))
 #+END_SRC
 
+** Sass autofix
+For correct work you need to install sass-lint-auto-fix
+~yarn global add sass-lint-auto-fix~
 
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @run-sass-auto-fix ()
+  "Run sass auto fix if cli tool exist"
+  (interactive)
+  (save-window-excursion
+    (let ((default-directory (file-name-directory buffer-file-name)))
+      (async-shell-command "sass-lint-auto-fix")
+      ;; (revert-buffer-no-confirm)
+      (message "SASS FORMATTED"))))
+#+END_SRC
+** TODO open finder here!
+Need to steal from doom emacs!
 
 * HOLD Performance
 Uncomment when u need to profile ;p
@@ -550,7 +565,6 @@ Uncomment when u need to profile ;p
 #+BEGIN_SRC emacs-lisp :results silent
 (setq use-package-verbose t)
 #+END_SRC
-
 
 * UI
 ** Full size from startup
@@ -591,11 +605,12 @@ Very pretty titlebar for Mac os
     :hook (dired-mode . all-the-icons-dired-mode))
 #+END_SRC
 ** Rainbows colors
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
   (use-package rainbow-mode
-    :hook (((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode))
-    :defer 5)
+    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
+    :defer t)
 #+END_SRC
+
 ** Highlight keywords
 #+BEGIN_SRC emacs-lisp
 (use-package hl-todo
@@ -623,7 +638,6 @@ Very pretty titlebar for Mac os
 (pixel-scroll-mode)
 #+END_SRC
 
-
 * Theme
 ** Paddings
 #+BEGIN_SRC emacs-lisp
@@ -638,7 +652,7 @@ Very pretty titlebar for Mac os
 #+END_SRC
 
 ** Nano
-Small patch for define face
+*** Small patch for define face
 #+BEGIN_SRC emacs-lisp
 (defface bookmark-menu-heading
   '((t :foreground "#7a88cf"
@@ -646,6 +660,7 @@ Small patch for define face
   "Face for patching nano")
 #+END_SRC
 
+*** Nano pack
 #+BEGIN_SRC emacs-lisp
     (straight-use-package
      '(nano-emacs :type git :host github :repo "rougier/nano-emacs"))
@@ -714,12 +729,17 @@ Patch for modeline for support mode-line-misc-info
                                    )
                            position)))
 #+END_SRC
+*** Colors
+#+BEGIN_SRC emacs-lisp :results silent
+
+#+END_SRC
 
 
 ** HOLD Doom emacs themes
 :PROPERTIES:
 :header-args: :tangle no
 :END:
+
 #+BEGIN_SRC emacs-lisp
   (use-package doom-themes
   :config
@@ -780,7 +800,7 @@ Patch for modeline for support mode-line-misc-info
   (nano-theme-set-dark)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
   (@setup-org-mode-faces))
 
 (defun nano-change-theme-light ()
@@ -788,7 +808,7 @@ Patch for modeline for support mode-line-misc-info
   (nano-theme-set-light)
   (nano-faces)
   (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 15" :italic nil :height 146)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
   (@setup-org-mode-faces))
 
 (defun nano-change-theme ()
@@ -1149,6 +1169,7 @@ Bookmark for navigation inside file
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package better-jumper
   :after evil
+  :defer 2
   :general (:states '(normal, visual)
             "C-o" 'better-jumper-jump-backward
             "C-i" 'better-jumper-jump-forward)
@@ -1156,12 +1177,34 @@ Bookmark for navigation inside file
   (better-jumper-mode +1))
 #+END_SRC
 
+** HOLD Remember last position. Blinky mode
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package binky-mode
+  :straight (binky-mode :type git :host github :repo "liuyinz/binky-mode")
+  :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC rv" 'binky-binky)
+  :hook (after-init-hook . binky-mode))
+#+END_SRC
+
 
 * Common emacs packages
 ** Files
 *** Dired configs
 #+BEGIN_SRC emacs-lisp :results silent
-(setq insert-directory-program "gls" dired-use-ls-dired t)
+(use-package dired
+  :defer t
+  :general
+  (:keymaps 'dired-mode-map
+            "C-c C-e" 'wdired-change-to-wdired-mode)
+  :config
+  (setq insert-directory-program "gls" dired-use-ls-dired t)
+  (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
 *** Dired batteries ;3
@@ -1227,9 +1270,6 @@ Dirvish.
    ("M-j" . dirvish-fd-jump)))
 #+END_SRC
 *** HOLD Treemacs
-:PROPERTIES:
-:header-args: :tangle no
-:END:
 I didn't use treemacs anymore, but sometime
 #+BEGIN_SRC emacs-lisp
 (use-package treemacs
@@ -1245,18 +1285,40 @@ I didn't use treemacs anymore, but sometime
   (treemacs-width 45)
   :config
   (setq doom-themes-treemacs-theme "doom-colors") ; use "doom-colors" for less minimal icon theme
-  (doom-themes-treemacs-config)
-  (doom-themes-org-config))
+  ;; (doom-themes-treemacs-config)
+  ;; (doom-themes-org-config)
+)
 #+END_SRC
+
+#+RESULTS:
+: evil-execute-macro
+
 ** Terminal
-*** Vterm
+*** Vterm functions
+#+NAME: vterm-function-clear
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package vterm
-  :defer t
+(defun @clear-term-history ()
+  "Clear terminal history inside vterm."
+  (interactive)
+  (when (eq major-mode 'vterm-mode)
+    (vterm--self-insert)
+    (vterm-send-string "clear")
+    (vterm-send-return)))
+  
+
+(advice-add 'vterm-clear-scrollback :before #'@clear-term-history)
+#+END_SRC
+
+*** Vterm
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+(use-package vterm 
+  :defer 5
   :general (:states '(normal visual)
                     "SPC ov" 'vterm)
   (:keymaps '(vterm-mode-map vterm-copy-map)
-            "C-u" 'vterm--self-insert))
+            "C-u" 'vterm--self-insert)
+  :config
+  <<vterm-function-clear>>)
 #+END_SRC
 
 *** Vterm toggle
@@ -1344,11 +1406,14 @@ Something like screensaver
 (defun @persp-kill-other-buffers ()
   "Kill all buffers except current buffer."
   (interactive)
-  (let ((current-buffer (current-buffer)))
+  (let ((current-buffer (current-buffer))
+        (killed-buffer-count 0))
     (mapc (lambda (buffer)
             (unless (eq buffer current-buffer)
+              (setq killed-buffer-count (1+ killed-buffer-count))
               (kill-buffer buffer)))
-          (persp-buffer-list))))
+          (persp-buffer-list))
+    (message "Killed %s buffers" killed-buffer-count)))
 #+END_SRC
 
 **** Persp doom configs
@@ -1507,42 +1572,52 @@ new project directory.")
 (use-package workgroups)
 #+END_SRC
 
+**** Persp mode keybindings general
+#+NAME: persp-mode-map-general
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(:keymaps 'override
+          "s-1" '+workspace/switch-to-0
+          "s-2" '+workspace/switch-to-1
+          "s-3" '+workspace/switch-to-2
+          "s-4" '+workspace/switch-to-3
+          "s-5" '+workspace/switch-to-4
+          "s-6" '+workspace/switch-to-5
+          "s-7" '+workspace/switch-to-6
+          "s-8" '+workspace/switch-to-7
+          "s-9" '+workspace/switch-to-8)
+
+(:keymaps 'override
+          :states '(normal visual)
+          "SPC bO" '@persp-kill-other-buffers
+          "SPC bb" 'consult-projectile-switch-to-buffer
+          "SPC bk" 'persp-kill-buffer
+          "SPC pc" 'persp-copy
+          "SPC pk" 'persp-kill
+          "SPC pS" '+workspace/save
+          "SPC ps" 'persp-save-state-to-file
+          "SPC pL" '+workspace/load
+          "SPC pl" 'persp-load-state-from-file
+          "SPC pd" '+workspace/delete
+          "SPC <tab>d" '+workspace/delete
+          "SPC pr" '+workspace/rename
+          "SPC pj" 'persp-switch
+          "SPC pn" '+workspace/quick-new
+          "SPC <tab>n" '+workspace/quick-new
+          "SPC po" '+workspace/other
+          "SPC b O" '@persp-kill-other-buffers
+          "SPC <tab> <tab>" '+workspace/display
+          "SPC b i" (lambda (arg)
+                      (interactive "P")
+                      (with-persp-buffer-list () (ibuffer arg))))
+#+END_SRC
+
 **** Persp mode package
 TODO: change binding to general
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package persp-mode
   :after workgroups
-  :bind (("s-1" . +workspace/switch-to-0)
-         ("s-2" . +workspace/switch-to-1)
-         ("s-3" . +workspace/switch-to-2)
-         ("s-4" . +workspace/switch-to-3)
-         ("s-5" . +workspace/switch-to-4)
-         ("s-6" . +workspace/switch-to-5)
-         ("s-7" . +workspace/switch-to-6)
-         ("s-8" . +workspace/switch-to-7)
-         ("s-9" . +workspace/switch-to-8)
-         :map evil-normal-state-map
-         ;; ("SPC bb" . persp-switch-to-buffer)
-         ("SPC bb" . consult-projectile-switch-to-buffer)
-         ("SPC bk" . persp-kill-buffer)
-         ("SPC pc" . persp-copy)
-         ("SPC pk" . persp-kill)
-         ("SPC pS" . +workspace/save)
-         ("SPC ps" . persp-save-state-to-file)
-         ("SPC pL" . +workspace/load)
-         ("SPC pl" . persp-load-state-from-file)
-         ("SPC pd" . +workspace/delete)
-         ("SPC <tab>d" . +workspace/delete)
-         ("SPC pr" . +workspace/rename)
-         ("SPC pj" . persp-switch)
-         ("SPC pn" . +workspace/quick-new)
-         ("SPC <tab>n" . +workspace/quick-new)
-         ("SPC po" . +workspace/other)
-         ("SPC b O" . @persp-kill-other-buffers)
-         ("SPC <tab> <tab>" . +workspace/display)
-         ("SPC b i" . (lambda (arg)
-                        (interactive "P")
-                        (with-persp-buffer-list () (ibuffer arg)))))
+  :general
+  <<persp-mode-map-general>>
   :init
   (add-hook 'window-setup-hook (lambda () (persp-mode 1)))
 	:custom
@@ -1658,9 +1733,167 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Folding (origami)
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package origami
-  :defer t
+  :hook ((org-mode dart-mode yaml-mode) . origami-mode)
+  :after evil)
+#+END_SRC
+** Folding (tree-sitter based) ts-fold
+*** Funtions for better folding depends on mode
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @fold-close-all ()
+  "Close all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-close-all))
+        (t (evil-close-folds))))
+
+(defun @fold-close ()
+  "Close the fold under the cursor."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-close))
+        (t (evil-close-fold))))
+
+
+(defun @fold-open-all ()
+  "Open all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-open-all))
+        (t (evil-open-folds))))
+
+(defun @fold-open ()
+  "Open the fold under the cursor."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-open))
+        (t (evil-open-fold))))
+
+(defun @fold-toggle-all ()
+  "Toggle all folds."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle-all))
+        (t (evil-toggle-fold))))
+
+(defun @fold-toggle ()
+  "Toggle fold at point."
+
+  (interactive)
+  (save-excursion 
+    (end-of-line)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
+        (t (evil-toggle-fold)))))
+
+
+(defun @fold-next ()
+  "Go to the next fold."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-next-fold))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-next))
+        (t (evil-next-fold))))
+
+(defun @fold-previous ()
+  "Go to the previous fold."
+
+  (interactive)
+  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-previous-fold))
+        ((bound-and-true-p ts-fold-mode) (ts-fold-previous))
+        (t (evil-previous-fold))))
+#+END_SRC
+*** Tsfold improved bindings (general)
+#+NAME: ts-fold-general-keybindings
+#+BEGIN_SRC emacs-lisp :results silent :tangle no :exports no
+(:keymaps 'override :states '(normal)
+          "zM" '@fold-close-all
+          "zm" '@fold-close
+          "zR" '@fold-open-all
+          "zr" '@fold-open
+          "zA" '@fold-toggle-all
+          "za" '@fold-toggle
+          "zj" '@fold-next
+          "zk" '@fold-previous)
+#+END_SRC
+*** Init hook
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @ts-fold-init ()
+  "Init ts-fold."
+  (interactive)
+  (when (and (bound-and-true-p tree-sitter-mode)
+             (member major-mode '(ng2-ts-mode
+                                  typescript-mode
+                                  js-mode
+                                  python-mode
+                                  html-mode
+                                  json-mode
+                                  go-mode
+                                  scss-mode
+                                  css-mode
+                                  bash-mode)))
+    (ts-fold-mode 1)))
+#+END_SRC
+
+*** Core package
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+(use-package ts-fold
+  :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :hook ((tree-sitter-mode
+          web-mode
+          ng2-html-mode
+          ng2-ts-mode
+          typescript-mode
+          js-mode
+          python-mode
+          html-mode
+          json-mode
+          go-mode
+          bash-mode
+          css-mode
+          scss-mode) . @ts-fold-init)
+  :general
+  <<ts-fold-general-keybindings>>
   :config
-  (global-origami-mode))
+  (add-to-list 'ts-fold-range-alist '(ng2-ts-mode . ((export_clause . ts-fold-range-seq)
+                                                     (statement_block . ts-fold-range-seq)
+                                                     (comment . ts-fold-range-c-like-comment))) t)
+
+  (add-to-list 'ts-fold-range-alist '(web-mode . (html-mode
+                                                  (element . ts-fold-range-html)
+                                                  (comment ts-fold-range-seq 1 -1))))
+
+  (add-to-list 'ts-fold-range-alist '(ng2-html-mode . (html-mode
+                                                       (element . ts-fold-range-html)
+                                                       (comment ts-fold-range-seq 1 -1))))
+  (add-to-list 'ts-fold-range-alist '(scss-mode . ((keyframe_block_list . ts-fold-range-seq)
+                                                   (block . ts-fold-range-seq)
+                                                   (comment . ts-fold-range-c-like-comment))) t)
+
+  ;; TODO: DOESN'T WORK for scss, needs another rules (check it later for custom pareser)
+  (add-to-list 'ts-fold-range-alist '(scss-mode . (css-mode
+                                                   (keyframe_block_list . ts-fold-range-seq)
+                                                   (block . ts-fold-range-seq)
+                                                   (comment . ts-fold-range-c-like-comment))))
+
+
+  (add-to-list 'ts-fold-foldable-node-alist '(ng2-ts-mode comment statement_block export_clause))
+  (add-to-list 'ts-fold-foldable-node-alist '(web-mode comment element))
+  (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
+  (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
+#+END_SRC
+*** Ts fold Indicators
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ts-fold-indicators
+  :after ts-fold
+  :straight (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :config
+  (setq ts-fold-indicators-fringe 'right-fringe)
+  (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
 #+END_SRC
 
 
@@ -1763,8 +1996,10 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (use-package prettier
   :defer t
   :bind (:map evil-normal-state-map
-         ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode))
+              ("\+p" . prettier-prettify))
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode)
+  :config
+  (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 #+END_SRC
 
 ** Flychek. Error checker
@@ -1789,9 +2024,12 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :init
   (global-flycheck-mode)
   :config
+  (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
+
   (flycheck-add-mode 'javascript-eslint 'web-mode)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode))
-
 #+END_SRC
 
 *** HOLD Flymake posframe
@@ -1814,6 +2052,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
   (autopair-global-mode))
 #+END_SRC
 ** AST. Tree sitter.
+*** Tree sitter package
 #+BEGIN_SRC emacs-lisp
 (use-package tree-sitter-langs
   :after spell-fu)
@@ -1827,14 +2066,16 @@ This need for correct highlighting of incorrect spell-fu faces."
   (tree-sitter-hl-mode))
 
 (use-package tree-sitter
-  :after tree-sitter-langs
+  :after (evil tree-sitter-langs)
   :hook ((go-mode
+          web-mode
           typescript-mode
           css-mode
           typescript-tsx-mode
           html-mode
           scss-mode
           ng2-mode
+          ng2-html-mode
           js-mode
           python-mode
           rust-mode
@@ -1842,6 +2083,7 @@ This need for correct highlighting of incorrect spell-fu faces."
           ng2-html-mode) . init-tree-sitter-hl-mode)
   :config
   (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
+  (push '(web-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -1869,9 +2111,12 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("<escape>" . (lambda () (interactive)
                               (company-cancel)
                               (evil-normal-state))))
+  :init
+  (setq lsp-completion-provider :capf)
   :config
   (setq company-idle-delay 0.2)
   (setq company-quick-access-modifier 'super)
+
   (setq company-show-quick-access t)
   (setq company-minimum-prefix-length 1)
   (setq company-dabbrev-char-regexp "[A-z:-]")
@@ -1890,37 +2135,47 @@ This need for correct highlighting of incorrect spell-fu faces."
 :header-args: :tangle no
 :END:
 
+**** Corfu package
 #+BEGIN_SRC emacs-lisp
-  (use-package corfu
-    ;; Optional customizations
-    :defer 2
-    :custom
-    (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
-    (corfu-auto t)                 ;; Enable auto completion
-    (corfu-commit-predicate nil)   ;; Do not commit selected candidates on next input
-    (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
-    (corfu-quit-no-match t)        ;; Automatically quit if there is no match
-    (corfu-auto-delay 0.1)
-    (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
+(use-package corfu
+  ;; Optional customizations
+  :defer 2
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  (corfu-commit-predicate t)   ;; Do not commit selected candidates on next input
+  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
+  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
+  (corfu-auto-delay 0.1)
+  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
+  (corfu-preselect-first t)
+  (corfu-auto-prefix 2)
+  (corfu-separator ?\s) 
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :general
 
-    ;; Optionally use TAB for cycling, default is `corfu-complete'.
-    :bind (:map corfu-map
-           ("TAB" . corfu-next)
-           ([tab] . corfu-next)
-           ("C-j" . corfu-next)
-           ("C-k" . corfu-previous)
-           ("S-TAB" . corfu-previous)
-           ([backtab] . corfu-previous)
-           :map evil-insert-state-map
-           ("C-x C-o" . completion-at-point)
-           ("C-SPC" . completion-at-point))
-    :init
-		(global-corfu-mode)
-    :config
-    (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-    (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-    (evil-make-overriding-map corfu-map))
+  (:keymaps 'corfu-map
+            "TAB" 'corfu-next
+            [tab] 'corfu-next
+            "C-j" 'corfu-next
+            "C-k" 'corfu-previous
+            "S-TAB" 'corfu-previous
+            "<return>" 'corfu-insert
+            "C-<return>" 'corfu-insert-seporator
+            [backtab] 'corfu-previous)
+  (:keymaps 'override
+            :map evil-insert-state-map
+            "C-x C-o" 'completion-at-point
+            "C-SPC" 'completion-at-point)
+  :config
+  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (evil-make-overriding-map corfu-map)
+  (global-corfu-mode))
 #+END_SRC
+
+#+RESULTS:
+: t
 
 Enable in minibuffer
 #+BEGIN_SRC emacs-lisp :results silent
@@ -2023,6 +2278,18 @@ Use company backends for corfu
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
 #+END_SRC
+**** Uninstall server
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @lsp/uninstall-server (dir)
+  "Delete a LSP server from `lsp-server-install-dir'."
+  (interactive
+   (list (read-directory-name "Uninstall LSP server: " lsp-server-install-dir nil t)))
+  (unless (file-directory-p dir)
+    (user-error "Couldn't find %S directory" dir))
+  (delete-directory dir 'recursive)
+  (message "Uninstalled %S" (file-name-nondirectory dir)))
+#+END_SRC
+
 
 *** Core package
 #+BEGIN_SRC emacs-lisp
@@ -2055,6 +2322,7 @@ Use company backends for corfu
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
+  ;; (lsp-completion-provider :none)
   (lsp-enable-on-type-formatting nil)
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
@@ -2063,7 +2331,7 @@ Use company backends for corfu
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   ;; (lsp-completion-provider :none)
-  (lsp-completion-provider :capf)
+  ;; (lsp-completion-provider :capf)
   ;; Disable bottom help info
   (lsp-signature-render-documentation nil)
   (lsp-signature-auto-activate nil)
@@ -2146,8 +2414,8 @@ Use company backends for corfu
     :hook (dart-mode . (lambda () (interactive)
                          (add-hook 'after-save-hook
                                    (lambda ()
-                                     (flutter-run-or-hot-reload)
-                                     ;; (flutter-hot-restart)
+                                     ;; (flutter-run-or-hot-reload)
+                                     (flutter-hot-restart)
                                      )
                                    t t)))
     :custom
@@ -2260,11 +2528,13 @@ Use company backends for corfu
               ("SPC d r" . dap-debug-recent)
               ("SPC d l" . dap-ui-locals)
               ("SPC d b" . dap-ui-breakpoints)
+              ("SPC d p" . dap-breakpoint-toggle)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
-              ("SPC d p" . (lambda () (interactive)
-                             (set-window-buffer nil (current-buffer))
-                             (dap-breakpoint-toggle)))
+              ;; TODO: REMOVE
+              ;; ("SPC d p" . (lambda () (interactive)
+              ;;                (set-window-buffer nil (current-buffer))
+              ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :init
   (dap-mode 1)
@@ -2272,6 +2542,10 @@ Use company backends for corfu
   (require 'dap-go)
   (require 'dap-node))
 #+END_SRC
+
+#+RESULTS:
+: dap-debug-edit-template
+
 * Editing
 ** Undo redo
 *** Undo mode
@@ -2370,9 +2644,9 @@ Package for quick editing/deleting brackets and bracket-likes symbols
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
-                                            (copilot-clear-overlay)))
+                                            (copilot-clear-overlay))))
   ;; (copilot-clear-overlay)) nil t)
-  )
+  ;; )
 #+END_SRC
 
 #+RESULTS:
@@ -2517,7 +2791,12 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
    "SPC g n" 'magit-todos-list))
 #+END_SRC
 
-** Gists
+** HOLD Gists
+Unused, cause support of key navigation is not so good? check
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp
 (use-package gist                       ;
   :defer t
@@ -2531,6 +2810,24 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
          :map evil-normal-state-map
          ("SPC g l g" . gist-list)))
 #+END_SRC
+** Gists 2
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package jist
+  :ensure t
+  :custom
+  (jist-github-token (getenv "GITHUB_TOKEN"))
+  :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC gcl" 'jist-commit
+            "SPC glg" 'jist-list
+            "SPC gpg" 'jist-refetch-gists)
+  (:keymaps 'jist-gist-list-mode-map
+            :states '(normal visual)
+            "<return>" 'jist-browse-gist)
+  )
+#+END_SRC
+
 ** Gitgutter
 #+BEGIN_SRC emacs-lisp
   (use-package git-gutter
@@ -2609,6 +2906,16 @@ Improved styles for git changes
               ("SPC g t" . git-timemachine)))
 #+END_SRC
 
+
+** Smerge
+#+BEGIN_SRC emacs-lisp :results silent
+(global-set-key (kbd "C-c l") 'smerge-keep-lower)
+(global-set-key (kbd "C-c u") 'smerge-keep-upper)
+(global-set-key (kbd "C-c a") 'smerge-keep-all)
+(global-set-key (kbd "C-c j") 'smerge-next)
+(global-set-key (kbd "C-c k") 'smerge-prev)
+ 
+#+END_SRC
 
 
 * Languages
@@ -2727,13 +3034,20 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package nodejs-repl
   :ensure t
-  :general 
+  :general
   (:states '(normal visual)
-    :keymaps 'override
+           :keymaps 'override
            "SPC rn" 'nodejs-repl)
+
+  (:states '(insert)
+           :keymaps 'nodejs-repl-mode-map
+           "C-j" 'comint-next-input
+           "C-k" 'comint-previous-input)
+
   :defer t
   :config
-  <<nodejs-repl-buffer-func>>)
+  <<nodejs-repl-buffer-func>>
+  (add-to-list 'display-buffer-alist '("^\\*nodejs\\*$" . (display-buffer-same-window))))
 #+END_SRC
 
 ** Golang
@@ -2954,16 +3268,22 @@ For install type ~npm install -g @volar/server~
   :defer t)
 #+END_SRC
 ** HTML
-#+BEGIN_SRC emacs-lisp
+*** Emmet. Quick tag expanding
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package emmet-mode
   :hook ((scss-mode . emmet-mode) (css-mode . emmet-mode) (ng2-html-mode . emmet-mode) (html-mode . emmet-mode))
+  :general 
+  (:keymaps 'override
+   :states 'insert
+   "s-e" 'emmet-expand-line)
   :defer t)
 #+END_SRC
+
+
 ** SCSS/CSS
 #+BEGIN_SRC emacs-lisp
   (use-package css-mode
     :defer 10
-    :hook ((css-mode . my-setup-tabnine) (scss-mode . my-setup-tabnine))
     :config
     (defun revert-buffer-no-confirm ()
       "Revert buffer without confirmation."
@@ -3094,6 +3414,8 @@ For install type ~npm install -g @volar/server~
   (:states '(normal visual)
            :keymaps 'org-mode-map
            "SPC dt" 'org-time-stamp-inactive
+           "SPC st" 'org-set-tags-command
+           "SPC mx" 'org-toggle-checkbox
            "<return>" '+org/dwim-at-point)
   (:keymaps 'org-read-date-minibuffer-local-map
             "C-s" 'org-goto-calendar)
@@ -3305,7 +3627,7 @@ One of the best Zettelkasten implementation
 
 #+RESULTS:
 : websocket
-** HOLD Visual roam ui nodes
+** HOLD Visual roam ui nodes                                      
 :PROPERTIES:
 :header-args: :tangle no
 :END:
@@ -3534,7 +3856,6 @@ Dependency
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package wakatime-ui
   :after wakatime-mode
-  :ensure t
   :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
@@ -3640,7 +3961,7 @@ Dependency
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
-  :init
+  :config
   (savehist-mode))
 
 ;; A few more useful configurations...
@@ -3716,6 +4037,7 @@ Dependency
                     "SPC *" (lambda () (interactive) (consult-ripgrep nil (thing-at-point 'symbol)))
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
+                    "SPC cm" 'consult-mark
                     "SPC fr" 'consult-recent-file
                     "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
 
@@ -3841,14 +4163,11 @@ Preview
         (embark-dwim)))))
 #+END_SRC
 
-** Vertico posframe
+** Vertico posframe                                               
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-*** HOLD Posframe
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+*** Posframe
 #+BEGIN_SRC emacs-lisp
         (use-package vertico-posframe
 
@@ -3859,11 +4178,7 @@ Preview
           (vertico-posframe-mode 1))
 #+END_SRC
 
-*** HOLD Mini frame
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
+*** Mini frame
 #+BEGIN_SRC emacs-lisp
   (use-package mini-fram
     :defer 2
@@ -3883,6 +4198,18 @@ Preview
   :init
   (all-the-icons-completion-mode))
 #+END_SRC
+** Fuzzy search
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package hotfuzz
+  :after vertico
+  :config
+  (add-to-list 'completion-styles 'hotfuzz))
+#+END_SRC
+
 
 * Emacs for everywhere
 ** PDF
@@ -3892,8 +4219,55 @@ Preview
   :hook (pdf-view-mode . pdf-view-themed-minor-mode))
 #+END_SRC
 
+** Pdf tools
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package pdf-tools
+  :ensure t
+  :defer t
+  :config
+  (pdf-tools-install))
+#+END_SRC
 
 
+
+** Browser
+*** HOLD Browser history from emacs                             :potential:
+Figure out how to open url from history. Look usefull
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package browse-hist
+  :ensure t
+  :general
+  (:keymaps '(normal visual)
+            :modes 'override
+            "SPC bh" 'browser-hist-search)
+  :custom
+  (browser-hist-default-browser 'brave)
+  :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
+#+END_SRC
+** GPT AI
+dependency
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package epc
+  :defer t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package chatgpt
+  :straight (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
+  :ensure t
+  :general
+  (:keymaps 'override
+            "s-d" 'chatgpt-query)
+  :init
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/")
+  :config
+   (require 'epc)
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+#+END_SRC
 
 
 * Playground
