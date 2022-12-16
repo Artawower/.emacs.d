@@ -401,6 +401,9 @@ If FORCE-P, delete without confirmation."
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
+(setq inhibit-splash-screen t)
+(setq inhibit-startup-message t)
+
 (use-package ns-auto-titlebar
   :config
   (when (eq system-type 'darwin) (ns-auto-titlebar-mode)))
@@ -441,78 +444,49 @@ If FORCE-P, delete without confirmation."
 
 (pixel-scroll-mode)
 
+(defun @correct-my-fringe (&optional ignore)
+  "Set fringes for current active window."
+  (interactive)
+  ;; (unless (eq fringe-mode '16)
+  ;;   (fringe-mode '16))
+(set-window-margins nil 2))
+
+
+(add-hook 'after-init-hook #'@correct-my-fringe)
+(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+
 (fringe-mode '16)
 
 (progn
   (set-frame-parameter (selected-frame) 'alpha '(95 . 95))
   (add-to-list 'default-frame-alist '(alpha . (95 . 95))))
 
-(defface bookmark-menu-heading
-  '((t :foreground "#7a88cf"
-       :background unspecified))
-  "Face for patching nano")
-
-(straight-use-package
- '(nano-emacs :type git :host github :repo "rougier/nano-emacs"))
-
-(use-package nano-theme-light)
-
-(use-package nano-theme-dark
+(use-package doom-themes
+  :ensure t
   :config
-  (scroll-bar-mode -1))
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+        doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  (load-theme 'doom-moonlight t)
 
-(use-package nano-faces
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
+  ;; Enable custom neotree theme (all-the-icons must be installed!)
+  (doom-themes-neotree-config)
+  ;; or for treemacs users
+  (setq doom-themes-treemacs-theme "doom-atom") ; use "doom-colors" for less minimal icon theme
+  (doom-themes-treemacs-config)
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config))
+
+(use-package doom-modeline
+  :defer t
+  :hook (after-init . doom-modeline-mode)
   :config
-  (nano-faces))
+  (setq doom-modeline-buffer-file-name-style 'file-name))
 
-(use-package nano-colors
-  :after nano-faces)
-
-(use-package nano-theme
-  :after nano-theme-dark
-  :config
-  (nano-theme)
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146))
-
-(use-package nano-modeline
-  :after nano-theme
-  :config
-  (setq nano-font-size 15)
-  (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 14")
-  (nano-modeline-default-mode)
-  (scroll-bar-mode -1))
-
-
-(use-package nano-splash
-  :after nano-theme)
-
-(use-package nano-help
-  :after nano-theme)
-
-(use-package nano-layout :config (scroll-bar-mode -1))
-
-;; (use-package nano-command
-;;    :config
-;;    (nano-command-mode))
-
-(defun nano-modeline-default-mode ()
-  (let ((buffer-name (format-mode-line "%b"))
-        (mode-name   (nano-mode-name))
-        (branch      (vc-branch))
-        (position    (format-mode-line "%l:%c")))
-    (nano-modeline-compose (nano-modeline-status)
-                           buffer-name
-                           (concat "(" mode-name
-                                   (when branch (concat ", " (propertize branch 'face 'italic)))
-                                   ")"
-                                   (when (and (boundp 'wakatime-current-session) wakatime-current-session)
-                                     (propertize
-                                      (format " [%s] " wakatime-current-session)
-                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic)))
-                                   )
-                           position)))
-
-
+(use-package autothemer
+  :defer t)
 
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
@@ -567,19 +541,21 @@ If FORCE-P, delete without confirmation."
 (use-package auto-dark
   :defer 5
   :config
-  (defun auto-dark--ns-set-theme (appearance)
-    "Set light/dark theme using emacs-plus ns-system-appearance.
-Argument APPEARANCE should be light or dark."
-    ;; (mapc #'disable-theme custom-enabled-themes)
-    (pcase appearance
-      ('dark
-       (nano-change-theme-dark)
-       (run-hooks 'auto-dark-dark-mode-hook))
-      ('light
-       (nano-change-theme-light)
-       (run-hooks 'auto-dark-light-mode-hook))))
-  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
-  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  ;; (defun auto-dark--ns-set-theme (appearance)
+  ;;     "Set light/dark theme using emacs-plus ns-system-appearance.
+  ;; Argument APPEARANCE should be light or dark."
+  ;;     ;; (mapc #'disable-theme custom-enabled-themes)
+  ;;     (pcase appearance
+  ;;       ('dark
+  ;;        (nano-change-theme-dark)
+  ;;        (run-hooks 'auto-dark-dark-mode-hook))
+  ;;       ('light
+  ;;        (nano-change-theme-light)
+  ;;        (run-hooks 'auto-dark-light-mode-hook))))
+  ;;   (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
+  ;;   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  (setq auto-dark-dark-theme 'doom-moonlight)
+  (setq auto-dark-light-theme 'doom-flatwhite)
   (auto-dark-mode))
 
 (menu-bar-mode -1)
@@ -630,6 +606,7 @@ Argument APPEARANCE should be light or dark."
    "s-<backspace>" 'evil-delete-back-to-indentation
    "C-<tab>" 'my-insert-tab
    "C-h C-m" 'describe-mode
+   "C-h C-f" 'describe-face
    "s-n" 'evil-buffer-new
    "C-x C-o" 'company-complete
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
@@ -1403,13 +1380,6 @@ new project directory.")
   (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
   (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
 
-(use-package ts-fold-indicators
-  :after ts-fold
-  :straight (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
-  :config
-  (setq ts-fold-indicators-fringe 'right-fringe)
-  (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
-
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
 (add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
 
@@ -1627,6 +1597,8 @@ This need for correct highlighting of incorrect spell-fu faces."
                     "gd" '@find-definition
                     "SPC la" 'lsp-execute-code-action
                     "SPC cr" 'lsp-rename)
+  :init
+  (setq lsp-headerline-breadcrumb-enable nil)
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
@@ -1785,6 +1757,15 @@ This need for correct highlighting of incorrect spell-fu faces."
                       (compilation-display-error)
                       (+select-window-by-name "*compilation.*")))
   :config
+  (defun display-buffer-from-compilation-p (_buffer-name _action)
+    (unless current-prefix-arg
+      (with-current-buffer (window-buffer)
+        (derived-mode-p 'compilation-mode))))
+  
+  (push '(display-buffer-from-compilation-p
+          display-buffer-use-some-window
+          (inhibit-same-window . nil))
+        display-buffer-alist)
   (@setup-compilation-errors))
 
 (use-package floobits
@@ -1808,14 +1789,23 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("SPC d p" . dap-breakpoint-toggle)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
+              ("SPC d w" . dap-ui-show-many-windows)
+              ("SPC d W" . dap-ui-hide-many-windows)
               ;; TODO: REMOVE
               ;; ("SPC d p" . (lambda () (interactive)
               ;;                (set-window-buffer nil (current-buffer))
               ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
-  :init
-  (dap-mode 1)
-  (setq dap-auto-configure-features '(sessions locals))
+  :config
+  (setq-default dap-ui-buffer-configurations
+                `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
+                  (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
+                  (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
+                  (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
+                  (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
+                  (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
+                  ))
+  (setq dap-auto-configure-features '(locals controls tooltip))
   (require 'dap-go)
   (require 'dap-node))
 
@@ -2960,7 +2950,7 @@ This need for correct highlighting of incorrect spell-fu faces."
    "C-;" 'embark-dwim        ;; good alternative: M-.
    "C-h B" 'embark-bindings)
   (:keymaps '(minibuffer-local-mode-map read--expression-map vertico-map)
-            ;; "C-SPC" '+vertico/embark-preview
+            "C-SPC" '+vertico/embark-preview
             ;; "C-SPC" 'consult-preview-at-point
             ;; "C-SPC" 'consult--buffer-preview
  						"C-u" 'evil-delete-back-to-indentation
@@ -2985,6 +2975,16 @@ This need for correct highlighting of incorrect spell-fu faces."
     (save-selected-window
       (let ((embark-quit-after-action nil))
         (embark-dwim)))))
+
+(use-package mini-frame
+  :defer 2
+  :config
+  (custom-set-variables
+   '(mini-frame-show-parameters
+     '((top . 10)
+       (width . 0.7)
+       (left . 0.5))))
+  (mini-frame-mode))
 
 (use-package all-the-icons-completion
   :init

@@ -571,6 +571,12 @@ Uncomment when u need to profile ;p
 #+BEGIN_SRC emacs-lisp :results silent
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 #+END_SRC
+** Disable default splash screen
+#+BEGIN_SRC emacs-lisp :results silent
+(setq inhibit-splash-screen t)
+(setq inhibit-startup-message t)
+#+END_SRC
+
 ** Titlebar color
 Very pretty titlebar for Mac os
 #+BEGIN_SRC emacs-lisp :results silent
@@ -637,6 +643,20 @@ Very pretty titlebar for Mac os
 #+BEGIN_SRC emacs-lisp :results silent
 (pixel-scroll-mode)
 #+END_SRC
+** Fringes
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @correct-my-fringe (&optional ignore)
+  "Set fringes for current active window."
+  (interactive)
+  ;; (unless (eq fringe-mode '16)
+  ;;   (fringe-mode '16))
+(set-window-margins nil 2))
+
+
+(add-hook 'after-init-hook #'@correct-my-fringe)
+(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+#+END_SRC
+
 
 * Theme
 ** Paddings
@@ -651,7 +671,12 @@ Very pretty titlebar for Mac os
   (add-to-list 'default-frame-alist '(alpha . (95 . 95))))
 #+END_SRC
 
-** Nano
+** HOLD Nano
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+Nano is pretty good theme. But has ton of bugs ;(
 *** Small patch for define face
 #+BEGIN_SRC emacs-lisp
 (defface bookmark-menu-heading
@@ -729,24 +754,40 @@ Patch for modeline for support mode-line-misc-info
                                    )
                            position)))
 #+END_SRC
+*** Nano theme switcher
+#+NAME: nano-theme-switcher
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun auto-dark--ns-set-theme (appearance)
+    "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+    ;; (mapc #'disable-theme custom-enabled-themes)
+    (pcase appearance
+      ('dark
+       (nano-change-theme-dark)
+       (run-hooks 'auto-dark-dark-mode-hook))
+      ('light
+       (nano-change-theme-light)
+       (run-hooks 'auto-dark-light-mode-hook))))
+  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
+  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+#+END_SRC
+
 *** Colors
 #+BEGIN_SRC emacs-lisp :results silent
 
 #+END_SRC
 
 
-** HOLD Doom emacs themes
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-#+BEGIN_SRC emacs-lisp
-  (use-package doom-themes
+** Doom emacs themes
+*** Theme
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package doom-themes
+  :ensure t
   :config
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-one t)
+  (load-theme 'doom-moonlight t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -758,6 +799,50 @@ Patch for modeline for support mode-line-misc-info
   ;; Corrects (and improves) org-mode's native fontification.
   (doom-themes-org-config))
 #+END_SRC
+*** Doom theme switcher
+#+NAME: doom-theme-switcher
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(setq auto-dark-dark-theme 'doom-moonlight)
+(setq auto-dark-light-theme 'doom-flatwhite)
+#+END_SRC
+
+*** Doom Modeline
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package doom-modeline
+  :defer t
+  :hook (after-init . doom-modeline-mode)
+  :config
+  (setq doom-modeline-buffer-file-name-style 'file-name))
+#+END_SRC
+** Catpuccini theme
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package autothemer
+  :defer t)
+#+END_SRC
+
+
+** HOLD Splash screen
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package splash-screen
+  :straight (:host github :repo "rougier/emacs-splash"))
+#+END_SRC
+
+** HOLD Dashboard
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package dashboard
+  :ensure t
+  :config
+  (dashboard-setup-startup-hook))
+#+END_SRC
+
 ** Fonts
 *** Default font
 #+BEGIN_SRC emacs-lisp
@@ -822,28 +907,15 @@ Patch for modeline for support mode-line-misc-info
 
 ** Theme switcher
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :noweb yes
 (use-package auto-dark
   :defer 5
   :config
-  (defun auto-dark--ns-set-theme (appearance)
-    "Set light/dark theme using emacs-plus ns-system-appearance.
-Argument APPEARANCE should be light or dark."
-    ;; (mapc #'disable-theme custom-enabled-themes)
-    (pcase appearance
-      ('dark
-       (nano-change-theme-dark)
-       (run-hooks 'auto-dark-dark-mode-hook))
-      ('light
-       (nano-change-theme-light)
-       (run-hooks 'auto-dark-light-mode-hook))))
-  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
-  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  ;; <<nano-theme-switcher>>
+  <<doom-theme-switcher>>
   (auto-dark-mode))
 #+END_SRC
 
-#+RESULTS:
-: t
 
 ** Disable menu bar mode and other stuff
 #+BEGIN_SRC emacs-lisp
@@ -909,6 +981,7 @@ Argument APPEARANCE should be light or dark."
  "s-<backspace>" 'evil-delete-back-to-indentation
  "C-<tab>" 'my-insert-tab
  "C-h C-m" 'describe-mode
+ "C-h C-f" 'describe-face
  "s-n" 'evil-buffer-new
  "C-x C-o" 'company-complete
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
@@ -1886,7 +1959,11 @@ This function also stolen from doom emacs. It provide functionality for automati
   (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
   (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
 #+END_SRC
-*** Ts fold Indicators
+*** HOLD Ts fold Indicators
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package ts-fold-indicators
   :after ts-fold
@@ -2319,6 +2396,8 @@ Use company backends for corfu
                     "gd" '@find-definition
                     "SPC la" 'lsp-execute-code-action
                     "SPC cr" 'lsp-rename)
+  :init
+  (setq lsp-headerline-breadcrumb-enable nil)
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
@@ -2487,8 +2566,22 @@ Use company backends for corfu
   (add-to-list 'compilation-error-regexp-alist-alist '(dart-analyze "\\([^ ]*\\.dart\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
 #+END_SRC
 
+*** Display compilation buffer
+By default ~compile-goto-error~ open new window. Its redundant.
+#+NAME: display-compilation-buffer
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun display-buffer-from-compilation-p (_buffer-name _action)
+  (unless current-prefix-arg
+    (with-current-buffer (window-buffer)
+      (derived-mode-p 'compilation-mode))))
+
+(push '(display-buffer-from-compilation-p
+        display-buffer-use-some-window
+        (inhibit-same-window . nil))
+      display-buffer-alist)
+#+END_SRC
 *** Compile package
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package compile
   :defer t
   :general
@@ -2501,6 +2594,7 @@ Use company backends for corfu
                       (compilation-display-error)
                       (+select-window-by-name "*compilation.*")))
   :config
+  <<display-compilation-buffer>>
   (@setup-compilation-errors))
 #+END_SRC
 
@@ -2511,7 +2605,8 @@ Use company backends for corfu
   :defer t)
 #+END_SRC
 
-** Debugger
+** Debugger. Dap
+
 #+BEGIN_SRC emacs-lisp
 (use-package dap-mode
   :defer t
@@ -2531,14 +2626,23 @@ Use company backends for corfu
               ("SPC d p" . dap-breakpoint-toggle)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
+              ("SPC d w" . dap-ui-show-many-windows)
+              ("SPC d W" . dap-ui-hide-many-windows)
               ;; TODO: REMOVE
               ;; ("SPC d p" . (lambda () (interactive)
               ;;                (set-window-buffer nil (current-buffer))
               ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
-  :init
-  (dap-mode 1)
-  (setq dap-auto-configure-features '(sessions locals))
+  :config
+  (setq-default dap-ui-buffer-configurations
+                `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
+                  (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
+                  (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
+                  (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
+                  (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
+                  (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
+                  ))
+  (setq dap-auto-configure-features '(locals controls tooltip))
   (require 'dap-go)
   (require 'dap-node))
 #+END_SRC
@@ -4131,7 +4235,7 @@ Dependency
    "C-;" 'embark-dwim        ;; good alternative: M-.
    "C-h B" 'embark-bindings)
   (:keymaps '(minibuffer-local-mode-map read--expression-map vertico-map)
-            ;; "C-SPC" '+vertico/embark-preview
+            "C-SPC" '+vertico/embark-preview
             ;; "C-SPC" 'consult-preview-at-point
             ;; "C-SPC" 'consult--buffer-preview
  						"C-u" 'evil-delete-back-to-indentation
@@ -4164,13 +4268,13 @@ Preview
 #+END_SRC
 
 ** Vertico posframe                                               
+*** HOLD Posframe
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-*** Posframe
 #+BEGIN_SRC emacs-lisp
         (use-package vertico-posframe
-
+          :ensure t
           :config
           (setq vertico-posframe-parameters
               '((left-fringe . 8)
@@ -4179,17 +4283,18 @@ Preview
 #+END_SRC
 
 *** Mini frame
-#+BEGIN_SRC emacs-lisp
-  (use-package mini-fram
-    :defer 2
-    :config
-    (custom-set-variables
-      '(mini-frame-show-parameters
-        '((top . 10)
-          (width . 0.7)
-          (left . 0.5))))
-    (mini-frame-mode)
-   )
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package mini-frame
+  :defer 2
+  :custom
+  (mini-frame-color-shift-step 10)
+  :config
+  (custom-set-variables
+   '(mini-frame-show-parameters
+     '((top . 10)
+       (width . 0.7)
+       (left . 0.5))))
+  (mini-frame-mode))
 #+END_SRC
 
 ** Icons
