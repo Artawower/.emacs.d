@@ -444,16 +444,17 @@ If FORCE-P, delete without confirmation."
 
 (pixel-scroll-mode)
 
-(defun @correct-my-fringe (&optional ignore)
-  "Set fringes for current active window."
-  (interactive)
-  ;; (unless (eq fringe-mode '16)
-  ;;   (fringe-mode '16))
-(set-window-margins nil 2))
+;; (defun @correct-my-fringe (&optional ignore)
+;;   "Set fringes for current active window."
+;;   (interactive)
+;;   ;; (unless (eq fringe-mode '16)
+;;   ;;   (fringe-mode '16))
+;; (set-window-margins nil 2))
 
 
-(add-hook 'after-init-hook #'@correct-my-fringe)
-(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+;; (add-hook 'after-init-hook #'@correct-my-fringe)
+;; (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+(set-window-margins (selected-window) 1 1)
 
 (fringe-mode '16)
 
@@ -487,6 +488,11 @@ If FORCE-P, delete without confirmation."
 
 (use-package autothemer
   :defer t)
+
+(use-package dashboard
+  ;; :ensure t
+  :config
+  (dashboard-setup-startup-hook))
 
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
 
@@ -608,6 +614,7 @@ If FORCE-P, delete without confirmation."
    "C-h C-m" 'describe-mode
    "C-h C-f" 'describe-face
    "s-n" 'evil-buffer-new
+   "s-P" 'xah-paste-from-register-1
    "C-x C-o" 'company-complete
    "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
   (general-define-key
@@ -898,12 +905,17 @@ If FORCE-P, delete without confirmation."
 
 (advice-add 'vterm-clear-scrollback :before #'@clear-term-history)
 
-(use-package vterm 
+(use-package vterm
   :defer 5
-  :general (:states '(normal visual)
-                    "SPC ov" 'vterm)
-  (:keymaps '(vterm-mode-map vterm-copy-map)
+  :general
+  (:states '(normal visual)
+           "SPC ov" 'vterm)
+  (:keymaps '(vterm-mode-map vterm-copy-mode-map)
             "C-u" 'vterm--self-insert)
+
+  (:keymaps '(vterm-mode-map vterm-copy-mode-map)
+            :states '(normal visual)
+            "SPC mc" 'vterm-copy-mode)
   :config
   (defun @clear-term-history ()
     "Clear terminal history inside vterm."
@@ -1894,7 +1906,8 @@ This need for correct highlighting of incorrect spell-fu faces."
    :modes (typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
    :post-insert-hooks (prettier-prettify lsp)
-   :msg-format-template "'🦄: %s'"))
+;; :msg-format-template "'🦄: %s'"
+   :msg-format-template "'✎: %s'"))
 
 (use-package auto-rename-tag
   :defer t
@@ -2602,11 +2615,16 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("<C-S-return>" . +org/insert-item-above))
   :straight (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
 
+(defun @apply-agenda-directory-url ()
+  "Upload agenda from nested dirs."
+  (interactive)
+  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
+                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
+
 (use-package org-agenda
   :defer t
   :config
-  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
-                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
+  (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
 
 (defun my-set-spellfu-faces ()
   "Set faces for correct spell-fu working"
@@ -2978,6 +2996,8 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package mini-frame
   :defer 2
+  :custom
+  (mini-frame-color-shift-step 10)
   :config
   (custom-set-variables
    '(mini-frame-show-parameters
@@ -3024,3 +3044,18 @@ This need for correct highlighting of incorrect spell-fu faces."
   :config
    (require 'epc)
   (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+
+(use-package pocket-reader
+  :general
+  (:keymaps 'pocket-reader-mode-map
+            :states '(normal visual)
+            "<return>" 'pocket-reader-open-in-external-browser
+            "s" 'pocket-reader-search
+            "d" 'pocket-reader-delete
+            "r" 'pocket-reader-refresh
+            "a" 'pocket-reader-add-link
+            "ta" 'pocket-reader-add-tags
+            "m" 'pocket-reader-more
+            "w" 'pocket-reader-copy-url
+            "tf" 'pocket-reader-tag-search)
+  :defer t)

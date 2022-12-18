@@ -645,16 +645,17 @@ Very pretty titlebar for Mac os
 #+END_SRC
 ** Fringes
 #+BEGIN_SRC emacs-lisp :results silent
-(defun @correct-my-fringe (&optional ignore)
-  "Set fringes for current active window."
-  (interactive)
-  ;; (unless (eq fringe-mode '16)
-  ;;   (fringe-mode '16))
-(set-window-margins nil 2))
+;; (defun @correct-my-fringe (&optional ignore)
+;;   "Set fringes for current active window."
+;;   (interactive)
+;;   ;; (unless (eq fringe-mode '16)
+;;   ;;   (fringe-mode '16))
+;; (set-window-margins nil 2))
 
 
-(add-hook 'after-init-hook #'@correct-my-fringe)
-(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+;; (add-hook 'after-init-hook #'@correct-my-fringe)
+;; (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+(set-window-margins (selected-window) 1 1)
 #+END_SRC
 
 
@@ -820,7 +821,6 @@ Argument APPEARANCE should be light or dark."
   :defer t)
 #+END_SRC
 
-
 ** HOLD Splash screen
 :PROPERTIES:
 :header-args: :tangle no
@@ -830,15 +830,17 @@ Argument APPEARANCE should be light or dark."
 (use-package splash-screen
   :straight (:host github :repo "rougier/emacs-splash"))
 #+END_SRC
-
 ** HOLD Dashboard
+Doesn't work with chemacs and emacs 29
+https://github.com/emacs-dashboard/emacs-dashboard/issues/421
+
 :PROPERTIES:
 :header-args: :tangle no
 :END:
 
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package dashboard
-  :ensure t
+  ;; :ensure t
   :config
   (dashboard-setup-startup-hook))
 #+END_SRC
@@ -983,6 +985,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "C-h C-m" 'describe-mode
  "C-h C-f" 'describe-face
  "s-n" 'evil-buffer-new
+ "s-P" 'xah-paste-from-register-1
  "C-x C-o" 'company-complete
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 #+END_SRC
@@ -1167,21 +1170,21 @@ Patch for recover visual line after shifting
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
-    (use-package evil-collection
-      :after evil
-      :config
-      (evil-collection-init)
-      (evil-commentary-mode))
+(use-package evil-collection
+  :after evil
+  :config
+  (evil-collection-init)
+  (evil-commentary-mode))
 
-    (use-package evil
-      :init
-      (setq evil-want-keybinding nil)
-      (evil-mode 1)
-      :config
-      <<evil-shifting-config>>
-      (evil-set-undo-system 'undo-redo)
-      (setq-default evil-kill-on-visual-paste nil)
-      (evil-mode 1))
+(use-package evil
+  :init
+  (setq evil-want-keybinding nil)
+  (evil-mode 1)
+  :config
+  <<evil-shifting-config>>
+  (evil-set-undo-system 'undo-redo)
+  (setq-default evil-kill-on-visual-paste nil)
+  (evil-mode 1))
 #+END_SRC
 
 #+RESULTS:
@@ -1384,12 +1387,17 @@ I didn't use treemacs anymore, but sometime
 
 *** Vterm
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
-(use-package vterm 
+(use-package vterm
   :defer 5
-  :general (:states '(normal visual)
-                    "SPC ov" 'vterm)
-  (:keymaps '(vterm-mode-map vterm-copy-map)
+  :general
+  (:states '(normal visual)
+           "SPC ov" 'vterm)
+  (:keymaps '(vterm-mode-map vterm-copy-mode-map)
             "C-u" 'vterm--self-insert)
+
+  (:keymaps '(vterm-mode-map vterm-copy-mode-map)
+            :states '(normal visual)
+            "SPC mc" 'vterm-copy-mode)
   :config
   <<vterm-function-clear>>)
 #+END_SRC
@@ -2819,7 +2827,8 @@ cause its simple, and it works in all cases.
    :modes (typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
    :post-insert-hooks (prettier-prettify lsp)
-   :msg-format-template "'🦄: %s'"))
+;; :msg-format-template "'🦄: %s'"
+   :msg-format-template "'✎: %s'"))
 #+END_SRC
 
 #+RESULTS:
@@ -3832,11 +3841,16 @@ Dependency
 : +org/insert-item-above
 ** Org agenda
 #+BEGIN_SRC emacs-lisp :results silent
+(defun @apply-agenda-directory-url ()
+  "Upload agenda from nested dirs."
+  (interactive)
+  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
+                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
+
 (use-package org-agenda
   :defer t
   :config
-  (setq org-agenda-files (append (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/" "\\.org$")
-                                 (directory-files-recursively "~/projects/pet" "\\.org$"))))
+  (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
 #+END_SRC
 
 
@@ -4334,7 +4348,6 @@ Preview
 #+END_SRC
 
 
-
 ** Browser
 *** HOLD Browser history from emacs                             :potential:
 Figure out how to open url from history. Look usefull
@@ -4372,6 +4385,24 @@ dependency
   :config
    (require 'epc)
   (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+#+END_SRC
+
+** Pocket
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package pocket-reader
+  :general
+  (:keymaps 'pocket-reader-mode-map
+            :states '(normal visual)
+            "<return>" 'pocket-reader-open-in-external-browser
+            "s" 'pocket-reader-search
+            "d" 'pocket-reader-delete
+            "r" 'pocket-reader-refresh
+            "a" 'pocket-reader-add-link
+            "ta" 'pocket-reader-add-tags
+            "m" 'pocket-reader-more
+            "w" 'pocket-reader-copy-url
+            "tf" 'pocket-reader-tag-search)
+  :defer t)
 #+END_SRC
 
 
