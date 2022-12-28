@@ -444,17 +444,19 @@ If FORCE-P, delete without confirmation."
 
 (pixel-scroll-mode)
 
-;; (defun @correct-my-fringe (&optional ignore)
-;;   "Set fringes for current active window."
-;;   (interactive)
-;;   ;; (unless (eq fringe-mode '16)
-;;   ;;   (fringe-mode '16))
-;; (set-window-margins nil 2))
+(defun @correct-my-fringe (&optional ignore)
+  "Set fringes for current active window."
+  (interactive)
+  (unless (eq fringe-mode '16)
+    (fringe-mode '16))
+;; (set-window-margins nil 2)
+)
 
 
-;; (add-hook 'after-init-hook #'@correct-my-fringe)
-;; (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
-(set-window-margins (selected-window) 1 1)
+(add-hook 'after-init-hook #'@correct-my-fringe)
+(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+;; (set-window-margins (selected-window) 1 1)
+;; (fringe-mode '(32 . 0))
 
 (fringe-mode '16)
 
@@ -485,9 +487,6 @@ If FORCE-P, delete without confirmation."
   :hook (after-init . doom-modeline-mode)
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
-
-(use-package autothemer
-  :defer t)
 
 (use-package dashboard
   ;; :ensure t
@@ -545,7 +544,7 @@ If FORCE-P, delete without confirmation."
   (setq nano-theme-light-var (not nano-theme-light-var)))
 
 (use-package auto-dark
-  :defer 5
+  :hook (auto-dark-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :config
   ;; (defun auto-dark--ns-set-theme (appearance)
   ;;     "Set light/dark theme using emacs-plus ns-system-appearance.
@@ -561,7 +560,7 @@ If FORCE-P, delete without confirmation."
   ;;   (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
   ;;   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
   (setq auto-dark-dark-theme 'doom-moonlight)
-  (setq auto-dark-light-theme 'doom-flatwhite)
+  (setq auto-dark-light-theme 'doom-one-light)
   (auto-dark-mode))
 
 (menu-bar-mode -1)
@@ -905,11 +904,25 @@ If FORCE-P, delete without confirmation."
 
 (advice-add 'vterm-clear-scrollback :before #'@clear-term-history)
 
+(defun @vterm-open-here ()
+  "Open nodejs repl inside current buffer!"
+  (interactive)
+  (let ((nodejs-repl-buffer-name "*vterm*"))
+    (if (get-buffer nodejs-repl-buffer-name)
+        (switch-to-buffer nodejs-repl-buffer-name)
+      (progn
+        (switch-to-buffer nodejs-repl-buffer-name)
+        (vterm)))))
+
 (use-package vterm
   :defer 5
+  :hook (vterm-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  :custom
+  (vterm-max-scrollback 5000)
   :general
   (:states '(normal visual)
-           "SPC ov" 'vterm)
+           "SPC ov" 'vterm
+           "SPC oV" '@vterm-open-here)
   (:keymaps '(vterm-mode-map vterm-copy-mode-map)
             "C-u" 'vterm--self-insert)
 
@@ -917,6 +930,7 @@ If FORCE-P, delete without confirmation."
             :states '(normal visual)
             "SPC mc" 'vterm-copy-mode)
   :config
+  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)
   (defun @clear-term-history ()
     "Clear terminal history inside vterm."
     (interactive)
@@ -1249,6 +1263,8 @@ new project directory.")
 
 (use-package no-littering)
 (setq backup-directory-alist `(("." . "~/.emacs-saves")))
+(setq auto-save-file-name-transforms
+      `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
 (setq backup-by-copying t)
 
 (use-package origami
@@ -1594,6 +1610,8 @@ This need for correct highlighting of incorrect spell-fu faces."
           vue-mode
           web-mode
           ng2-html-mode
+          ng2-mode
+          html-mode
           ng2-ts-mode
           python-mode
           dart-mode
@@ -1821,6 +1839,10 @@ This need for correct highlighting of incorrect spell-fu faces."
   (require 'dap-go)
   (require 'dap-node))
 
+(use-package rainbow-delimiters
+  :defer t
+  :hook (prog-mode . rainbow-delimiters-mode))
+
 (use-package undo-fu
   :defer t
   :bind (:map evil-normal-state-map
@@ -1880,11 +1902,15 @@ This need for correct highlighting of incorrect spell-fu faces."
   ;; )
 
 (use-package electric
+  :defer t
+  :hook ((prog-mode . electric-indent-local-mode)
+         (prog-mode . electric-pair-mode))
   :config
-  (setq electric-pair-preserve-balance t
+
+  (setq electric-pair-preserve-balance nil
         electric-pair-delete-adjacent-pairs nil
-        electric-pair-open-newline-between-pairs nil)
-  (electric-pair-mode 1))
+        electric-pair-skip-whitespace nil
+        electric-pair-open-newline-between-pairs t))
 
 (use-package turbo-log
   :defer t
@@ -2116,7 +2142,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . web-mode)
+  :hook (ng2-html-mode . (lsp-deferred web-mode))
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -2644,8 +2670,12 @@ This need for correct highlighting of incorrect spell-fu faces."
                                  font-lock-string-face
                                  lsp-face-highlight-textual
                                  default))
-  (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
-                                       '(diredfl-file-name))))
+  (if (boundp 'spell-fu-faces-exclude)
+    (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
+                                         '(diredfl-file-name)))
+    (setq spell-fu-faces-exclude
+          '(diredfl-file-name))))
+
 (use-package spell-fu
   :bind (:map evil-normal-state-map
               ("z g" . spell-fu-word-add))
@@ -2881,7 +2911,9 @@ This need for correct highlighting of incorrect spell-fu faces."
                     "SPC RET" 'consult-bookmark
                     "SPC cm" 'consult-mark
                     "SPC fr" 'consult-recent-file
-                    "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
+                    "SPC SPC" 'consult-projectile-find-file
+                    "M-n" (lambda () (interactive) (search-forward (car consult--line-history)))
+                    "M-p" (lambda () (interactive) (search-backward (car consult--line-history))))
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -2973,9 +3005,19 @@ This need for correct highlighting of incorrect spell-fu faces."
             ;; "C-SPC" 'consult--buffer-preview
  						"C-u" 'evil-delete-back-to-indentation
             "C-<return>" '+vertico/embark-preview)
-:init
-;; Optionally replace the key help with a completing-read interface
-(setq prefix-help-command #'embark-prefix-help-command))
+  :init
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+  ;; :config
+  ;; (defun strip-file-info (type string)
+  ;;   (cons type
+  ;;         (substring string
+  ;;                    (1+ (next-single-property-change
+  ;;                         (1+ (next-single-property-change 0 'face string))
+  ;;                         'face string)))))
+  ;; 
+  ;; (setf (alist-get 'consult-grep embark-transformer-alist) #'strip-file-info)
+)
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult
@@ -3001,7 +3043,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   :config
   (custom-set-variables
    '(mini-frame-show-parameters
-     '((top . 10)
+     '((top . 0.7)
        (width . 0.7)
        (left . 0.5))))
   (mini-frame-mode))
@@ -3009,6 +3051,12 @@ This need for correct highlighting of incorrect spell-fu faces."
 (use-package all-the-icons-completion
   :init
   (all-the-icons-completion-mode))
+
+(use-package wgrep
+  :general 
+  (:keymaps 'override
+            "C-c C-w" 'wgrep-change-to-wgrep-mode)
+  :after vertico)
 
 (use-package pdf-view
   :defer t
@@ -3047,6 +3095,9 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package pocket-reader
   :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC ep" 'pocket-reader)
   (:keymaps 'pocket-reader-mode-map
             :states '(normal visual)
             "<return>" 'pocket-reader-open-in-external-browser

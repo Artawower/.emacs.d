@@ -645,17 +645,19 @@ Very pretty titlebar for Mac os
 #+END_SRC
 ** Fringes
 #+BEGIN_SRC emacs-lisp :results silent
-;; (defun @correct-my-fringe (&optional ignore)
-;;   "Set fringes for current active window."
-;;   (interactive)
-;;   ;; (unless (eq fringe-mode '16)
-;;   ;;   (fringe-mode '16))
-;; (set-window-margins nil 2))
+(defun @correct-my-fringe (&optional ignore)
+  "Set fringes for current active window."
+  (interactive)
+  (unless (eq fringe-mode '16)
+    (fringe-mode '16))
+;; (set-window-margins nil 2)
+)
 
 
-;; (add-hook 'after-init-hook #'@correct-my-fringe)
-;; (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
-(set-window-margins (selected-window) 1 1)
+(add-hook 'after-init-hook #'@correct-my-fringe)
+(add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+;; (set-window-margins (selected-window) 1 1)
+;; (fringe-mode '(32 . 0))
 #+END_SRC
 
 
@@ -804,7 +806,7 @@ Argument APPEARANCE should be light or dark."
 #+NAME: doom-theme-switcher
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
 (setq auto-dark-dark-theme 'doom-moonlight)
-(setq auto-dark-light-theme 'doom-flatwhite)
+(setq auto-dark-light-theme 'doom-one-light)
 #+END_SRC
 
 *** Doom Modeline
@@ -815,7 +817,10 @@ Argument APPEARANCE should be light or dark."
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
-** Catpuccini theme
+** HOLD Catpuccini theme
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package autothemer
   :defer t)
@@ -909,15 +914,14 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 
 ** Theme switcher
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
-#+BEGIN_SRC emacs-lisp :noweb yes
+#+BEGIN_SRC emacs-lisp :noweb yes :results silent
 (use-package auto-dark
-  :defer 5
+  :hook (auto-dark-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :config
   ;; <<nano-theme-switcher>>
   <<doom-theme-switcher>>
   (auto-dark-mode))
 #+END_SRC
-
 
 ** Disable menu bar mode and other stuff
 #+BEGIN_SRC emacs-lisp
@@ -1371,6 +1375,7 @@ I didn't use treemacs anymore, but sometime
 
 ** Terminal
 *** Vterm functions
+Clear vterm history.
 #+NAME: vterm-function-clear
 #+BEGIN_SRC emacs-lisp :results silent
 (defun @clear-term-history ()
@@ -1385,13 +1390,31 @@ I didn't use treemacs anymore, but sometime
 (advice-add 'vterm-clear-scrollback :before #'@clear-term-history)
 #+END_SRC
 
+Open vterm in the current buffer. When vterm doesn't exist, create one.
+
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @vterm-open-here ()
+  "Open nodejs repl inside current buffer!"
+  (interactive)
+  (let ((nodejs-repl-buffer-name "*vterm*"))
+    (if (get-buffer nodejs-repl-buffer-name)
+        (switch-to-buffer nodejs-repl-buffer-name)
+      (progn
+        (switch-to-buffer nodejs-repl-buffer-name)
+        (vterm)))))
+#+END_SRC
+
 *** Vterm
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package vterm
   :defer 5
+  :hook (vterm-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  :custom
+  (vterm-max-scrollback 5000)
   :general
   (:states '(normal visual)
-           "SPC ov" 'vterm)
+           "SPC ov" 'vterm
+           "SPC oV" '@vterm-open-here)
   (:keymaps '(vterm-mode-map vterm-copy-mode-map)
             "C-u" 'vterm--self-insert)
 
@@ -1399,6 +1422,7 @@ I didn't use treemacs anymore, but sometime
             :states '(normal visual)
             "SPC mc" 'vterm-copy-mode)
   :config
+  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)
   <<vterm-function-clear>>)
 #+END_SRC
 
@@ -1808,6 +1832,8 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package no-littering)
 (setq backup-directory-alist `(("." . "~/.emacs-saves")))
+(setq auto-save-file-name-transforms
+      `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
 (setq backup-by-copying t)
 #+END_SRC
 
@@ -2077,7 +2103,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 #+END_SRC
 
 *** Prettier
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package prettier
   :defer t
   :bind (:map evil-normal-state-map
@@ -2086,6 +2112,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :config
   (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 #+END_SRC
+
 
 ** Flychek. Error checker
 *** HOLD Flymake
@@ -2389,6 +2416,8 @@ Use company backends for corfu
           vue-mode
           web-mode
           ng2-html-mode
+          ng2-mode
+          html-mode
           ng2-ts-mode
           python-mode
           dart-mode
@@ -2606,7 +2635,6 @@ By default ~compile-goto-error~ open new window. Its redundant.
   (@setup-compilation-errors))
 #+END_SRC
 
-
 ** Collaborations
 #+BEGIN_SRC emacs-lisp
 (use-package floobits
@@ -2657,6 +2685,13 @@ By default ~compile-goto-error~ open new window. Its redundant.
 
 #+RESULTS:
 : dap-debug-edit-template
+** Brackets
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package rainbow-delimiters
+  :defer t
+  :hook (prog-mode . rainbow-delimiters-mode))
+#+END_SRC
+
 
 * Editing
 ** Undo redo
@@ -2765,26 +2800,20 @@ Package for quick editing/deleting brackets and bracket-likes symbols
 
 ** Autopairs
 *** HOLD Electric
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package electric
   :defer t
-  ;; :bind (:map evil-insert-state-map
-  ;;        ("RET" . new-line-dwim))
+  :hook ((prog-mode . electric-indent-local-mode)
+         (prog-mode . electric-pair-mode))
   :config
 
-  (setq electric-pair-preserve-balance t
+  (setq electric-pair-preserve-balance nil
         electric-pair-delete-adjacent-pairs nil
-        electric-pair-open-newline-between-pairs nil)
-  (electric-indent-mode 1)
-  ;; https://github.com/hlissner/doom-emacs/issues/1739#issuecomment-529858261
-  ;; NOTE: fix indent after electric pair appear
-  ;; BUG not work properly
-  (electric-pair-mode 1))
+        electric-pair-skip-whitespace nil
+        electric-pair-open-newline-between-pairs t))
 #+END_SRC
+
+
 *** Autopair mode
 NOTE: this package is used instead of electric pair mode
 cause its simple, and it works in all cases.
@@ -2794,17 +2823,6 @@ cause its simple, and it works in all cases.
   :config
   (autopair-global-mode))
 #+END_SRC
-*** Electric pair
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package electric
-  :config
-  (setq electric-pair-preserve-balance t
-        electric-pair-delete-adjacent-pairs nil
-        electric-pair-open-newline-between-pairs nil)
-  (electric-pair-mode 1))
-#+END_SRC
-
-
 ** Quick log inserting
 #+BEGIN_SRC emacs-lisp
 (use-package turbo-log
@@ -3105,7 +3123,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . web-mode)
+  :hook (ng2-html-mode . (lsp-deferred web-mode))
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -3116,6 +3134,10 @@ Improved styles for git changes
           "/usr/local/lib/node_modules"
           "--stdio")))
 #+END_SRC
+
+#+RESULTS:
+| ng2-mode | init-tree-sitter-hl-mode | auto-rename-tag-mode | lsp-deferred | prettier-mode | @ts-fold-init |
+
 ** Js
 *** Main mode
 #+BEGIN_SRC emacs-lisp
@@ -3878,8 +3900,12 @@ Dependency
                                  font-lock-string-face
                                  lsp-face-highlight-textual
                                  default))
-  (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
-                                       '(diredfl-file-name))))
+  (if (boundp 'spell-fu-faces-exclude)
+    (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
+                                         '(diredfl-file-name)))
+    (setq spell-fu-faces-exclude
+          '(diredfl-file-name))))
+
 (use-package spell-fu
   :bind (:map evil-normal-state-map
               ("z g" . spell-fu-word-add))
@@ -4157,7 +4183,9 @@ Dependency
                     "SPC RET" 'consult-bookmark
                     "SPC cm" 'consult-mark
                     "SPC fr" 'consult-recent-file
-                    "SPC SPC" 'consult-projectile-find-file)           ;; needed by consult-line to detect isearch
+                    "SPC SPC" 'consult-projectile-find-file
+                    "M-n" (lambda () (interactive) (search-forward (car consult--line-history)))
+                    "M-p" (lambda () (interactive) (search-backward (car consult--line-history))))
 
   ;; Enable automatic preview at point in the *Completions* buffer. This is
   ;; relevant when you use the default completion UI. You may want to also
@@ -4240,7 +4268,32 @@ Dependency
 #+END_SRC
 
 ** Embark
-#+BEGIN_SRC emacs-lisp :results silent
+*** Embark functions
+Copy only content (not category)
+For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1afu1c/?utm_source=share&utm_medium=web2x&context=3
+#+NAME: embark-content-copy-function
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun copy-grep-results-as-kill (strings)
+  (embark-copy-as-kill
+   (mapcar (lambda (string)
+             (substring string
+                        (1+ (next-single-property-change
+                             (1+ (next-single-property-change 0 'face string))
+                             'face string))))
+           strings)))
+
+(add-to-list 'embark-multitarget-actions 'copy-grep-results-as-kill)
+
+(embark-define-keymap embark-consult-grep-map
+  "Keymap for actions for consult-grep results."
+  ("w" copy-grep-results-as-kill))
+
+(setf (alist-get 'consult-grep embark-keymap-alist) 'embark-consult-grep-map)
+#+END_SRC
+
+
+*** Embark package
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package embark
   :custom
   (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
@@ -4254,9 +4307,11 @@ Dependency
             ;; "C-SPC" 'consult--buffer-preview
  						"C-u" 'evil-delete-back-to-indentation
             "C-<return>" '+vertico/embark-preview)
-:init
-;; Optionally replace the key help with a completing-read interface
-(setq prefix-help-command #'embark-prefix-help-command))
+  :init
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+  :config
+  <<embark-content-copy-function>>)
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult
@@ -4280,6 +4335,7 @@ Preview
       (let ((embark-quit-after-action nil))
         (embark-dwim)))))
 #+END_SRC
+
 
 ** Vertico posframe                                               
 *** HOLD Posframe
@@ -4305,7 +4361,7 @@ Preview
   :config
   (custom-set-variables
    '(mini-frame-show-parameters
-     '((top . 10)
+     '((top . 0.7)
        (width . 0.7)
        (left . 0.5))))
   (mini-frame-mode))
@@ -4327,6 +4383,15 @@ Preview
   :after vertico
   :config
   (add-to-list 'completion-styles 'hotfuzz))
+#+END_SRC
+
+** Bulk grep operation
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package wgrep
+  :general 
+  (:keymaps 'override
+            "C-c C-w" 'wgrep-change-to-wgrep-mode)
+  :after vertico)
 #+END_SRC
 
 
@@ -4391,6 +4456,9 @@ dependency
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package pocket-reader
   :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "SPC ep" 'pocket-reader)
   (:keymaps 'pocket-reader-mode-map
             :states '(normal visual)
             "<return>" 'pocket-reader-open-in-external-browser
@@ -4408,4 +4476,8 @@ dependency
 
 * Playground
 TODO: make it persistent
+
+
+
+
 
