@@ -1481,7 +1481,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode)
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode) . prettier-mode)
   :config
   (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 
@@ -1609,8 +1609,6 @@ This need for correct highlighting of incorrect spell-fu faces."
           typescript-mode
           vue-mode
           web-mode
-          ng2-html-mode
-          ng2-mode
           html-mode
           ng2-ts-mode
           python-mode
@@ -1640,6 +1638,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
+  (lsp-disabled-clients '(html-ls))
   ;; (lsp-completion-provider :none)
   ;; (lsp-completion-provider :capf)
   ;; Disable bottom help info
@@ -1679,7 +1678,7 @@ This need for correct highlighting of incorrect spell-fu faces."
         lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
         lsp-pyls-plugins-flake8-enabled nil)
 
-  (setq lsp-disabled-clients '(html html-ls))
+  
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
@@ -1690,11 +1689,16 @@ This need for correct highlighting of incorrect spell-fu faces."
   ;;             completion-category-defaults nil))
   ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
   (@setup-compilation-errors)
+  (setq lsp-disabled-clients '(html-ls))
   (setq lsp-eldoc-hook nil))
 
 (use-package lsp-yaml
   :defer t
   :hook (yaml-mode . lsp-mode))
+
+(use-package yaml-pro
+  :defer t
+  :hook (yaml-mode . yaml-pro-mode))
 
 (use-package lsp-ui
   :after lsp-mode
@@ -2142,7 +2146,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . (lsp-deferred web-mode))
+  :hook (ng2-html-mode . lsp-deferred)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -2269,7 +2273,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (setq pipenv-projectile-after-switch-function #'pipenv-projectile-after-switch-extended))
 
 (use-package lsp-volar
-  :after lsp-mode)
+  :defer t)
 
 (use-package web-mode
   :defer t
@@ -3008,16 +3012,23 @@ This need for correct highlighting of incorrect spell-fu faces."
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
-  ;; :config
-  ;; (defun strip-file-info (type string)
-  ;;   (cons type
-  ;;         (substring string
-  ;;                    (1+ (next-single-property-change
-  ;;                         (1+ (next-single-property-change 0 'face string))
-  ;;                         'face string)))))
-  ;; 
-  ;; (setf (alist-get 'consult-grep embark-transformer-alist) #'strip-file-info)
-)
+  :config
+  (defun copy-grep-results-as-kill (strings)
+    (embark-copy-as-kill
+     (mapcar (lambda (string)
+               (substring string
+                          (1+ (next-single-property-change
+                               (1+ (next-single-property-change 0 'face string))
+                               'face string))))
+             strings)))
+  
+  (add-to-list 'embark-multitarget-actions 'copy-grep-results-as-kill)
+  
+  (embark-define-keymap embark-consult-grep-map
+    "Keymap for actions for consult-grep results."
+    ("w" copy-grep-results-as-kill))
+  
+  (setf (alist-get 'consult-grep embark-keymap-alist) 'embark-consult-grep-map))
 
 ;; Consult users will also want the embark-consult package.
 (use-package embark-consult

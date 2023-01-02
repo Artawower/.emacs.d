@@ -809,6 +809,39 @@ Argument APPEARANCE should be light or dark."
 (setq auto-dark-light-theme 'doom-one-light)
 #+END_SRC
 
+*** Lambda modeline
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package lambda-line
+:ensure t
+  :straight (:type git :host github :repo "lambda-emacs/lambda-line") 
+  :custom
+  (lambda-line-icon-time t) ;; requires ClockFace font (see below)
+  (lambda-line-clockface-update-fontset "ClockFaceRect") ;; set clock icon
+  (lambda-line-position 'top) ;; Set position of status-line 
+  (lambda-line-abbrev t) ;; abbreviate major modes
+  (lambda-line-hspace "  ")  ;; add some cushion
+  (lambda-line-prefix t) ;; use a prefix symbol
+  (lambda-line-prefix-padding nil) ;; no extra space for prefix 
+  (lambda-line-status-invert nil)  ;; no invert colors
+  (lambda-line-gui-ro-symbol  " ⨂") ;; symbols
+  (lambda-line-gui-mod-symbol " ⬤") 
+  (lambda-line-gui-rw-symbol  " ◯") 
+  (lambda-line-space-top +.50)  ;; padding on top and bottom of line
+  (lambda-line-space-bottom -.50)
+  (lambda-line-symbol-position 0.1) ;; adjust the vertical placement of symbol
+  :config
+  ;; activate lambda-line 
+  (lambda-line-mode) 
+  ;; set divider line in footer
+  (when (eq lambda-line-position 'top)
+    (setq-default mode-line-format (list "%_"))
+    (setq mode-line-format (list "%_"))))
+#+END_SRC
+
 *** Doom Modeline
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package doom-modeline
@@ -2108,7 +2141,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode ng2-html-mode html-mode web-mode) . prettier-mode)
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode) . prettier-mode)
   :config
   (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 #+END_SRC
@@ -2415,8 +2448,6 @@ Use company backends for corfu
           typescript-mode
           vue-mode
           web-mode
-          ng2-html-mode
-          ng2-mode
           html-mode
           ng2-ts-mode
           python-mode
@@ -2446,6 +2477,7 @@ Use company backends for corfu
   (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
+  (lsp-disabled-clients '(html-ls))
   ;; (lsp-completion-provider :none)
   ;; (lsp-completion-provider :capf)
   ;; Disable bottom help info
@@ -2485,7 +2517,7 @@ Use company backends for corfu
         lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
         lsp-pyls-plugins-flake8-enabled nil)
 
-  (setq lsp-disabled-clients '(html html-ls))
+  
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
@@ -2496,19 +2528,27 @@ Use company backends for corfu
   ;;             completion-category-defaults nil))
   ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
   (@setup-compilation-errors)
+  (setq lsp-disabled-clients '(html-ls))
   (setq lsp-eldoc-hook nil))
 #+END_SRC
 
 #+RESULTS:
 
 *** YAML
+**** LSP
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-yaml
   :defer t
   :hook (yaml-mode . lsp-mode))
 #+END_SRC
 
-****
+**** YAML PRO
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package yaml-pro
+  :defer t
+  :hook (yaml-mode . yaml-pro-mode))
+#+END_SRC
+
 *** LSP UI
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-ui
@@ -3123,7 +3163,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . (lsp-deferred web-mode))
+  :hook (ng2-html-mode . lsp-deferred)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -3374,7 +3414,7 @@ I don't remember why I need this code. Currently commented.
 For install type ~npm install -g @volar/server~
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-volar
-  :after lsp-mode)
+  :defer t)
 #+END_SRC
 ** WEB development
 #+BEGIN_SRC emacs-lisp
@@ -3533,6 +3573,12 @@ For install type ~npm install -g @volar/server~
 : t
 
 * Org mode
+** Publishing
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ox-gfm
+  :defer t)
+#+END_SRC
+
 ** Org package
 #+BEGIN_SRC emacs-lisp
 (use-package org
