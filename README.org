@@ -660,8 +660,17 @@ Very pretty titlebar for Mac os
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
 
-
 * Theme
+** Functions
+*** Hook on theme changed
+#+BEGIN_SRC emacs-lisp :results silent
+ (defvar after-load-theme-hook nil
+    "Hook run after a color theme is loaded using `load-theme'.")
+  (defadvice load-theme (after run-after-load-theme-hook activate)
+    "Run `after-load-theme-hook'."
+    (run-hooks 'after-load-theme-hook))
+#+END_SRC
+
 ** Paddings
 #+BEGIN_SRC emacs-lisp
 (fringe-mode '16)
@@ -779,7 +788,6 @@ Argument APPEARANCE should be light or dark."
 #+BEGIN_SRC emacs-lisp :results silent
 
 #+END_SRC
-
 
 ** Doom emacs themes
 *** Theme
@@ -946,12 +954,20 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 : nano-change-theme
 
 ** Theme switcher
+Function for setting terminal color after theme switch
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @set-vterm-autocomplete-color () 
+  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary))
+#+END_SRC
+
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
 #+BEGIN_SRC emacs-lisp :noweb yes :results silent
 (use-package auto-dark
-  :hook (auto-dark-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :config
   ;; <<nano-theme-switcher>>
+  (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
+  (add-hook 'auto-dark-light-mode-hook #'@set-vterm-autocomplete-color)
   <<doom-theme-switcher>>
   (auto-dark-mode))
 #+END_SRC
@@ -1188,18 +1204,18 @@ Override function for auto-dark mode for applying function for nano theme changi
 Patch for recover visual line after shifting
 #+NAME: evil-shifting-config
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
-(define-key evil-visual-state-map (kbd ">") 'djoyner/evil-shift-right-visual)
-(define-key evil-visual-state-map (kbd "<") 'djoyner/evil-shift-left-visual)
-(define-key evil-visual-state-map [tab] 'djoyner/evil-shift-right-visual)
-(define-key evil-visual-state-map [S-tab] 'djoyner/evil-shift-left-visual)
+(define-key evil-visual-state-map (kbd ">") '@evil-shift-right-visual)
+(define-key evil-visual-state-map (kbd "<") '@evil-shift-left-visual)
+(define-key evil-visual-state-map [tab] '@evil-shift-right-visual)
+(define-key evil-visual-state-map [S-tab] '@evil-shift-left-visual)
 
-(defun djoyner/evil-shift-left-visual ()
+(defun @evil-shift-left-visual ()
   (interactive)
   (evil-shift-left (region-beginning) (region-end))
   (evil-normal-state)
   (evil-visual-restore))
 
-(defun djoyner/evil-shift-right-visual ()
+(defun @evil-shift-right-visual ()
   (interactive)
   (evil-shift-right (region-beginning) (region-end))
   (evil-normal-state)
@@ -1304,7 +1320,6 @@ Bookmark for navigation inside file
             "SPC rv" 'binky-binky)
   :hook (after-init-hook . binky-mode))
 #+END_SRC
-
 
 * Common emacs packages
 ** Files
@@ -2146,7 +2161,6 @@ representing the time of the last `persistent-scratch-new-backup' call."
   (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
 #+END_SRC
 
-
 ** Flychek. Error checker
 *** HOLD Flymake
 :PROPERTIES:
@@ -2244,6 +2258,10 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 ** Autocomplete
 *** Company mode
+# :PROPERTIES:
+# :header-args: :tangle no
+# :END:
+
 **** Company package
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package company
@@ -2316,6 +2334,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
   (evil-make-overriding-map corfu-map)
+  (setq lsp-completion-provider :corfu)
+
   (global-corfu-mode))
 #+END_SRC
 
@@ -2435,7 +2455,6 @@ Use company backends for corfu
   (message "Uninstalled %S" (file-name-nondirectory dir)))
 #+END_SRC
 
-
 *** Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp
@@ -2458,6 +2477,7 @@ Use company backends for corfu
                     "SPC fn" 'flycheck-next-error
                     "gi" 'p-goto-implementation
                     "SPC la" 'lsp-execute-code-action
+                    "SPC im" 'lsp-ui-imenu
                     "SPC lr" 'lsp-find-references
                     "SPC lw" 'lsp-restart-workspace
                     "SPC rl" 'lsp
@@ -2474,7 +2494,8 @@ Use company backends for corfu
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
   (lsp-modeline-diagnostics-scope :workspace)
-  (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  ;; (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  (lsp-clients-typescript-server-args '("--stdio"))
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   (lsp-disabled-clients '(html-ls))
@@ -2732,7 +2753,6 @@ By default ~compile-goto-error~ open new window. Its redundant.
   :hook (prog-mode . rainbow-delimiters-mode))
 #+END_SRC
 
-
 * Editing
 ** Undo redo
 *** Undo mode
@@ -2907,6 +2927,19 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 #+END_SRC
+** Macros
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package elmacro
+  :straight (:host github :repo "artawower/elmacro.el")
+  :ensure t
+  :defer t
+  :general (:keymaps 'override
+                     :states 'normal
+                     "SPC me" 'elmacro-execute-macros
+                     "SPC ma" 'elmacro-name-last-kbd-macro))
+#+END_SRC
+
+
 * GIT
 ** Magit
 #+BEGIN_SRC emacs-lisp :results silent
@@ -3088,7 +3121,6 @@ Improved styles for git changes
  
 #+END_SRC
 
-
 * Languages
 ** Emacs lisp mode (elisp)
 *** Paren mode
@@ -3144,6 +3176,13 @@ Improved styles for git changes
 #+END_SRC
 
 ** Typescript
+*** Jest
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package jest
+  :defer t)
+#+END_SRC
+
+*** Typescript package
 #+BEGIN_SRC emacs-lisp :results silent
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
@@ -3919,6 +3958,14 @@ Dependency
   :defer t
   :config
   (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
+#+END_SRC
+
+** Table of contents
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package org-make-toc
+  :after org
+  :bind (:map org-mode-map
+              ("C-c g" . org-make-toc)))
 #+END_SRC
 
 

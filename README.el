@@ -458,6 +458,12 @@ If FORCE-P, delete without confirmation."
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 
+(defvar after-load-theme-hook nil
+   "Hook run after a color theme is loaded using `load-theme'.")
+ (defadvice load-theme (after run-after-load-theme-hook activate)
+   "Run `after-load-theme-hook'."
+   (run-hooks 'after-load-theme-hook))
+
 (fringe-mode '16)
 
 (progn
@@ -543,8 +549,11 @@ If FORCE-P, delete without confirmation."
   (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
   (setq nano-theme-light-var (not nano-theme-light-var)))
 
+(defun @set-vterm-autocomplete-color () 
+  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary))
+
 (use-package auto-dark
-  :hook (auto-dark-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :config
   ;; (defun auto-dark--ns-set-theme (appearance)
   ;;     "Set light/dark theme using emacs-plus ns-system-appearance.
@@ -559,6 +568,8 @@ If FORCE-P, delete without confirmation."
   ;;        (run-hooks 'auto-dark-light-mode-hook))))
   ;;   (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
   ;;   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+  (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
+  (add-hook 'auto-dark-light-mode-hook #'@set-vterm-autocomplete-color)
   (setq auto-dark-dark-theme 'doom-moonlight)
   (setq auto-dark-light-theme 'doom-one-light)
   (auto-dark-mode))
@@ -744,18 +755,18 @@ If FORCE-P, delete without confirmation."
   (setq evil-want-keybinding nil)
   (evil-mode 1)
   :config
-  (define-key evil-visual-state-map (kbd ">") 'djoyner/evil-shift-right-visual)
-  (define-key evil-visual-state-map (kbd "<") 'djoyner/evil-shift-left-visual)
-  (define-key evil-visual-state-map [tab] 'djoyner/evil-shift-right-visual)
-  (define-key evil-visual-state-map [S-tab] 'djoyner/evil-shift-left-visual)
+  (define-key evil-visual-state-map (kbd ">") '@evil-shift-right-visual)
+  (define-key evil-visual-state-map (kbd "<") '@evil-shift-left-visual)
+  (define-key evil-visual-state-map [tab] '@evil-shift-right-visual)
+  (define-key evil-visual-state-map [S-tab] '@evil-shift-left-visual)
   
-  (defun djoyner/evil-shift-left-visual ()
+  (defun @evil-shift-left-visual ()
     (interactive)
     (evil-shift-left (region-beginning) (region-end))
     (evil-normal-state)
     (evil-visual-restore))
   
-  (defun djoyner/evil-shift-right-visual ()
+  (defun @evil-shift-right-visual ()
     (interactive)
     (evil-shift-right (region-beginning) (region-end))
     (evil-normal-state)
@@ -1619,6 +1630,7 @@ This need for correct highlighting of incorrect spell-fu faces."
                     "SPC fn" 'flycheck-next-error
                     "gi" 'p-goto-implementation
                     "SPC la" 'lsp-execute-code-action
+                    "SPC im" 'lsp-ui-imenu
                     "SPC lr" 'lsp-find-references
                     "SPC lw" 'lsp-restart-workspace
                     "SPC rl" 'lsp
@@ -1635,7 +1647,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
   (lsp-modeline-diagnostics-scope :workspace)
-  (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  ;; (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  (lsp-clients-typescript-server-args '("--stdio"))
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   (lsp-disabled-clients '(html-ls))
@@ -1949,6 +1962,15 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 
+(use-package elmacro
+  :straight (:host github :repo "artawower/elmacro.el")
+  :ensure t
+  :defer t
+  :general (:keymaps 'override
+                     :states 'normal
+                     "SPC me" 'elmacro-execute-macros
+                     "SPC ma" 'elmacro-name-last-kbd-macro))
+
 (use-package magit
   :defer t
   :general
@@ -2132,6 +2154,9 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t)
 
 (use-package cider
+  :defer t)
+
+(use-package jest
   :defer t)
 
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
@@ -2380,6 +2405,9 @@ This need for correct highlighting of incorrect spell-fu faces."
   (let ((credential (auth-source-user-and-password "api.github.com")))
     (setq grip-github-user (car credential)
           grip-github-password (cadr credential))))
+
+(use-package ox-gfm
+  :defer t)
 
 (use-package org
   :mode (("\\.org$" . org-mode))
@@ -2655,6 +2683,11 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :config
   (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
+
+(use-package org-make-toc
+  :after org
+  :bind (:map org-mode-map
+              ("C-c g" . org-make-toc)))
 
 (defun my-set-spellfu-faces ()
   "Set faces for correct spell-fu working"
