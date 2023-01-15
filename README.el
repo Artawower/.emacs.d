@@ -38,6 +38,11 @@
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 
+(use-package fnhh
+  :straight (:type git :host github :repo "a13/fnhh")
+  :config
+  (fnhh-mode 1))
+
 ;; Change backup folders
 (setq backup-directory-alist '(("." . "/Users/darkawower/tmp/emacs-backups")))
 
@@ -198,6 +203,28 @@ list is returned as-is."
      (lambda (window)
        (string-match-p regexp (buffer-name (window-buffer window))))
      (window-list-1 nil 0 t)))))
+
+(defun @change-buffer (change-buffer)
+  "Call CHANGE-BUFFER until current buffer is not in `my-skippable-buffers'."
+  (let ((initial (current-buffer)))
+    (funcall change-buffer)
+    (let ((first-change (current-buffer)))
+      (catch 'loop
+        (while (string-prefix-p "*" (buffer-name))
+          (funcall change-buffer)
+          (when (eq (current-buffer) first-change)
+            (switch-to-buffer initial)
+            (throw 'loop t)))))))
+
+(defun @next-buffer ()
+  "Variant of `next-buffer' that skips `my-skippable-buffers'."
+  (interactive)
+  (@change-buffer 'next-buffer))
+
+(defun @previous-buffer ()
+  "Variant of `previous-buffer' that skips `my-skippable-buffers'."
+  (interactive)
+  (@change-buffer 'previous-buffer))
 
 (defun my-remove-cr (&optional begin end)
   "Remove line prefixes ending with carriage-return.
@@ -681,7 +708,7 @@ If FORCE-P, delete without confirmation."
     "=" 'evil-record-macro
     "-" 'evil-execute-macro
     "0" 'my-toggle-default-browser
-    "h" 'lsp-ui-doc-show
+    "h" 'lsp-ui-doc-toggle
     "e" 'lsp-treemacs-errors-list
     "l" 'lsp-execute-code-action
     "r" 'treemacs-select-window
@@ -694,6 +721,7 @@ If FORCE-P, delete without confirmation."
    "tr" 'read-only-mode
    "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
    "hm" 'describe-mode
+   "mox" 'execute-extended-command
    "bI" 'ibuffer
    "vtt" 'my-toggle-transparency
    "fD" '@delete-this-file
@@ -714,10 +742,10 @@ If FORCE-P, delete without confirmation."
    "wv" 'evil-window-vsplit
    "ws" 'evil-window-split
    ;; ;; Buffers
-   "b ]" 'next-buffer
-   "b [" 'previous-buffer
-   "]" 'next-buffer
-   "[" 'previous-buffer
+   "b ]" '@next-buffer
+   "b [" '@previous-buffer
+   "]" '@next-buffer
+   "[" '@previous-buffer
    "." 'find-file
    "hv" 'describe-variable
    "hf" 'describe-function
@@ -1064,6 +1092,7 @@ new project directory.")
   :after workgroups
   :general
   (:keymaps 'override
+  :states '(normal visual insert)
             "s-1" '+workspace/switch-to-0
             "s-2" '+workspace/switch-to-1
             "s-3" '+workspace/switch-to-2
@@ -1492,9 +1521,10 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode) . prettier-mode)
-  :config
-  (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
+  ;; :config
+  ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
+)
 
 (use-package flycheck
   :bind (:map evil-normal-state-map
@@ -1597,7 +1627,8 @@ This need for correct highlighting of incorrect spell-fu faces."
 (defun @find-definition ()
   "Find lsp definition when lsp exist and enabled, or find evil definition."
   (interactive)
-  (cond ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
+  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
+        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
 
@@ -1714,7 +1745,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   :hook (yaml-mode . yaml-pro-mode))
 
 (use-package lsp-ui
-  :after lsp-mode
   :hook (lsp-mode . lsp-ui-mode)
   :config
   (setq lsp-ui-sideline-diagnostic-max-line-length 100
@@ -1758,7 +1788,8 @@ This need for correct highlighting of incorrect spell-fu faces."
 (add-to-list 'display-buffer-alist '("^\\*compilation\\*$" . (display-buffer-at-bottom)))
 
 (defun @setup-compilation-errors ()
-      (setq compilation-scroll-output t)
+  (interactive)
+  (setq compilation-scroll-output t)
   (setq compilation-error-regexp-alist '())
   (setq compilation-error-regexp-alist-alist '())
 
@@ -1884,39 +1915,20 @@ This need for correct highlighting of incorrect spell-fu faces."
             "s-l" 'copilot-accept-completion
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
-  ;; :custom
-  ;; (copilot-idle-delay 0.5)
+  :custom
+  (copilot-idle-delay 0.2)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
   (copilot-diagnose)
-
-  (defun copilot--preserve-positions ()
-    (setq copilot--previous-point (point))
-    (setq copilot--previous-window-width (blamer--real-window-width)))
-
-  (defun copilot--positions-changed-p ()
-    (or (not (equal (point)  copilot--previous-point))
-        (not (equal (window-width) copilot--previous-window-width))))
-
-
-  (defun copilot--rerender ()
-    (when-let ((copilot--changed (copilot--positions-changed-p)))
-      (copilot-clear-overlay)
-      (copilot--preserve-positions)
-      (blamer--clear-overlay)
-      (when (evil-insert-state-p) (copilot-complete))))
-
-  (add-hook 'post-command-hook #'copilot--rerender)
-  ;; (add-hook 'evil-insert-state-exit-hook 'copilot-clear-overlay)
+  (global-copilot-mode)
   (add-hook 'evil-insert-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p t)
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
-                                            (copilot-clear-overlay))))
-  ;; (copilot-clear-overlay)) nil t)
-  ;; )
+                                            (copilot-clear-overlay)))
+)
 
 (use-package electric
   :defer t
@@ -1962,14 +1974,13 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 
-(use-package elmacro
-  :straight (:host github :repo "artawower/elmacro.el")
-  :ensure t
+(use-package persistent-kmacro
+  :straight (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
-                     "SPC me" 'elmacro-execute-macros
-                     "SPC ma" 'elmacro-name-last-kbd-macro))
+                     "SPC me" 'persistent-kmacro-execute-macro
+                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro))
 
 (use-package magit
   :defer t
@@ -3079,18 +3090,6 @@ This need for correct highlighting of incorrect spell-fu faces."
     (save-selected-window
       (let ((embark-quit-after-action nil))
         (embark-dwim)))))
-
-(use-package mini-frame
-  :defer 2
-  :custom
-  (mini-frame-color-shift-step 10)
-  :config
-  (custom-set-variables
-   '(mini-frame-show-parameters
-     '((top . 0.7)
-       (width . 0.7)
-       (left . 0.5))))
-  (mini-frame-mode))
 
 (use-package all-the-icons-completion
   :init

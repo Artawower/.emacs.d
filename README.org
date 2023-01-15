@@ -3,6 +3,7 @@
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
 
 
+
 * Installation
 For install emacs on macos use brew:
 #+BEGIN_SRC bash :tangle no
@@ -61,6 +62,14 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 #+END_SRC
+** Startup time boost
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package fnhh
+  :straight (:type git :host github :repo "a13/fnhh")
+  :config
+  (fnhh-mode 1))
+#+END_SRC
+
 ** Common
 *** Backup
 #+BEGIN_SRC emacs-lisp
@@ -282,6 +291,32 @@ Focus buffer by name
 
 #+RESULTS:
 : +select-window-by-name
+
+*** Switch to buffer
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @change-buffer (change-buffer)
+  "Call CHANGE-BUFFER until current buffer is not in `my-skippable-buffers'."
+  (let ((initial (current-buffer)))
+    (funcall change-buffer)
+    (let ((first-change (current-buffer)))
+      (catch 'loop
+        (while (string-prefix-p "*" (buffer-name))
+          (funcall change-buffer)
+          (when (eq (current-buffer) first-change)
+            (switch-to-buffer initial)
+            (throw 'loop t)))))))
+
+(defun @next-buffer ()
+  "Variant of `next-buffer' that skips `my-skippable-buffers'."
+  (interactive)
+  (@change-buffer 'next-buffer))
+
+(defun @previous-buffer ()
+  "Variant of `previous-buffer' that skips `my-skippable-buffers'."
+  (interactive)
+  (@change-buffer 'previous-buffer))
+#+END_SRC
+
 
 ** Terminal
 #+BEGIN_SRC emacs-lisp
@@ -1064,6 +1099,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "tr" 'read-only-mode
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
+ "mox" 'execute-extended-command
  "bI" 'ibuffer
  "vtt" 'my-toggle-transparency
  "fD" '@delete-this-file
@@ -1084,10 +1120,10 @@ Override function for auto-dark mode for applying function for nano theme changi
  "wv" 'evil-window-vsplit
  "ws" 'evil-window-split
  ;; ;; Buffers
- "b ]" 'next-buffer
- "b [" 'previous-buffer
- "]" 'next-buffer
- "[" 'previous-buffer
+ "b ]" '@next-buffer
+ "b [" '@previous-buffer
+ "]" '@next-buffer
+ "[" '@previous-buffer
  "." 'find-file
  "hv" 'describe-variable
  "hf" 'describe-function
@@ -1157,7 +1193,7 @@ Override function for auto-dark mode for applying function for nano theme changi
     "=" 'evil-record-macro
     "-" 'evil-execute-macro
     "0" 'my-toggle-default-browser
-    "h" 'lsp-ui-doc-show
+    "h" 'lsp-ui-doc-toggle
     "e" 'lsp-treemacs-errors-list
     "l" 'lsp-execute-code-action
     "r" 'treemacs-select-window
@@ -1553,6 +1589,22 @@ Something like screensaver
   :defer t)
 #+END_SRC
 ** Workspace
+*** HOLD Preserve everything?
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+Doesn't work now
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package eyebrowse-restore
+  :ensure t
+  :straight (:host github
+             :repo "FrostyX/eyebrowse-restore"
+             :branch "main")
+  :config
+  (eyebrowse-restore-mode))
+#+END_SRC
+
 *** Persp mode
 **** Kill other buffers from current workspace
 #+BEGIN_SRC emacs-lisp :results silent
@@ -1729,6 +1781,7 @@ new project directory.")
 #+NAME: persp-mode-map-general
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
 (:keymaps 'override
+:states '(normal visual insert)
           "s-1" '+workspace/switch-to-0
           "s-2" '+workspace/switch-to-1
           "s-3" '+workspace/switch-to-2
@@ -2156,9 +2209,10 @@ representing the time of the last `persistent-scratch-new-backup' call."
   :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode) . prettier-mode)
-  :config
-  (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp))))
+  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
+  ;; :config
+  ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
+)
 #+END_SRC
 
 ** Flychek. Error checker
@@ -2258,10 +2312,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 ** Autocomplete
 *** Company mode
-# :PROPERTIES:
-# :header-args: :tangle no
-# :END:
-
 **** Company package
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package company
@@ -2433,13 +2483,57 @@ Use company backends for corfu
 #+END_SRC
 
 ** Lsp
+*** HOLD LSP Bridge
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+Perspective alternative for lsp-mode. Right now on the pause cause doesn't support angular.
+https://github.com/manateelazycat/lsp-bridge/issues/500
+Also GDB is not working with apple silicon
+https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package lsp-bridge
+  :after yasnippet
+  :straight (:host github :repo "manateelazycat/lsp-bridge" :files ("acm" "core" "langserver" "multiserver" "test" "*.py" "*.el"))
+  :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "gd" '@find-definition
+            "SPC cr" 'lsp-bridge-rename
+            "\\h" 'lsp-bridge-popup-documentation
+            "\\l" 'lsp-bridge-code-action
+            "SPC f]" 'lsp-bridge-diagnostic-jump-next
+            "SPC f[" 'lsp-bridge-diagnostic-jump-prev
+            "SPC lr" 'lsp-bridge-find-references)
+  (:keymaps 'override
+            :states 'insert
+            "C-x C-o" 'lsp-bridge-popup-complete-menu
+            "C-SPC" 'lsp-bridge-popup-complete-menu)
+  (:keymaps 'acm-mode-map
+            "C-j" 'acm-select-next
+            "C-k" 'acm-select-prev)
+  :custom
+  (acm-enable-tabnine nil)
+  (acm-enable-quick-access t)
+  (lsp-bridge-enable-debug t)
+  (acm-quick-access-modifier 'super)
+  :config
+  (keymap-set acm-mode-map "C-j" 'acm-select-next)
+  (keymap-set acm-mode-map "C-k" 'acm-select-prev)
+  (keymap-set acm-mode-map "<backtab>" 'acm-select-prev)
+  (keymap-set acm-mode-map "<tab>"       'acm-select-next)
+  (global-lsp-bridge-mode))
+#+END_SRC
+
 *** Lsp functions
 **** Go to definition
 #+BEGIN_SRC emacs-lisp :results silent
 (defun @find-definition ()
   "Find lsp definition when lsp exist and enabled, or find evil definition."
   (interactive)
-  (cond ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
+  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
+        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
 #+END_SRC
@@ -2573,7 +2667,6 @@ Use company backends for corfu
 *** LSP UI
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-ui
-  :after lsp-mode
   :hook (lsp-mode . lsp-ui-mode)
   :config
   (setq lsp-ui-sideline-diagnostic-max-line-length 100
@@ -2629,7 +2722,8 @@ Use company backends for corfu
 *** Setup compilation errors
 #+BEGIN_SRC emacs-lisp
 (defun @setup-compilation-errors ()
-      (setq compilation-scroll-output t)
+  (interactive)
+  (setq compilation-scroll-output t)
   (setq compilation-error-regexp-alist '())
   (setq compilation-error-regexp-alist-alist '())
 
@@ -2663,6 +2757,9 @@ Use company backends for corfu
   (add-to-list 'compilation-error-regexp-alist 'dart-analyze)
   (add-to-list 'compilation-error-regexp-alist-alist '(dart-analyze "\\([^ ]*\\.dart\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3)))
 #+END_SRC
+
+#+RESULTS:
+: @setup-compilation-errors
 
 *** Display compilation buffer
 By default ~compile-goto-error~ open new window. Its redundant.
@@ -2810,6 +2907,7 @@ Package for quick editing/deleting brackets and bracket-likes symbols
   (global-evil-surround-mode 1))
 #+END_SRC
 ** Copilot
+TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
   :defer 5
@@ -2821,13 +2919,24 @@ Package for quick editing/deleting brackets and bracket-likes symbols
             "s-l" 'copilot-accept-completion
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
-  ;; :custom
-  ;; (copilot-idle-delay 0.5)
+  :custom
+  (copilot-idle-delay 0.2)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
   (copilot-diagnose)
+  (global-copilot-mode)
+  (add-hook 'evil-insert-state-entry-hook (lambda ()
+                                            (setq blamer--block-render-p t)
+                                            (blamer--clear-overlay)))
+  (add-hook 'evil-normal-state-entry-hook (lambda ()
+                                            (setq blamer--block-render-p nil)
+                                            (copilot-clear-overlay)))
+)
 
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle no
   (defun copilot--preserve-positions ()
     (setq copilot--previous-point (point))
     (setq copilot--previous-window-width (blamer--real-window-width)))
@@ -2851,9 +2960,7 @@ Package for quick editing/deleting brackets and bracket-likes symbols
                                             (blamer--clear-overlay)))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
-                                            (copilot-clear-overlay))))
-  ;; (copilot-clear-overlay)) nil t)
-  ;; )
+                                            (copilot-clear-overlay)))
 #+END_SRC
 
 #+RESULTS:
@@ -2929,14 +3036,13 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 #+END_SRC
 ** Macros
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package elmacro
-  :straight (:host github :repo "artawower/elmacro.el")
-  :ensure t
+(use-package persistent-kmacro
+  :straight (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
-                     "SPC me" 'elmacro-execute-macros
-                     "SPC ma" 'elmacro-name-last-kbd-macro))
+                     "SPC me" 'persistent-kmacro-execute-macro
+                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro))
 #+END_SRC
 
 
@@ -4446,6 +4552,10 @@ Preview
 #+END_SRC
 
 *** Mini frame
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package mini-frame
   :defer 2
@@ -4569,6 +4679,9 @@ dependency
 
 * Playground
 TODO: make it persistent
+
+
+
 
 
 
