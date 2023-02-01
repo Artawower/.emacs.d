@@ -38,6 +38,10 @@
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 
+(unless (package-installed-p 'vc-use-package)
+  (package-vc-install "https://github.com/slotThe/vc-use-package"))
+(require 'vc-use-package)
+
 (use-package fnhh
   :straight (:type git :host github :repo "a13/fnhh")
   :config
@@ -285,24 +289,6 @@ Version 2015-12-08"
   (let* ((cmd (concat "open -a kitty.app --args \"cd\" " default-directory)))
     (shell-command cmd)))
 
-(defun my-copy-pwd ()
-  "Copy PWD command to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (replace-regexp-in-string " " "\\\\\  " (file-name-directory (buffer-file-name))))))
-
-(defun my-copy-file-name ()
-  "Copy file name command to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (file-name-nondirectory (buffer-file-name)))))
-
-(defun my-copy-full-path ()
-  "Copy full path till file to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
-
 (defun @delete-this-file (&optional path force-p)
   "Delete PATH, kill its buffers and expunge it from vc/magit cache.
 If PATH is not specified, default to the current buffer's file.
@@ -424,6 +410,14 @@ If FORCE-P, delete without confirmation."
       ;; (revert-buffer-no-confirm)
       (message "SASS FORMATTED"))))
 
+(defun @find-definition ()
+  "Find lsp definition when lsp exist and enabled, or find evil definition."
+  (interactive)
+  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
+        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
+        ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
+        (t (evil-goto-definition))))
+
 (setq use-package-verbose t)
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
@@ -485,6 +479,11 @@ If FORCE-P, delete without confirmation."
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 
+(use-package display-fill-column-indicator
+  :defer t
+  :config
+  (setq display-fill-column-indicator-column 80))
+
 (defvar after-load-theme-hook nil
    "Hook run after a color theme is loaded using `load-theme'.")
  (defadvice load-theme (after run-after-load-theme-hook activate)
@@ -521,12 +520,19 @@ If FORCE-P, delete without confirmation."
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
 
+(use-package catppuccin-theme
+  :ensure t
+  :straight (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
+  :config
+  (setq catppuccin-flavor 'latte))
+
 (use-package dashboard
   ;; :ensure t
   :config
   (dashboard-setup-startup-hook))
 
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
+;; (set-frame-font "Monaco Font 15" nil t)
 
 (defconst jetbrains-ligature-mode--ligatures
   '("-->" "//" "/**" "/*" "*/" "<!--" ":=" "->>" "<<-" "->" "<-"
@@ -576,8 +582,11 @@ If FORCE-P, delete without confirmation."
   (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
   (setq nano-theme-light-var (not nano-theme-light-var)))
 
-(defun @set-vterm-autocomplete-color () 
-  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary))
+(defun @set-vterm-autocomplete-color ()
+  "Change color of autocomplete inside vterm"
+  (interactive)
+  (when (facep 'vterm-color-black)
+    (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
 
 (use-package auto-dark
   ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
@@ -597,7 +606,10 @@ If FORCE-P, delete without confirmation."
   ;;   (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
   (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
   (add-hook 'auto-dark-light-mode-hook #'@set-vterm-autocomplete-color)
-  (setq auto-dark-dark-theme 'doom-moonlight)
+  (add-hook 'auto-dark-dark-mode-hook #'posframe-delete-all)
+  (add-hook 'auto-dark-light-mode-hook #'posframe-delete-all)
+  ;; (setq auto-dark-dark-theme 'doom-moonlight)
+  (setq auto-dark-dark-theme 'catppuccin-frappe)
   (setq auto-dark-light-theme 'doom-one-light)
   (auto-dark-mode))
 
@@ -759,7 +771,6 @@ If FORCE-P, delete without confirmation."
    :keymaps 'read-expression-map
    "C-w" 'backward-kill-word
    "C-h" 'previous-history-element
-   "C-l" 'next-history-element
    "ESC" 'keyboard-escape-quit)
 
   (general-define-key
@@ -799,6 +810,20 @@ If FORCE-P, delete without confirmation."
     (evil-shift-right (region-beginning) (region-end))
     (evil-normal-state)
     (evil-visual-restore))
+  (defun evil-next-line--check-visual-line-mode (orig-fun &rest args)
+    (if visual-line-mode
+        (apply 'evil-next-visual-line args)
+      (apply orig-fun args)))
+  
+  (advice-add 'evil-next-line :around 'evil-next-line--check-visual-line-mode)
+  
+  (defun evil-previous-line--check-visual-line-mode (orig-fun &rest args)
+    (if visual-line-mode
+        (apply 'evil-previous-visual-line args)
+      (apply orig-fun args)))
+  
+  (advice-add 'evil-previous-line :around 'evil-previous-line--check-visual-line-mode)
+  (setq evil-respect-visual-line-mode t)
   (evil-set-undo-system 'undo-redo)
   (setq-default evil-kill-on-visual-paste nil)
   (evil-mode 1))
@@ -822,15 +847,29 @@ If FORCE-P, delete without confirmation."
            "SPC k l" 'avy-kill-whole-line
            "SPC k r" 'avy-kill-region)
   (:keymaps '(minibuffer-local-mode-map read--expression-map)
-            "C-l" 'avy-goto-char)
+            "C-l" 'avy-goto-char
+            "C-f" 'avy-goto-char)
   :custom
   (avy-single-candidate-jump t)
   (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
 
+(defun @avy-ignore-current-buffer ()
+  "Ignore current buffer when using avy."
+  (interactive)
+  (add-to-list 'aw-ignored-buffers (buffer-name)))
+
 (use-package ace-window
-:bind (:map evil-normal-state-map
-            ("s-." . ace-window))
-:defer t)
+  :bind (:map evil-normal-state-map
+              ("s-." . ace-window)
+              ("SPC a i" . @avy-ignore-current-buffer))
+  :defer t
+  :config
+  (setq aw-ignored-buffers (delq 'treemacs-mode aw-ignored-buffers))
+  (add-to-list 'aw-ignored-buffers 'dap-ui--locals-buffer)
+  (defun @avy-ignore-current-buffer ()
+    "Ignore current buffer when using avy."
+    (interactive)
+    (add-to-list 'aw-ignored-buffers (buffer-name))))
 
 (use-package evil-matchit
 :defer t)
@@ -839,13 +878,10 @@ If FORCE-P, delete without confirmation."
 (global-evil-matchit-mode 1)
 
 (use-package better-jumper
-  :after evil
-  :defer 2
+  :hook (prog-mode . better-jumper-mode)
   :general (:states '(normal, visual)
             "C-o" 'better-jumper-jump-backward
-            "C-i" 'better-jumper-jump-forward)
-  :config
-  (better-jumper-mode +1))
+            "C-i" 'better-jumper-jump-forward))
 
 (use-package dired
   :defer t
@@ -931,6 +967,23 @@ If FORCE-P, delete without confirmation."
   ;; (doom-themes-treemacs-config)
   ;; (doom-themes-org-config)
 )
+
+(use-package file-info
+  :bind (("C-c d" . 'file-info-show))
+  :defer t
+  :config
+  (setq hydra-hint-display-type 'posframe)
+  (setq hydra-posframe-show-params '(:poshandler posframe-poshandler-frame-center
+                                               :internal-border-width 3
+                                               :internal-border-color "#61AFEF"
+                                               :left-fringe 16
+                                               :right-fringe 16)))
+
+(use-package reveal-in-osx-finder
+  :defer t
+  :bind (:map evil-normal-state-map
+              ("SPC o f" . reveal-in-osx-finder))
+  :ensure t)
 
 (defun @clear-term-history ()
   "Clear terminal history inside vterm."
@@ -1057,13 +1110,6 @@ If FORCE-P, delete without confirmation."
     (message "Killed %s buffers" killed-buffer-count)))
 
 (load "~/pure-emacs/vendor/doom-workspaces.el")
-;; (use-package doom-workspaces
-;;   :straight (doom-workspaces
-;;              :host github
-;;              :repo "hlissner/doom-emacs"
-;;              :files ("modules/ui/workspaces/autoload/*.el"
-;;                      "modules/ui/workspaces/*.el")
-;;              :build (autoloads)))
 
 (defface +workspace-tab-selected-face
   '((t :inherit nano-face-header-popout))
@@ -1499,7 +1545,6 @@ representing the time of the last `persistent-scratch-new-backup' call."
 )
 
 (use-package yasnippet
-  :defer 2
   :config
   (setq yas-snippet-dirs '("~/.doom.d/snippets"))
   (yas-global-mode 1))
@@ -1510,7 +1555,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (use-package format-all
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
-  :hook ((json-mode go-mode dart-mode emacs-lisp-mode) . format-all-mode)
+  :hook ((json-mode go-mode dart-mode) . format-all-mode)
   ;; :config
   ;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
   ;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
@@ -1518,13 +1563,13 @@ representing the time of the last `persistent-scratch-new-backup' call."
 )
 
 (use-package prettier
-  :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
-  ;; :config
+  ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
+  :config
+  (global-prettier-mode)
   ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
-)
+  )
 
 (use-package flycheck
   :bind (:map evil-normal-state-map
@@ -1624,14 +1669,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 (custom-set-faces
  `(show-paren-mismatch ((t (:foreground ,+m-color-secondary)))))
 
-(defun @find-definition ()
-  "Find lsp definition when lsp exist and enabled, or find evil definition."
-  (interactive)
-  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
-        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
-        ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
-        (t (evil-goto-definition))))
-
 (defun @lsp/uninstall-server (dir)
   "Delete a LSP server from `lsp-server-install-dir'."
   (interactive
@@ -1721,6 +1758,8 @@ This need for correct highlighting of incorrect spell-fu faces."
         lsp-enable-symbol-highlighting t
         lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
         lsp-pyls-plugins-flake8-enabled nil)
+  (set-face-foreground 'lsp-face-highlight-read +m-color-secondary)
+  (set-face-foreground 'lsp-face-highlight-textual +m-color-secondary)
 
   
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
@@ -1849,22 +1888,34 @@ This need for correct highlighting of incorrect spell-fu faces."
 (use-package floobits
   :defer t)
 
+(defun @dap-delete-local-terminal (&optional _)
+  "Delete local terminal."
+  (interactive)
+  (message "delete local terminal")
+  (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
+         (filtered-buffers (seq-filter (lambda (buffer)
+                                         (string-match-p "*DEBUG" buffer))
+                                       buffer-list))
+         (buffer-modified-p nil))
+    (mapc #'kill-buffer filtered-buffers)))
+
 (use-package dap-mode
-  :defer t
+  :demand
   :bind (:map evil-normal-state-map
               ("SPC d n" . dap-next)
               ("SPC d i" . dap-step-in)
               ("SPC d o" . dap-step-out)
               ("SPC d c" . dap-continue)
               ("SPC d Q" . dap-disconnect)
-              ("SPC d q" . dap-disconnect)
-              ("SPC d d" . (lambda () (interactive)
-                             (call-interactively #'dap-debug)
-                             (set-window-buffer nil (current-buffer))))
+              ("SPC d q" . (lambda () (interactive)
+                             (call-interactively 'dap-disconnect)
+                             (@dap-delete-local-terminal)))
+              ("SPC d d" . dap-debug)
               ("SPC d r" . dap-debug-recent)
               ("SPC d l" . dap-ui-locals)
               ("SPC d b" . dap-ui-breakpoints)
               ("SPC d p" . dap-breakpoint-toggle)
+              ("SPC d g" . dap-ui-breakpoints-browse)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
               ("SPC d w" . dap-ui-show-many-windows)
@@ -1875,15 +1926,30 @@ This need for correct highlighting of incorrect spell-fu faces."
               ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :config
-  (setq-default dap-ui-buffer-configurations
-                `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
-                  (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
-                  (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
-                  (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
-                  (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
-                  (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
-                  ))
-  (setq dap-auto-configure-features '(locals controls tooltip))
+  (defun dap-internal-terminal-vterm (command title debug-session)
+    (with-current-buffer (dap--make-terminal-buffer title debug-session)
+      (require 'vterm)
+      (let ((vterm-shell command)
+            (vterm-kill-buffer-on-exit nil))
+        (vterm-mode))))
+  ;; (advice-add 'dap-debug-run-task :before #'@dap-delete-local-terminal)
+
+  (with-eval-after-load 'dap-ui
+    (setq-default dap-ui-buffer-configurations
+                  `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
+                    (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
+                    (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
+                    (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
+                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
+                    ;; (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
+                    ))
+    (setq dap-ui-locals-expand-depth 3))
+  ;; (setq dap-auto-configure-features '(locals controls tooltip))
+  (setq dap-auto-configure-features '(locals tooltip))
+  (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
+  (custom-set-faces
+   '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
+   '(dap-ui-verified-breakpoint-face ((t (:underline "green")))))
   (require 'dap-go)
   (require 'dap-node))
 
@@ -1898,7 +1964,7 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("C-r" . undo-fu-only-redo)))
 
 (use-package undo-fu-session
-  :init
+  :config
   (global-undo-fu-session-mode))
 
 (use-package evil-surround
@@ -1916,7 +1982,7 @@ This need for correct highlighting of incorrect spell-fu faces."
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
   :custom
-  (copilot-idle-delay 0.2)
+  (copilot-idle-delay nil)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -1940,6 +2006,21 @@ This need for correct highlighting of incorrect spell-fu faces."
         electric-pair-delete-adjacent-pairs nil
         electric-pair-skip-whitespace nil
         electric-pair-open-newline-between-pairs t))
+
+(defun @electric-pair--verify-cursor-position (&optional char)
+  "Verify cusor position after inserting CHAR bracket."
+
+  (message "ELECTRIC INSERT: %s" (member (char-before) '(?\) ?})))
+  (when (member (char-before) '(?\) ?}))
+    ;; (when (member (char-before) '(?\) ))
+    (copilot-clear-overlay)
+    (backward-char))
+
+  (when (and (member (char-after) '(?\( ?\{))
+             (member (chart-after (1+ (point))) '(?\) ?\})))
+    (forward-char)))
+
+(advice-add 'electric-pair--insert :after #'@electric-pair--verify-cursor-position)
 
 (use-package turbo-log
   :defer t
@@ -1974,13 +2055,17 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 
+(use-package persistent-soft
+  :defer t)
+
 (use-package persistent-kmacro
   :straight (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
                      "SPC me" 'persistent-kmacro-execute-macro
-                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro))
+                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro
+                     "SPC mr" 'persistent-kmacro-remove-macro))
 
 (use-package magit
   :defer t
@@ -2130,6 +2215,13 @@ This need for correct highlighting of incorrect spell-fu faces."
 (global-set-key (kbd "C-c j") 'smerge-next)
 (global-set-key (kbd "C-c k") 'smerge-prev)
 
+(use-package browse-at-remote
+  :defer t
+  :general
+  (:states '(normal visual)
+   :keymaps 'override
+   "SPC o r" 'browse-at-remote))
+
 (use-package paren-face :defer t)
 
 (use-package elisp-mode
@@ -2159,6 +2251,12 @@ This need for correct highlighting of incorrect spell-fu faces."
 
   :defer t)
 
+(use-package elisp-autofmt
+  :defer t
+  :hook (emacs-lisp-mode . elisp-autofmt-mode)
+  :custom
+  (elisp-autofmt-python-bin "/opt/homebrew/bin/python3"))
+
 (use-package clojure-mode
   :hook ((clojure-mode . format-all-mode)
          (clojure-mode . paren-face-mode))
@@ -2182,15 +2280,14 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . lsp-deferred)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
-          "/usr/local/lib/node_modules/@angular/language-server"
+          "/Users/darkawower/.npm-global/lib/node_modules/@angular/language-server"
           "--ngProbeLocations"
-          "/usr/local/lib/node_modules"
+          "/Users/darkawower/.npm-global/lib/node_modules"
           "--tsProbeLocations"
-          "/usr/local/lib/node_modules"
+          "/Users/darkawower/.npm-global/lib/node_modules"
           "--stdio")))
 
 (use-package js2-mode
@@ -2539,9 +2636,13 @@ This need for correct highlighting of incorrect spell-fu faces."
     ""
     "Javascript code to print value of body.")
   ;; Applications for opening from org files
-  (if (assoc "\\.pdf\\'" org-file-apps)
-      (setcdr (assoc "\\.pdf\\'" org-file-apps) 'emacs)
-    (add-to-list 'org-file-apps '("\\.pdf\\'" . emacs) t))
+  ;; (if (assoc "\\.pdf\\'" org-file-apps)
+  ;;     (setcdr (assoc "\\.pdf\\'" org-file-apps) 'emacs)
+  ;;   (add-to-list 'org-file-apps '("\\.pdf\\'" . emacs) t))
+
+  ;; (add-to-list 'org-file-apps
+  ;;              '("\\.pdf\\'" . (lambda (file link)
+  ;;                                (org-pdfview-open link))))
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu"))))
 
@@ -2700,6 +2801,10 @@ This need for correct highlighting of incorrect spell-fu faces."
   :bind (:map org-mode-map
               ("C-c g" . org-make-toc)))
 
+(use-package ox-gfm
+  :defer t
+  :straight (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
+
 (defun my-set-spellfu-faces ()
   "Set faces for correct spell-fu working"
   (interactive)
@@ -2721,7 +2826,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (if (boundp 'spell-fu-faces-exclude)
     (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
                                          '(diredfl-file-name)))
-    (setq spell-fu-faces-exclude
+    (defvar spell-fu-faces-exclude
           '(diredfl-file-name))))
 
 (use-package spell-fu
@@ -2790,7 +2895,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   :bind (:map google-translate-minibuffer-keymap
         ("C-k" . google-translate-next-translation-direction)
         ("C-n" . google-translate-next-translation-direction)
-        ("C-l" . google-translate-next-translation-direction)
         :map evil-normal-state-map
         ("\\ t" . google-translate-smooth-translate))
   :config
@@ -2974,6 +3078,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   ;; Optionally configure the register formatting. This improves the register
   ;; preview for `consult-register', `consult-register-load',
   ;; `consult-register-store' and the Emacs built-ins.
+  (setq recentf-max-saved-items 3000)
   (setq register-preview-delay 0
         register-preview-function #'consult-register-format)
 
@@ -3057,6 +3162,12 @@ This need for correct highlighting of incorrect spell-fu faces."
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
   :config
+  (defvar-keymap embark-projectile-map
+    :doc "Example keymap with a few file actions"
+    :parent embark-general-map
+    "d" #'projectile-remove-known-project)
+  
+  (add-to-list 'embark-keymap-alist '(consult-projectile-project . embark-projectile-map))
   (defun copy-grep-results-as-kill (strings)
     (embark-copy-as-kill
      (mapcar (lambda (string)
@@ -3101,15 +3212,14 @@ This need for correct highlighting of incorrect spell-fu faces."
             "C-c C-w" 'wgrep-change-to-wgrep-mode)
   :after vertico)
 
-(use-package pdf-view
-  :defer t
-  :hook (pdf-view-mode . pdf-view-themed-minor-mode))
-
 (use-package pdf-tools
   :ensure t
   :defer t
   :config
   (pdf-tools-install))
+
+(use-package org-pdftools
+  :hook (org-mode . org-pdftools-setup-link))
 
 (use-package browse-hist
   :ensure t
@@ -3153,3 +3263,16 @@ This need for correct highlighting of incorrect spell-fu faces."
             "w" 'pocket-reader-copy-url
             "tf" 'pocket-reader-tag-search)
   :defer t)
+
+(use-package plantuml-mode
+  :defer t
+  :config
+  (setq plantuml-indent-level 2)
+  (setq plantuml-output-type "png")
+  (add-to-list 'auto-mode-alist '("\\.plantuml\\'" . plantuml-mode))
+  (setq plantuml-exec-mode 'jar)
+  (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
+
+(use-package empv
+  :ensure t
+  :straight (:host github :repo "isamert/empv.el"))

@@ -62,6 +62,35 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (straight-use-package 'use-package)
 (setq use-package-always-ensure nil)
 #+END_SRC
+** HOLD Quelpa
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(unless (package-installed-p 'quelpa)
+  (with-temp-buffer
+    (url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
+    (eval-buffer)
+    (quelpa-self-upgrade)))
+#+END_SRC
+
+Use package
+#+BEGIN_SRC emacs-lisp :results silent
+(quelpa
+ '(quelpa-use-package
+   :fetcher git
+   :url "https://github.com/quelpa/quelpa-use-package.git"))
+(require 'quelpa-use-package)
+(setq use-package-ensure-function 'quelpa)
+#+END_SRC
+** VC install macro
+#+BEGIN_SRC emacs-lisp :results silent
+(unless (package-installed-p 'vc-use-package)
+  (package-vc-install "https://github.com/slotThe/vc-use-package"))
+(require 'vc-use-package)
+#+END_SRC
+
 ** Startup time boost
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package fnhh
@@ -104,7 +133,6 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+BEGIN_SRC emacs-lisp :results silent
 (set-default 'truncate-lines t)
 #+END_SRC
-
 
 * Libs (functions and macros)
 ** Doom libs (honestly spizjeno)
@@ -388,34 +416,6 @@ Version 2015-12-08"
   (let* ((cmd (concat "open -a kitty.app --args \"cd\" " default-directory)))
     (shell-command cmd)))
 #+END_SRC
-** Copy file pathts
-Copy path current dir
-#+BEGIN_SRC emacs-lisp
-(defun my-copy-pwd ()
-  "Copy PWD command to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (replace-regexp-in-string " " "\\\\\  " (file-name-directory (buffer-file-name))))))
-#+END_SRC
-
-Copy current file name
-#+BEGIN_SRC emacs-lisp
-(defun my-copy-file-name ()
-  "Copy file name command to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (file-name-nondirectory (buffer-file-name)))))
-#+END_SRC
-
-Copy full path
-#+BEGIN_SRC emacs-lisp
-(defun my-copy-full-path ()
-  "Copy full path till file to clipboard"
-  (interactive)
-  (when (buffer-file-name)
-    (kill-new (replace-regexp-in-string " " "\\\\\  " (buffer-file-name)))))
-#+END_SRC
-
 ** Delete current file
 #+BEGIN_SRC emacs-lisp :results silent
 (defun @delete-this-file (&optional path force-p)
@@ -575,6 +575,17 @@ For correct work you need to install sass-lint-auto-fix
 #+END_SRC
 ** TODO open finder here!
 Need to steal from doom emacs!
+** LSP
+*** Go to definition
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @find-definition ()
+  "Find lsp definition when lsp exist and enabled, or find evil definition."
+  (interactive)
+  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
+        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
+        ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
+        (t (evil-goto-definition))))
+#+END_SRC
 
 * HOLD Performance
 Uncomment when u need to profile ;p
@@ -694,6 +705,14 @@ Very pretty titlebar for Mac os
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
+** Column indicator
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package display-fill-column-indicator
+  :defer t
+  :config
+  (setq display-fill-column-indicator-column 80))
+#+END_SRC
+
 
 * Theme
 ** Functions
@@ -848,7 +867,8 @@ Argument APPEARANCE should be light or dark."
 *** Doom theme switcher
 #+NAME: doom-theme-switcher
 #+BEGIN_SRC emacs-lisp :results silent :tangle no
-(setq auto-dark-dark-theme 'doom-moonlight)
+;; (setq auto-dark-dark-theme 'doom-moonlight)
+(setq auto-dark-dark-theme 'catppuccin-frappe)
 (setq auto-dark-light-theme 'doom-one-light)
 #+END_SRC
 
@@ -859,7 +879,7 @@ Argument APPEARANCE should be light or dark."
 
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package lambda-line
-:ensure t
+  :ensure t
   :straight (:type git :host github :repo "lambda-emacs/lambda-line") 
   :custom
   (lambda-line-icon-time t) ;; requires ClockFace font (see below)
@@ -893,13 +913,23 @@ Argument APPEARANCE should be light or dark."
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
-** HOLD Catpuccini theme
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+** Catppuccini theme
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package autothemer
-  :defer t)
+;; (setq straight-current-profile 'pinned)
+;; (add-to-list 'straight-x-pinned-packages
+;;                '("catppuccin-theme" . "86b16248ef2ce450def4a00a0ca5170c102da623"))
+
+;; (package-vc-install "https://github.com/catppuccin/emacs" "300e7ba1d5b4225db4f9f2d451eac1238073d3ba")
+;; (package-vc-install "https://github.com/catppuccin/emacs" "785c9f57a43c4c90041290556d999db3d9da5be9")
+
+(use-package catppuccin-theme
+  :ensure t
+  ;; :vc (:fetcher "github" :repo catppuccin/emacs :rev 86b16248ef2ce450def4a00a0ca5170c102da623)
+  ;; :vc (:fetcher "github" :repo "catppuccin/emacs")
+  :straight (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
+;; :straight t
+  :config
+  (setq catppuccin-flavor 'latte))
 #+END_SRC
 
 ** HOLD Splash screen
@@ -930,6 +960,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 *** Default font
 #+BEGIN_SRC emacs-lisp
 (set-frame-font "JetBrainsMono Nerd Font 15" nil t)
+;; (set-frame-font "Monaco Font 15" nil t)
 #+END_SRC
 
 *** Ligatures
@@ -991,8 +1022,11 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 ** Theme switcher
 Function for setting terminal color after theme switch
 #+BEGIN_SRC emacs-lisp :results silent
-(defun @set-vterm-autocomplete-color () 
-  (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary))
+(defun @set-vterm-autocomplete-color ()
+  "Change color of autocomplete inside vterm"
+  (interactive)
+  (when (facep 'vterm-color-black)
+    (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
 #+END_SRC
 
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
@@ -1003,6 +1037,8 @@ Override function for auto-dark mode for applying function for nano theme changi
   ;; <<nano-theme-switcher>>
   (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
   (add-hook 'auto-dark-light-mode-hook #'@set-vterm-autocomplete-color)
+  (add-hook 'auto-dark-dark-mode-hook #'posframe-delete-all)
+  (add-hook 'auto-dark-light-mode-hook #'posframe-delete-all)
   <<doom-theme-switcher>>
   (auto-dark-mode))
 #+END_SRC
@@ -1215,7 +1251,6 @@ Override function for auto-dark mode for applying function for nano theme changi
    :keymaps 'read-expression-map
    "C-w" 'backward-kill-word
    "C-h" 'previous-history-element
-   "C-l" 'next-history-element
    "ESC" 'keyboard-escape-quit)
 
   (general-define-key
@@ -1258,6 +1293,25 @@ Patch for recover visual line after shifting
   (evil-visual-restore))
 #+END_SRC
 
+Evil should respect visual line mode
+#+NAME: evil-respect-visual-line-mode
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun evil-next-line--check-visual-line-mode (orig-fun &rest args)
+  (if visual-line-mode
+      (apply 'evil-next-visual-line args)
+    (apply orig-fun args)))
+
+(advice-add 'evil-next-line :around 'evil-next-line--check-visual-line-mode)
+
+(defun evil-previous-line--check-visual-line-mode (orig-fun &rest args)
+  (if visual-line-mode
+      (apply 'evil-previous-visual-line args)
+    (apply orig-fun args)))
+
+(advice-add 'evil-previous-line :around 'evil-previous-line--check-visual-line-mode)
+#+END_SRC
+
+
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package evil-collection
   :after evil
@@ -1271,6 +1325,8 @@ Patch for recover visual line after shifting
   (evil-mode 1)
   :config
   <<evil-shifting-config>>
+  <<evil-respect-visual-line-mode>>
+  (setq evil-respect-visual-line-mode t)
   (evil-set-undo-system 'undo-redo)
   (setq-default evil-kill-on-visual-paste nil)
   (evil-mode 1))
@@ -1307,7 +1363,8 @@ Bookmark for navigation inside file
            "SPC k l" 'avy-kill-whole-line
            "SPC k r" 'avy-kill-region)
   (:keymaps '(minibuffer-local-mode-map read--expression-map)
-            "C-l" 'avy-goto-char)
+            "C-l" 'avy-goto-char
+            "C-f" 'avy-goto-char)
   :custom
   (avy-single-candidate-jump t)
   (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
@@ -1315,13 +1372,29 @@ Bookmark for navigation inside file
 
 #+RESULTS:
 
-** Fast jump between opened windows and frames
-#+BEGIN_SRC emacs-lisp
-(use-package ace-window
-:bind (:map evil-normal-state-map
-            ("s-." . ace-window))
-:defer t)
+** Ace window. Fast jump between opened windows and frames
+#+NAME: avy-ignore-current-buffer-fn
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @avy-ignore-current-buffer ()
+  "Ignore current buffer when using avy."
+  (interactive)
+  (add-to-list 'aw-ignored-buffers (buffer-name)))
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp :noweb yes
+  (use-package ace-window
+    :bind (:map evil-normal-state-map
+                ("s-." . ace-window)
+                ("SPC a i" . @avy-ignore-current-buffer))
+    :defer t
+    :config
+    (setq aw-ignored-buffers (delq 'treemacs-mode aw-ignored-buffers))
+    (add-to-list 'aw-ignored-buffers 'dap-ui--locals-buffer)
+    <<avy-ignore-current-buffer-fn>>)
+#+END_SRC
+
+
+
 ** Quick jump by pairtags
 #+BEGIN_SRC emacs-lisp
 (use-package evil-matchit
@@ -1333,13 +1406,10 @@ Bookmark for navigation inside file
 ** Better jump
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package better-jumper
-  :after evil
-  :defer 2
+  :hook (prog-mode . better-jumper-mode)
   :general (:states '(normal, visual)
             "C-o" 'better-jumper-jump-backward
-            "C-i" 'better-jumper-jump-forward)
-  :config
-  (better-jumper-mode +1))
+            "C-i" 'better-jumper-jump-forward))
 #+END_SRC
 
 ** HOLD Remember last position. Blinky mode
@@ -1356,6 +1426,37 @@ Bookmark for navigation inside file
             "SPC rv" 'binky-binky)
   :hook (after-init-hook . binky-mode))
 #+END_SRC
+** HOLD Tree sitte movement
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ts-movement
+  ;; :straight (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
+  :load-path "site-lisp/ts-movement"
+  :hook
+  (bash-ts-mode-hook . ts-movement-mode)
+  (c++-ts-mode-hook . ts-movement-mode)
+  (c-ts-mode-hook . ts-movement-mode)
+  (cmake-ts-mode-hook . ts-movement-mode)
+  (csharp-ts-mode-hook . ts-movement-mode)
+  (css-ts-mode-hook . ts-movement-mode)
+  (dockerfile-ts-mode-hook . ts-movement-mode)
+  (go-mod-ts-mode-hook . ts-movement-mode)
+  (go-ts-mode-hook . ts-movement-mode)
+  (java-ts-mode-hook . ts-movement-mode)
+  (js-ts-mode-hook . ts-movement-mode)
+  (json-ts-mode-hook . ts-movement-mode)
+  (python-ts-mode-hook . ts-movement-mode)
+  (ruby-ts-mode-hook . ts-movement-mode)
+  (rust-ts-mode-hook . ts-movement-mode)
+  (toml-ts-mode-hook . ts-movement-mode)
+  (tsx-ts-mode-hook . ts-movement-mode)
+  (typescript-ts-mode-hook . ts-movement-mode)
+  (yaml-ts-mode-hook . ts-movement-mode))
+#+END_SRC
+
 
 * Common emacs packages
 ** Files
@@ -1456,6 +1557,29 @@ I didn't use treemacs anymore, but sometime
 
 #+RESULTS:
 : evil-execute-macro
+*** File info
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package file-info
+  :bind (("C-c d" . 'file-info-show))
+  :defer t
+  :config
+  (setq hydra-hint-display-type 'posframe)
+  (setq hydra-posframe-show-params '(:poshandler posframe-poshandler-frame-center
+                                               :internal-border-width 3
+                                               :internal-border-color "#61AFEF"
+                                               :left-fringe 16
+                                               :right-fringe 16)))
+#+END_SRC
+
+*** Open in finder
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package reveal-in-osx-finder
+  :defer t
+  :bind (:map evil-normal-state-map
+              ("SPC o f" . reveal-in-osx-finder))
+  :ensure t)
+#+END_SRC
+
 
 ** Terminal
 *** Vterm functions
@@ -1624,13 +1748,6 @@ Doesn't work now
 **** Persp doom configs
 #+BEGIN_SRC emacs-lisp :results silent
 (load "~/pure-emacs/vendor/doom-workspaces.el")
-;; (use-package doom-workspaces
-;;   :straight (doom-workspaces
-;;              :host github
-;;              :repo "hlissner/doom-emacs"
-;;              :files ("modules/ui/workspaces/autoload/*.el"
-;;                      "modules/ui/workspaces/*.el")
-;;              :build (autoloads)))
 #+END_SRC
 
 **** Persp buffer advices
@@ -2179,7 +2296,6 @@ representing the time of the last `persistent-scratch-new-backup' call."
 ** Snippets
 #+BEGIN_SRC emacs-lisp
 (use-package yasnippet
-  :defer 2
   :config
   (setq yas-snippet-dirs '("~/.doom.d/snippets"))
   (yas-global-mode 1))
@@ -2195,7 +2311,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (use-package format-all
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
-  :hook ((json-mode go-mode dart-mode emacs-lisp-mode) . format-all-mode)
+  :hook ((json-mode go-mode dart-mode) . format-all-mode)
   ;; :config
   ;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
   ;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
@@ -2206,13 +2322,13 @@ representing the time of the last `persistent-scratch-new-backup' call."
 *** Prettier
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package prettier
-  :defer t
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
-  ;; :config
+  ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
+  :config
+  (global-prettier-mode)
   ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
-)
+  )
 #+END_SRC
 
 ** Flychek. Error checker
@@ -2482,11 +2598,11 @@ Use company backends for corfu
     (add-to-list 'eglot-server-programs '(ng2-mode . ("typescript-language-server" "--stdio"))))
 #+END_SRC
 
-** Lsp
-*** HOLD LSP Bridge
+** HOLD LSP Bridge
 :PROPERTIES:
 :header-args: :tangle no
 :END:
+
 
 Perspective alternative for lsp-mode. Right now on the pause cause doesn't support angular.
 https://github.com/manateelazycat/lsp-bridge/issues/500
@@ -2516,7 +2632,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   :custom
   (acm-enable-tabnine nil)
   (acm-enable-quick-access t)
-  (lsp-bridge-enable-debug t)
+  (lsp-bridge-enable-debug nil)
   (acm-quick-access-modifier 'super)
   :config
   (keymap-set acm-mode-map "C-j" 'acm-select-next)
@@ -2526,17 +2642,8 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (global-lsp-bridge-mode))
 #+END_SRC
 
+** Lsp
 *** Lsp functions
-**** Go to definition
-#+BEGIN_SRC emacs-lisp :results silent
-(defun @find-definition ()
-  "Find lsp definition when lsp exist and enabled, or find evil definition."
-  (interactive)
-  (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
-        ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
-        ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
-        (t (evil-goto-definition))))
-#+END_SRC
 **** Uninstall server
 #+BEGIN_SRC emacs-lisp :results silent
 (defun @lsp/uninstall-server (dir)
@@ -2550,6 +2657,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+END_SRC
 
 *** Core package
+
 #+BEGIN_SRC emacs-lisp
 (use-package lsp
   :after flycheck
@@ -2631,6 +2739,8 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
         lsp-enable-symbol-highlighting t
         lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
         lsp-pyls-plugins-flake8-enabled nil)
+  (set-face-foreground 'lsp-face-highlight-read +m-color-secondary)
+  (set-face-foreground 'lsp-face-highlight-textual +m-color-secondary)
 
   
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
@@ -2651,6 +2761,8 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 
 *** YAML
 **** LSP
+
+
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-yaml
   :defer t
@@ -2665,6 +2777,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+END_SRC
 
 *** LSP UI
+
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-ui
   :hook (lsp-mode . lsp-ui-mode)
@@ -2800,10 +2913,36 @@ By default ~compile-goto-error~ open new window. Its redundant.
 #+END_SRC
 
 ** Debugger. Dap
+Function for deleting local terminals
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @dap-delete-local-terminal (&optional _)
+  "Delete local terminal."
+  (interactive (list (dap--cur-active-session-or-die)))
+  (save-window-excursion
+    (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
+           (filtered-buffers (seq-filter (lambda (buffer)
+                                           (string-match-p "\\*DEBUG" buffer))
+                                         buffer-list))
+           (buffer-modified-p nil))
+      (mapc #'kill-buffer filtered-buffers))))
+#+END_SRC
 
-#+BEGIN_SRC emacs-lisp
+
+#+NAME: overrided-vterm-showing
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defun dap-internal-terminal-vterm (command title debug-session)
+  (with-current-buffer (dap--make-terminal-buffer title debug-session)
+    (require 'vterm)
+    (let ((vterm-shell command)
+          (vterm-kill-buffer-on-exit nil))
+      (vterm-mode))))
+#+END_SRC
+
+
+
+#+BEGIN_SRC emacs-lisp :results silent :noweb yes
 (use-package dap-mode
-  :defer t
+  :demand
   :bind (:map evil-normal-state-map
               ("SPC d n" . dap-next)
               ("SPC d i" . dap-step-in)
@@ -2811,13 +2950,12 @@ By default ~compile-goto-error~ open new window. Its redundant.
               ("SPC d c" . dap-continue)
               ("SPC d Q" . dap-disconnect)
               ("SPC d q" . dap-disconnect)
-              ("SPC d d" . (lambda () (interactive)
-                             (call-interactively #'dap-debug)
-                             (set-window-buffer nil (current-buffer))))
+              ("SPC d d" . dap-debug)
               ("SPC d r" . dap-debug-recent)
               ("SPC d l" . dap-ui-locals)
               ("SPC d b" . dap-ui-breakpoints)
               ("SPC d p" . dap-breakpoint-toggle)
+              ("SPC d g" . dap-ui-breakpoints-browse)
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
               ("SPC d w" . dap-ui-show-many-windows)
@@ -2828,21 +2966,30 @@ By default ~compile-goto-error~ open new window. Its redundant.
               ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :config
-  (setq-default dap-ui-buffer-configurations
-                `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
-                  (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
-                  (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
-                  (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
-                  (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
-                  (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
-                  ))
-  (setq dap-auto-configure-features '(locals controls tooltip))
+  <<overrided-vterm-showing>>
+  (advice-add 'dap-disconnect :before #'@dap-delete-local-terminal)
+  ;; (advice-remove 'dap-disconnect #'@dap-delete-local-terminal)
+
+  (with-eval-after-load 'dap-ui
+    (setq-default dap-ui-buffer-configurations
+                  `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
+                    (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
+                    (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
+                    (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
+                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
+                    ;; (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
+                    ))
+    (setq dap-ui-locals-expand-depth 3))
+  ;; (setq dap-auto-configure-features '(locals controls tooltip))
+  (setq dap-auto-configure-features '(locals tooltip))
+  (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
+  (custom-set-faces
+   '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
+   '(dap-ui-verified-breakpoint-face ((t (:underline "green")))))
   (require 'dap-go)
   (require 'dap-node))
 #+END_SRC
 
-#+RESULTS:
-: dap-debug-edit-template
 ** Brackets
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package rainbow-delimiters
@@ -2863,7 +3010,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 *** Undo sessions (history saving)
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package undo-fu-session
-  :init
+  :config
   (global-undo-fu-session-mode))
 #+END_SRC
 
@@ -2920,7 +3067,7 @@ TODO: check copilot + blamer
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
   :custom
-  (copilot-idle-delay 0.2)
+  (copilot-idle-delay nil)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -2966,7 +3113,7 @@ TODO: check copilot + blamer
 #+RESULTS:
 
 ** Autopairs
-*** HOLD Electric
+*** Electric
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package electric
   :defer t
@@ -2978,6 +3125,23 @@ TODO: check copilot + blamer
         electric-pair-delete-adjacent-pairs nil
         electric-pair-skip-whitespace nil
         electric-pair-open-newline-between-pairs t))
+#+END_SRC
+
+Correct position after blamer flicker
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @electric-pair--verify-cursor-position (&optional char)
+  "Verify cusor position after inserting CHAR bracket."
+
+  (when (member (char-before) '(?\) ?}))
+    ;; (when (member (char-before) '(?\) ))
+    (copilot-clear-overlay)
+    (backward-char))
+
+  (when (and (member (char-after) '(?\( ?\{))
+             (member (chart-after (1+ (point))) '(?\) ?\})))
+    (forward-char)))
+
+(advice-add 'electric-pair--insert :after #'@electric-pair--verify-cursor-position)
 #+END_SRC
 
 
@@ -3036,13 +3200,19 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 #+END_SRC
 ** Macros
 #+BEGIN_SRC emacs-lisp :results silent
+(use-package persistent-soft
+  :defer t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package persistent-kmacro
   :straight (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
                      "SPC me" 'persistent-kmacro-execute-macro
-                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro))
+                     "SPC ma" 'persistent-kmacro-name-last-kbd-macro
+                     "SPC mr" 'persistent-kmacro-remove-macro))
 #+END_SRC
 
 
@@ -3200,7 +3370,6 @@ Improved styles for git changes
     (interactive)
     (let ((commit-hash (plist-get commit-info :commit-hash)))
       (when commit-hash
-        (message commit-hash)
         (forge-browse-commit commit-hash))))
 
   (setq blamer-bindings '(("<mouse-3>" . blamer-callback-open-remote)
@@ -3226,6 +3395,16 @@ Improved styles for git changes
 (global-set-key (kbd "C-c k") 'smerge-prev)
  
 #+END_SRC
+** Browse at remote
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package browse-at-remote
+  :defer t
+  :general
+  (:states '(normal visual)
+   :keymaps 'override
+   "SPC o r" 'browse-at-remote))
+#+END_SRC
+
 
 * Languages
 ** Emacs lisp mode (elisp)
@@ -3265,6 +3444,26 @@ Improved styles for git changes
 #+END_SRC
 
 #+RESULTS:
+*** HOLD Lispy 
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package lispy
+  :ensure t
+  :hook (emacs-lisp-mode-hook . lispy-mode))
+#+END_SRC
+
+*** Formatter. Elisp autofmt
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package elisp-autofmt
+  :defer t
+  :hook (emacs-lisp-mode . elisp-autofmt-mode)
+  :custom
+  (elisp-autofmt-python-bin "/opt/homebrew/bin/python3"))
+#+END_SRC
+
 
 ** Clojure
 *** Main mode
@@ -3308,15 +3507,14 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package ng2-mode
   :after typescript-mode
-  :hook (ng2-html-mode . lsp-deferred)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
-          "/usr/local/lib/node_modules/@angular/language-server"
+          "/Users/darkawower/.npm-global/lib/node_modules/@angular/language-server"
           "--ngProbeLocations"
-          "/usr/local/lib/node_modules"
+          "/Users/darkawower/.npm-global/lib/node_modules"
           "--tsProbeLocations"
-          "/usr/local/lib/node_modules"
+          "/Users/darkawower/.npm-global/lib/node_modules"
           "--stdio")))
 #+END_SRC
 
@@ -3447,6 +3645,7 @@ Function for open repl in the current buffer
               (setq tab-width 4))))
 #+END_SRC
 *** LSP
+
 #+BEGIN_SRC emacs-lisp
 (setq lsp-pyright-multi-root nil)
 (use-package lsp-pyright
@@ -3816,10 +4015,6 @@ For install type ~npm install -g @volar/server~
     (defun org-gfm-format-toc (headline) "")
     (org-gfm-export-to-markdown)
     (let ((file-path (replace-regexp-in-string " " "\\\\\  " (buffer-file-name))))
-
-      (message (concat
-                "node /Users/darkawower/projects/pet/it-blog/emacs-blog/index.js"
-                file-path))
       (shell-command
        (concat
         "node /Users/darkawower/projects/pet/it-blog/emacs-blog/index.js "
@@ -3845,9 +4040,13 @@ For install type ~npm install -g @volar/server~
     ""
     "Javascript code to print value of body.")
   ;; Applications for opening from org files
-  (if (assoc "\\.pdf\\'" org-file-apps)
-      (setcdr (assoc "\\.pdf\\'" org-file-apps) 'emacs)
-    (add-to-list 'org-file-apps '("\\.pdf\\'" . emacs) t))
+  ;; (if (assoc "\\.pdf\\'" org-file-apps)
+  ;;     (setcdr (assoc "\\.pdf\\'" org-file-apps) 'emacs)
+  ;;   (add-to-list 'org-file-apps '("\\.pdf\\'" . emacs) t))
+
+  ;; (add-to-list 'org-file-apps
+  ;;              '("\\.pdf\\'" . (lambda (file link)
+  ;;                                (org-pdfview-open link))))
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu"))))
 #+END_SRC
@@ -3886,6 +4085,7 @@ For install type ~npm install -g @volar/server~
                            (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
                            (prettify-symbols-mode)))
 #+END_SRC
+
 ** Prettify org priority
 #+BEGIN_SRC emacs-lisp
   (use-package org-fancy-priorities
@@ -4074,6 +4274,13 @@ Dependency
               ("C-c g" . org-make-toc)))
 #+END_SRC
 
+** Org exporters
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ox-gfm
+  :defer t
+  :straight (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
+#+END_SRC
+
 
 * Spell checker
 # :PROPERTIES:
@@ -4102,7 +4309,7 @@ Dependency
   (if (boundp 'spell-fu-faces-exclude)
     (setq spell-fu-faces-exclude (append spell-fu-faces-exclude
                                          '(diredfl-file-name)))
-    (setq spell-fu-faces-exclude
+    (defvar spell-fu-faces-exclude
           '(diredfl-file-name))))
 
 (use-package spell-fu
@@ -4175,7 +4382,6 @@ Dependency
   :bind (:map google-translate-minibuffer-keymap
         ("C-k" . google-translate-next-translation-direction)
         ("C-n" . google-translate-next-translation-direction)
-        ("C-l" . google-translate-next-translation-direction)
         :map evil-normal-state-map
         ("\\ t" . google-translate-smooth-translate))
   :config
@@ -4228,7 +4434,6 @@ Dependency
 (defun @set-perps-workspace-name-by-switched-project ()
   "Set perps workspace name by switched project"
   (interactive)
-(message "PROJECTIL SWITCHED")
   (when (and (bound-and-true-p persp-mode)
              (bound-and-true-p projectile-mode))
     (persp-rename (projectile-project-name))))
@@ -4397,6 +4602,7 @@ Dependency
   ;; Optionally configure the register formatting. This improves the register
   ;; preview for `consult-register', `consult-register-load',
   ;; `consult-register-store' and the Emacs built-ins.
+  (setq recentf-max-saved-items 3000)
   (setq register-preview-delay 0
         register-preview-function #'consult-register-format)
 
@@ -4490,6 +4696,20 @@ For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1
 (setf (alist-get 'consult-grep embark-keymap-alist) 'embark-consult-grep-map)
 #+END_SRC
 
+Delete project
+
+#+NAME: embark-delete-project
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
+(defvar-keymap embark-projectile-map
+  :doc "Example keymap with a few file actions"
+  :parent embark-general-map
+  "d" #'projectile-remove-known-project)
+
+(add-to-list 'embark-keymap-alist '(consult-projectile-project . embark-projectile-map))
+#+END_SRC
+
+
+
 
 *** Embark package
 #+BEGIN_SRC emacs-lisp :results silent :noweb yes
@@ -4510,6 +4730,7 @@ For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
   :config
+  <<embark-delete-project>>
   <<embark-content-copy-function>>)
 
 ;; Consult users will also want the embark-consult package.
@@ -4598,10 +4819,15 @@ Preview
 #+END_SRC
 
 
-* Emacs for everywhere
-** PDF
+* Emacs for everything
+** HOLD PDF
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 #+BEGIN_SRC emacs-lisp
 (use-package pdf-view
+  :ensure t
   :defer t
   :hook (pdf-view-mode . pdf-view-themed-minor-mode))
 #+END_SRC
@@ -4613,6 +4839,12 @@ Preview
   :defer t
   :config
   (pdf-tools-install))
+#+END_SRC
+
+** Org pdf
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package org-pdftools
+  :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
 
 
@@ -4676,9 +4908,26 @@ dependency
   :defer t)
 #+END_SRC
 
+** PlantUML
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package plantuml-mode
+  :defer t
+  :config
+  (setq plantuml-indent-level 2)
+  (setq plantuml-output-type "png")
+  (add-to-list 'auto-mode-alist '("\\.plantuml\\'" . plantuml-mode))
+  (setq plantuml-exec-mode 'jar)
+  (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
+#+END_SRC
+
 
 * Playground
-TODO: make it persistent
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package empv
+  :ensure t
+  :straight (:host github :repo "isamert/empv.el"))
+#+END_SRC
+
 
 
 
