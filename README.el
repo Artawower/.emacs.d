@@ -58,8 +58,12 @@
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
 
+(ignore-errors
+  (load! "~/pure-emacs/private.el"))
+
 (when (eq system-type 'darwin)
-  (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  ;; (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  (setq browse-url-firefox-program nil)
   (setq browse-url-generic-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
         browse-url-browser-function 'browse-url-generic))
 
@@ -520,9 +524,19 @@ If FORCE-P, delete without confirmation."
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
 
+;; (setq straight-current-profile 'pinned)
+;; (add-to-list 'straight-x-pinned-packages
+;;                '("catppuccin-theme" . "86b16248ef2ce450def4a00a0ca5170c102da623"))
+
+;; (package-vc-install "https://github.com/catppuccin/emacs" "300e7ba1d5b4225db4f9f2d451eac1238073d3ba")
+;; (package-vc-install "https://github.com/catppuccin/emacs" "785c9f57a43c4c90041290556d999db3d9da5be9")
+
 (use-package catppuccin-theme
   :ensure t
+  ;; :vc (:fetcher "github" :repo catppuccin/emacs :rev 86b16248ef2ce450def4a00a0ca5170c102da623)
+  ;; :vc (:fetcher "github" :repo "catppuccin/emacs")
   :straight (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
+;; :straight t
   :config
   (setq catppuccin-flavor 'latte))
 
@@ -713,7 +727,7 @@ If FORCE-P, delete without confirmation."
     "T" 'google-translate-query-translate
     "a" 'counsel-org-agenda-headlines
     "c" 'dired-create-empty-file
-    "p" 'format-all-buffer
+    "p" 'format-all-buffer--no-bufferjump
     "s" 'publish-org-blog
     "g" 'ace-window
     ;; Evil
@@ -1552,6 +1566,14 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 2)
 
+(defun format-all-buffer--no-bufferjump ()
+    "format-all-buffer without jumps of cursor"
+    (interactive)
+    (let ((point (point)) (wstart (window-start)))
+      (format-all-buffer)
+      (goto-char point)
+      (set-window-start (selected-window) wstart)))
+
 (use-package format-all
   :defer t
   ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
@@ -1567,9 +1589,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
               ("\+p" . prettier-prettify))
   ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
   :config
-  (global-prettier-mode)
-  ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
-  )
+  (global-prettier-mode))
 
 (use-package flycheck
   :bind (:map evil-normal-state-map
@@ -1634,6 +1654,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package company
   :defer t
+  :hook (emacs-lisp-mode . company-mode)
   :bind (:map evil-insert-state-map
               ("C-'" . company-yasnippet)
               ("C-x C-o" . company-complete)
@@ -1890,14 +1911,14 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (defun @dap-delete-local-terminal (&optional _)
   "Delete local terminal."
-  (interactive)
-  (message "delete local terminal")
-  (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
-         (filtered-buffers (seq-filter (lambda (buffer)
-                                         (string-match-p "*DEBUG" buffer))
-                                       buffer-list))
-         (buffer-modified-p nil))
-    (mapc #'kill-buffer filtered-buffers)))
+  (interactive (list (dap--cur-active-session-or-die)))
+  (save-window-excursion
+    (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
+           (filtered-buffers (seq-filter (lambda (buffer)
+                                           (string-match-p "\\*DEBUG" buffer))
+                                         buffer-list))
+           (buffer-modified-p nil))
+      (mapc #'kill-buffer filtered-buffers))))
 
 (use-package dap-mode
   :demand
@@ -1907,9 +1928,7 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("SPC d o" . dap-step-out)
               ("SPC d c" . dap-continue)
               ("SPC d Q" . dap-disconnect)
-              ("SPC d q" . (lambda () (interactive)
-                             (call-interactively 'dap-disconnect)
-                             (@dap-delete-local-terminal)))
+              ("SPC d q" . dap-disconnect)
               ("SPC d d" . dap-debug)
               ("SPC d r" . dap-debug-recent)
               ("SPC d l" . dap-ui-locals)
@@ -1932,7 +1951,8 @@ This need for correct highlighting of incorrect spell-fu faces."
       (let ((vterm-shell command)
             (vterm-kill-buffer-on-exit nil))
         (vterm-mode))))
-  ;; (advice-add 'dap-debug-run-task :before #'@dap-delete-local-terminal)
+  (advice-add 'dap-disconnect :before #'@dap-delete-local-terminal)
+  ;; (advice-remove 'dap-disconnect #'@dap-delete-local-terminal)
 
   (with-eval-after-load 'dap-ui
     (setq-default dap-ui-buffer-configurations
@@ -1982,7 +2002,7 @@ This need for correct highlighting of incorrect spell-fu faces."
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
   :custom
-  (copilot-idle-delay nil)
+  (copilot-idle-delay 0.1)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -2010,7 +2030,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 (defun @electric-pair--verify-cursor-position (&optional char)
   "Verify cusor position after inserting CHAR bracket."
 
-  (message "ELECTRIC INSERT: %s" (member (char-before) '(?\) ?})))
   (when (member (char-before) '(?\) ?}))
     ;; (when (member (char-before) '(?\) ))
     (copilot-clear-overlay)
@@ -2164,6 +2183,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package blamer
   :defer 5
+  :straight (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -2196,7 +2216,6 @@ This need for correct highlighting of incorrect spell-fu faces."
     (interactive)
     (let ((commit-hash (plist-get commit-info :commit-hash)))
       (when commit-hash
-        (message commit-hash)
         (forge-browse-commit commit-hash))))
 
   (setq blamer-bindings '(("<mouse-3>" . blamer-callback-open-remote)
@@ -2607,10 +2626,6 @@ This need for correct highlighting of incorrect spell-fu faces."
     (defun org-gfm-format-toc (headline) "")
     (org-gfm-export-to-markdown)
     (let ((file-path (replace-regexp-in-string " " "\\\\\  " (buffer-file-name))))
-
-      (message (concat
-                "node /Users/darkawower/projects/pet/it-blog/emacs-blog/index.js"
-                file-path))
       (shell-command
        (concat
         "node /Users/darkawower/projects/pet/it-blog/emacs-blog/index.js "
@@ -2928,7 +2943,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   (defun @set-perps-workspace-name-by-switched-project ()
     "Set perps workspace name by switched project"
     (interactive)
-  (message "PROJECTIL SWITCHED")
     (when (and (bound-and-true-p persp-mode)
                (bound-and-true-p projectile-mode))
       (persp-rename (projectile-project-name))))
@@ -3230,6 +3244,12 @@ This need for correct highlighting of incorrect spell-fu faces."
   :custom
   (browser-hist-default-browser 'brave)
   :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
+
+(use-package emacs-gpt
+  :straight (:package "emacs-gpt" :host nil :type git
+             :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
+  ;; :load-path "~/pure-emacs"
+  ;; :ensure nil)
 
 (use-package epc
   :defer t)

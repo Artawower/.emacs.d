@@ -121,10 +121,18 @@ Use package
 "Alias for call use-package from doom modules")
 #+END_SRC
 ** Variables
+*** Private configs
+Load private configs
+#+BEGIN_SRC emacs-lisp
+(ignore-errors
+  (load! "~/pure-emacs/private.el"))
+#+END_SRC
+
 *** Browser
 #+BEGIN_SRC emacs-lisp :results silent
 (when (eq system-type 'darwin)
-  (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  ;; (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
+  (setq browse-url-firefox-program nil)
   (setq browse-url-generic-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
         browse-url-browser-function 'browse-url-generic))
 #+END_SRC
@@ -1222,7 +1230,7 @@ Override function for auto-dark mode for applying function for nano theme changi
     "T" 'google-translate-query-translate
     "a" 'counsel-org-agenda-headlines
     "c" 'dired-create-empty-file
-    "p" 'format-all-buffer
+    "p" 'format-all-buffer--no-bufferjump
     "s" 'publish-org-blog
     "g" 'ace-window
     ;; Evil
@@ -2306,7 +2314,18 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (setq-default tab-width 2)
 #+END_SRC
 ** Formatters
-*** Common formatter
+*** Format all mode. Common formatter
+Function for preventing better jump breaks
+#+BEGIN_SRC emacs-lisp :results silent
+(defun format-all-buffer--no-bufferjump ()
+    "format-all-buffer without jumps of cursor"
+    (interactive)
+    (let ((point (point)) (wstart (window-start)))
+      (call-interactively 'format-all-buffer)
+      (goto-char point)
+      (set-window-start (selected-window) wstart)))
+#+END_SRC
+
 #+BEGIN_SRC emacs-lisp
 (use-package format-all
   :defer t
@@ -2326,9 +2345,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
               ("\+p" . prettier-prettify))
   ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
   :config
-  (global-prettier-mode)
-  ;; (advice-add 'prettier-prettify :after (lambda (&rest args) (lsp)))
-  )
+  (global-prettier-mode))
 #+END_SRC
 
 ** Flychek. Error checker
@@ -2432,6 +2449,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package company
   :defer t
+  :hook (emacs-lisp-mode . company-mode)
   :bind (:map evil-insert-state-map
               ("C-'" . company-yasnippet)
               ("C-x C-o" . company-complete)
@@ -3067,7 +3085,7 @@ TODO: check copilot + blamer
             "s-j" 'copilot-complete
             "s-;" 'copilot-accept-completion-by-word)
   :custom
-  (copilot-idle-delay nil)
+  (copilot-idle-delay 0.1)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -3338,6 +3356,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
   :defer 5
+  :straight (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -4866,6 +4885,16 @@ Figure out how to open url from history. Look usefull
   (browser-hist-default-browser 'brave)
   :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
 #+END_SRC
+** GPT AI alternative
+https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package emacs-gpt
+  :straight (:package "emacs-gpt" :host nil :type git
+             :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
+  ;; :load-path "~/pure-emacs"
+  ;; :ensure nil)
+#+END_SRC
+
 ** GPT AI
 dependency
 #+BEGIN_SRC emacs-lisp :results silent
