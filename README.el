@@ -1440,7 +1440,8 @@ new project directory.")
   "Close all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/close-all-folds))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-close-all))
         (t (evil-close-folds))))
 
@@ -1448,7 +1449,8 @@ new project directory.")
   "Close the fold under the cursor."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
+  (cond ((equal major-mode 'org-mode) (+org/close-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
         ((bound-and-true-p ts-fold-mode) (ts-fold-close))
         (t (evil-close-fold))))
 
@@ -1457,7 +1459,8 @@ new project directory.")
   "Open all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/open-all-folds))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-open-all))
         (t (evil-open-folds))))
 
@@ -1465,7 +1468,8 @@ new project directory.")
   "Open the fold under the cursor."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
+  (cond ((equal major-mode 'org-mode) (+org/open-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
         ((bound-and-true-p ts-fold-mode) (ts-fold-open))
         (t (evil-open-fold))))
 
@@ -1473,7 +1477,8 @@ new project directory.")
   "Toggle all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-toggle-all))
         (t (evil-toggle-fold))))
 
@@ -1481,11 +1486,12 @@ new project directory.")
   "Toggle fold at point."
 
   (interactive)
-  (save-excursion 
+  (save-excursion
     (end-of-line)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
-        (t (evil-toggle-fold)))))
+    (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
+          ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
+          ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
+          (t (evil-toggle-fold)))))
 
 
 (defun @fold-next ()

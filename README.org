@@ -267,9 +267,9 @@ list is returned as-is."
 (defvar @before-buffer-changed-hook nil
   "Hook run before a buffer is changed.")
 
-(add-to-list 'window-buffer-change-functions
-             (lambda (&rest _)
-               (run-hooks '@before-buffer-changed-hook)))
+;; (add-to-list 'window-buffer-change-functions
+;;              (lambda (&rest _)
+;;                (run-hooks '@before-buffer-changed-hook)))
 #+END_SRC
 
 
@@ -3275,15 +3275,12 @@ TODO: check copilot + blamer
 *** Electric
 #+BEGIN_SRC emacs-lisp 
 (use-package electric
-  :defer t
-  :hook ((prog-mode . electric-indent-local-mode)
-         (prog-mode . electric-pair-mode))
   :config
-
   (setq electric-pair-preserve-balance nil
         electric-pair-delete-adjacent-pairs nil
         electric-pair-skip-whitespace nil
-        electric-pair-open-newline-between-pairs t))
+        electric-pair-open-newline-between-pairs t)
+  (electric-pair-mode))
 #+END_SRC
 
 Correct position after blamer flicker
