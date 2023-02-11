@@ -32,7 +32,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+END_SRC
 
 ** Melpa
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (require 'package)
 
 (customize-set-variable 'package-archives
@@ -72,7 +72,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (unless (package-installed-p 'quelpa)
   (with-temp-buffer
     (url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
@@ -81,7 +81,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+END_SRC
 
 Use package
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (quelpa
  '(quelpa-use-package
    :fetcher git
@@ -90,14 +90,14 @@ Use package
 (setq use-package-ensure-function 'quelpa)
 #+END_SRC
 ** VC install macro
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (unless (package-installed-p 'vc-use-package)
   (package-vc-install "https://github.com/slotThe/vc-use-package"))
 (require 'vc-use-package)
 #+END_SRC
 
 ** Startup time boost
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package fnhh
   :straight (:type git :host github :repo "a13/fnhh")
   :config
@@ -116,11 +116,11 @@ Use package
 (defalias 'yes-or-no-p 'y-or-n-p)
 #+END_SRC
 *** Initial buffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (setq initial-major-mode (quote fundamental-mode))
 #+END_SRC
 *** Environment variables
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package direnv
   :config
   (direnv-mode))
@@ -128,7 +128,7 @@ Use package
 
 ** Patches
 *** Alias for doom use-package!
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
 #+END_SRC
@@ -141,7 +141,7 @@ Load private configs
 #+END_SRC
 
 *** Browser
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (when (eq system-type 'darwin)
   ;; (setq browse-url-firefox-program "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser")
   (setq browse-url-firefox-program nil)
@@ -150,13 +150,13 @@ Load private configs
 #+END_SRC
 
 *** Truncate lines
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (set-default 'truncate-lines t)
 #+END_SRC
 
 * Libs (functions and macros)
 ** Doom libs (honestly spizjeno)
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package doom-lib
   :ensure t
   :straight (doom-lib
@@ -165,7 +165,7 @@ Load private configs
              :files ("lisp/doom-lib.el" "lisp/lib/buffers.el")))
 #+END_SRC
 ** Bulk push 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defmacro pushnew! (place &rest values)
   "Push VALUES sequentially into PLACE, if they aren't already present.
 This is a variadic `cl-pushnew'."
@@ -177,7 +177,7 @@ This is a variadic `cl-pushnew'."
 
 ** Some doom macros
 *** Return EXP unquoted.
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun doom-unquote (exp)
   "Return EXP unquoted."
   (declare (pure t) (side-effect-free t))
@@ -187,7 +187,7 @@ This is a variadic `cl-pushnew'."
 #+END_SRC
 
 *** macro for adding N functions to M hooks.
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defmacro add-hook! (hooks &rest rest)
   "A convenience macro for adding N functions to M hooks.
 
@@ -247,7 +247,7 @@ This macro accepts, in order:
 
 
 *** Converts a list of modes into a list of hook symbols.
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun doom--resolve-hook-forms (hooks)
   "Converts a list of modes into a list of hook symbols.
 
@@ -263,7 +263,7 @@ list is returned as-is."
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 #+END_SRC
 ** Custom hooks
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defvar @before-buffer-changed-hook nil
   "Hook run before a buffer is changed.")
 
@@ -351,7 +351,7 @@ Focus buffer by name
 : +select-window-by-name
 
 *** Switch to buffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @change-buffer (change-buffer)
   "Call CHANGE-BUFFER until current buffer is not in `my-skippable-buffers'."
   (let ((initial (current-buffer)))
@@ -447,7 +447,7 @@ Version 2015-12-08"
     (shell-command cmd)))
 #+END_SRC
 ** Delete current file
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @delete-this-file (&optional path force-p)
   "Delete PATH, kill its buffers and expunge it from vc/magit cache.
 If PATH is not specified, default to the current buffer's file.
@@ -551,7 +551,7 @@ If FORCE-P, delete without confirmation."
 #+END_SRC
 ** Open fodler with emacs config
 TODO: check why it doesn;t work
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @open-emacs-config ()
   "Open folder with emacs config"
   (interactive)
@@ -560,7 +560,7 @@ TODO: check why it doesn;t work
 #+END_SRC
 
 ** Switch to scratch buffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @switch-to-scratch ()
   "Switch to scratch buffer"
   (interactive)
@@ -579,7 +579,7 @@ TODO: check why it doesn;t work
 For correct work you need to install sass-lint-auto-fix
 ~yarn global add sass-lint-auto-fix~
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @run-sass-auto-fix ()
   "Run sass auto fix if cli tool exist"
   (interactive)
@@ -593,7 +593,7 @@ For correct work you need to install sass-lint-auto-fix
 Need to steal from doom emacs!
 ** LSP
 *** Go to definition
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @find-definition ()
   "Find lsp definition when lsp exist and enabled, or find evil definition."
   (interactive)
@@ -605,7 +605,7 @@ Need to steal from doom emacs!
 
 * HOLD Performance
 Uncomment when u need to profile ;p
-*** Profiler
+*** HOLD Profiler
 :PROPERTIES:
 :header-args: :tangle no
 :END:
@@ -624,13 +624,13 @@ Uncomment when u need to profile ;p
 ;; (package! benchmark-init
 #+END_SRC
 *** Use package startup time
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (setq use-package-verbose t)
 #+END_SRC
 
 * UI
 ** All the icons.
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package all-the-icons
   :ensure t
   :config
@@ -644,18 +644,18 @@ Uncomment when u need to profile ;p
 #+END_SRC
 
 ** Full size from startup
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 #+END_SRC
 ** Disable default splash screen
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (setq inhibit-splash-screen t)
 (setq inhibit-startup-message t)
 #+END_SRC
 
 ** Titlebar color
 Very pretty titlebar for Mac os
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ns-auto-titlebar
   :config
   (when (eq system-type 'darwin) (ns-auto-titlebar-mode)))
@@ -687,7 +687,7 @@ Very pretty titlebar for Mac os
     :hook (dired-mode . all-the-icons-dired-mode))
 #+END_SRC
 ** Rainbows colors
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
   (use-package rainbow-mode
     :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
     :defer t)
@@ -710,17 +710,17 @@ Very pretty titlebar for Mac os
   (global-hl-todo-mode 1))
 #+END_SRC
 ** Highlight hex colors
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package rainbow-mode
   :defer t
   :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
 #+END_SRC
 ** Pixel scroll
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (pixel-scroll-mode)
 #+END_SRC
 ** Fringes
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @correct-my-fringe (&optional ignore)
   "Set fringes for current active window."
   (interactive)
@@ -736,7 +736,7 @@ Very pretty titlebar for Mac os
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
 ** Column indicator. display-fill-column-indicator
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package display-fill-column-indicator
   :defer t
   :config
@@ -747,7 +747,7 @@ Very pretty titlebar for Mac os
 * Theme
 ** Functions
 *** Hook on theme changed
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
  (defvar after-load-theme-hook nil
     "Hook run after a color theme is loaded using `load-theme'.")
   (defadvice load-theme (after run-after-load-theme-hook activate)
@@ -755,7 +755,7 @@ Very pretty titlebar for Mac os
     (run-hooks 'after-load-theme-hook))
 #+END_SRC
 *** Automatic reset theme
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defadvice load-theme (before theme-dont-propagate activate)
  (mapcar #'disable-theme custom-enabled-themes))
 #+END_SRC
@@ -837,7 +837,7 @@ Nano is pretty good theme. But has ton of bugs ;(
 **** Modeline patch
 Patch for modeline for support mode-line-misc-info
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun nano-modeline-default-mode ()
   (let ((buffer-name (format-mode-line "%b"))
         (mode-name   (nano-mode-name))
@@ -857,7 +857,7 @@ Patch for modeline for support mode-line-misc-info
 #+END_SRC
 *** Nano theme switcher
 #+NAME: nano-theme-switcher
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun auto-dark--ns-set-theme (appearance)
     "Set light/dark theme using emacs-plus ns-system-appearance.
 Argument APPEARANCE should be light or dark."
@@ -874,13 +874,13 @@ Argument APPEARANCE should be light or dark."
 #+END_SRC
 
 *** Colors
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 
 #+END_SRC
 
 ** Doom emacs themes
 *** Theme
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package doom-themes
   :ensure t
   :config
@@ -901,7 +901,7 @@ Argument APPEARANCE should be light or dark."
 #+END_SRC
 *** Doom theme switcher
 #+NAME: doom-theme-switcher
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 ;; (setq auto-dark-dark-theme 'doom-moonlight)
 (setq auto-dark-dark-theme 'catppuccin-frappe)
 (setq auto-dark-light-theme 'doom-one-light)
@@ -912,7 +912,7 @@ Argument APPEARANCE should be light or dark."
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package lambda-line
   :ensure t
   :straight (:type git :host github :repo "lambda-emacs/lambda-line") 
@@ -941,7 +941,7 @@ Argument APPEARANCE should be light or dark."
 #+END_SRC
 
 *** Doom Modeline
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package doom-modeline
   :defer t
   :hook (after-init . doom-modeline-mode)
@@ -949,7 +949,7 @@ Argument APPEARANCE should be light or dark."
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
 ** Catppuccini theme
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 ;; (setq straight-current-profile 'pinned)
 ;; (add-to-list 'straight-x-pinned-packages
 ;;                '("catppuccin-theme" . "86b16248ef2ce450def4a00a0ca5170c102da623"))
@@ -972,7 +972,7 @@ Argument APPEARANCE should be light or dark."
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package splash-screen
   :straight (:host github :repo "rougier/emacs-splash"))
 #+END_SRC
@@ -984,7 +984,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package dashboard
   ;; :ensure t
   :config
@@ -1056,7 +1056,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 
 ** Theme switcher
 Function for setting terminal color after theme switch
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @set-vterm-autocomplete-color ()
   "Change color of autocomplete inside vterm"
   (interactive)
@@ -1065,7 +1065,7 @@ Function for setting terminal color after theme switch
 #+END_SRC
 
 Override function for auto-dark mode for applying function for nano theme changing, instead of them applying
-#+BEGIN_SRC emacs-lisp :noweb yes :results silent
+#+BEGIN_SRC emacs-lisp :noweb yes 
 (use-package auto-dark
   ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :config
@@ -1131,7 +1131,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 ** General
 *** Global keys
 #+NAME: general-global-mode-map
-#+BEGIN_SRC emacs-lisp :exports none :results silent :tangle no
+#+BEGIN_SRC emacs-lisp :exports none  :tangle no
 (general-define-key
  :keymaps 'override
  "C-w" 'backward-kill-word
@@ -1161,7 +1161,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 #+END_SRC
 *** Evil. Normal space state map.
 #+NAME: evil-spc-mode-map 
-#+BEGIN_SRC emacs-lisp :exports none :tangle no :results silent
+#+BEGIN_SRC emacs-lisp :exports none :tangle no 
 (general-define-key
  :states '(normal visual)
  :keymaps 'override
@@ -1207,7 +1207,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 #+END_SRC
 *** Evil normal/visual state map
 #+NAME: evil-normal-insert-mode-map
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (general-define-key
  :states '(normal visual)
  :keymaps 'override
@@ -1219,7 +1219,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 
 *** Minibuffer mode map
 #+NAME: general-minibuffer-mode-map
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (general-define-key
  :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map)
  "C-w" 'backward-kill-word
@@ -1236,7 +1236,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 
 *** Evil. Leader.
 #+NAME: general-normal-leader-mode-map
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
   (general-define-key
    :states '(visual normal)
    :keymaps 'override
@@ -1309,7 +1309,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 ** Evil
 Patch for recover visual line after shifting
 #+NAME: evil-shifting-config
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (define-key evil-visual-state-map (kbd ">") '@evil-shift-right-visual)
 (define-key evil-visual-state-map (kbd "<") '@evil-shift-left-visual)
 (define-key evil-visual-state-map [tab] '@evil-shift-right-visual)
@@ -1330,7 +1330,7 @@ Patch for recover visual line after shifting
 
 Evil should respect visual line mode
 #+NAME: evil-respect-visual-line-mode
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun evil-next-line--check-visual-line-mode (orig-fun &rest args)
   (if visual-line-mode
       (apply 'evil-next-visual-line args)
@@ -1347,7 +1347,7 @@ Evil should respect visual line mode
 #+END_SRC
 
 
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package evil-collection
   :after evil
   :config
@@ -1409,7 +1409,7 @@ Bookmark for navigation inside file
 
 ** Ace window. Fast jump between opened windows and frames
 #+NAME: avy-ignore-current-buffer-fn
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @avy-ignore-current-buffer ()
   "Ignore current buffer when using avy."
   (interactive)
@@ -1438,7 +1438,7 @@ Bookmark for navigation inside file
 (global-evil-matchit-mode 1)
 #+END_SRC
 ** Better jump
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @better-jump-preserve-pos-advice (oldfun &rest args)
   "Preserve position when jumping."
   (let ((old-pos (point)))
@@ -1448,7 +1448,7 @@ Bookmark for navigation inside file
       (better-jumper-set-jump old-pos))))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package better-jumper
   ;; :hook
   ;; (consult-after-jump . @better-jump-preserve-pos)
@@ -1475,7 +1475,7 @@ Bookmark for navigation inside file
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package binky-mode
   :straight (binky-mode :type git :host github :repo "liuyinz/binky-mode")
   :general
@@ -1485,7 +1485,7 @@ Bookmark for navigation inside file
   :hook (after-init-hook . binky-mode))
 #+END_SRC
 ** Tree sitter movement
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ts-movement
   ;; :straight (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
   :load-path "vendor/ts-movement"
@@ -1500,7 +1500,7 @@ Bookmark for navigation inside file
 #+END_SRC
 
 ** Tree sitter movement. Ts hopper
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ts-hopper
   :straight (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
   :init
@@ -1519,7 +1519,7 @@ Bookmark for navigation inside file
 * Common emacs packages
 ** Files
 *** Dired configs
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
   (use-package dired
     :defer t
     :ensure nil
@@ -1617,7 +1617,7 @@ I didn't use treemacs anymore, but sometime
 #+RESULTS:
 : evil-execute-macro
 *** File info
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package file-info
   :bind (("C-c d" . 'file-info-show))
   :defer t
@@ -1631,7 +1631,7 @@ I didn't use treemacs anymore, but sometime
 #+END_SRC
 
 *** Open in finder
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package reveal-in-osx-finder
   :defer t
   :bind (:map evil-normal-state-map
@@ -1644,7 +1644,7 @@ I didn't use treemacs anymore, but sometime
 *** Vterm functions
 Clear vterm history.
 #+NAME: vterm-function-clear
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @clear-term-history ()
   "Clear terminal history inside vterm."
   (interactive)
@@ -1659,7 +1659,7 @@ Clear vterm history.
 
 Open vterm in the current buffer. When vterm doesn't exist, create one.
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @vterm-open-here ()
   "Open nodejs repl inside current buffer!"
   (interactive)
@@ -1672,7 +1672,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 #+END_SRC
 
 *** Vterm
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package vterm
   :defer 5
   :hook (vterm-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
@@ -1695,7 +1695,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 
 *** Vterm toggle
 **** Open vterm for current buffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @vterm-change-current-directory-to-active-buffer-pwd ()
   "Just exec CD to pwd of active buffer."
   (interactive)
@@ -1714,7 +1714,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 #+END_SRC
 **** Open vterm at bottom position
 #+NAME: vterm-open-bottom-config
-#+BEGIN_SRC emacs-lisp :results silent :tangle no :exports no
+#+BEGIN_SRC emacs-lisp  :tangle no :exports no
 (setq vterm-toggle-fullscreen-p nil)
 (add-to-list 'display-buffer-alist
              '((lambda (buffer-or-name _)
@@ -1732,7 +1732,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 #+END_SRC
 
 **** Vterm package
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package vterm-toggle
   :defer 5
   :general (:states '(normal visual)
@@ -1779,7 +1779,7 @@ Something like screensaver
 :END:
 
 Doesn't work now
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package eyebrowse-restore
   :ensure t
   :straight (:host github
@@ -1791,7 +1791,7 @@ Doesn't work now
 
 *** Persp mode
 **** Kill other buffers from current workspace
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @persp-kill-other-buffers ()
   "Kill all buffers except current buffer."
   (interactive)
@@ -1806,13 +1806,13 @@ Doesn't work now
 #+END_SRC
 
 **** Persp doom configs
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (load "~/pure-emacs/vendor/doom-workspaces.el")
 #+END_SRC
 
 **** Persp buffer advices
 #+NAME: persp-buffer-advices
-#+BEGIN_SRC emacs-lisp :results silent :exports none :tangle no
+#+BEGIN_SRC emacs-lisp  :exports none :tangle no
 (defvar after-switch-to-buffer-functions nil)
 (defvar after-display-buffer-functions nil)
 
@@ -1828,7 +1828,7 @@ Doesn't work now
 #+END_SRC
 **** Persp mode custom
 #+NAME: persp-mode-custom
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (persp-autokill-buffer-on-remove 'kill-weak)
 (persp-reset-windows-on-nil-window-conf nil)
 (persp-add-buffer-on-after-change-major-mode t)
@@ -1847,7 +1847,7 @@ Doesn't work now
 **** Buffers
 Add new buffer to current persp
 #+NAME: persp-add-buffer
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (add-hook 'after-switch-to-buffer-functions
             #'(lambda (bn) (when (and persp-mode
                                       (not persp-temporarily-display-buffer))
@@ -1855,7 +1855,7 @@ Add new buffer to current persp
 #+END_SRC
 **** Variables for tabs
 Variables for define colors of tab
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defface +workspace-tab-selected-face
   '((t :inherit nano-face-header-popout))
   "Face for selected persp tab bar"
@@ -1868,7 +1868,7 @@ Variables for define colors of tab
 
 #+END_SRC
 **** Configs from doom
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defvar +workspaces-main "main"
   "The name of the primary and initial workspace, which cannot be deleted.")
 
@@ -1884,7 +1884,7 @@ new project directory.")
 
 
 #+NAME: workspaces-doom-config
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (add-hook! '(persp-mode-hook persp-after-load-state-functions)
   (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
     (when persp-mode
@@ -1937,7 +1937,7 @@ new project directory.")
 **** Create new workspace quickly
 
 #+NAME: workspaces-doom-patch
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun +workspace/quick-new ()
   "Create new workspace quickly"
   (interactive)
@@ -1950,13 +1950,13 @@ new project directory.")
 #+END_SRC
 
 **** Workgroups
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package workgroups)
 #+END_SRC
 
 **** Persp mode keybindings general
 #+NAME: persp-mode-map-general
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (:keymaps 'override
 :states '(normal visual insert)
           "s-1" '+workspace/switch-to-0
@@ -1996,7 +1996,7 @@ new project directory.")
 
 **** Persp mode package
 TODO: change binding to general
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package persp-mode
   :after workgroups
   :general
@@ -2016,7 +2016,7 @@ TODO: change binding to general
 *** Ibuffer
 **** Auto workspace switch
 This function also stolen from doom emacs. It provide functionality for automatic switch to workspace when you open buffer from ibuffer.
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun +ibuffer/visit-workspace-buffer (&optional select-first)
   "Visit buffer, but switch to its workspace if it exists."
   (interactive "P")
@@ -2037,7 +2037,7 @@ This function also stolen from doom emacs. It provide functionality for automati
     (switch-to-buffer buf)))
 #+END_SRC
 **** package
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ibuffer
   :defer t
   :general
@@ -2050,7 +2050,7 @@ This function also stolen from doom emacs. It provide functionality for automati
            "<return>" '+ibuffer/visit-workspace-buffer))
 #+END_SRC
 *** Collect ibuffers for all workspaces
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (with-eval-after-load "ibuffer"
   (require 'ibuf-ext)
 
@@ -2091,7 +2091,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 
 *** Projectile integration with workspaces
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package persp-mode-project-bridge
   :after persp-mode
   :config
@@ -2107,7 +2107,7 @@ This function also stolen from doom emacs. It provide functionality for automati
               t)))
 #+END_SRC
 ** Backups
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package no-littering)
 (setq backup-directory-alist `(("." . "~/.emacs-saves")))
 (setq auto-save-file-name-transforms
@@ -2116,14 +2116,14 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 
 ** Folding (origami)
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package origami
   :hook ((org-mode dart-mode yaml-mode) . origami-mode)
   :after evil)
 #+END_SRC
 ** Folding (tree-sitter based) ts-fold
 *** Funtions for better folding depends on mode
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @fold-close-all ()
   "Close all folds."
 
@@ -2200,7 +2200,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 *** Tsfold improved bindings (general)
 #+NAME: ts-fold-general-keybindings
-#+BEGIN_SRC emacs-lisp :results silent :tangle no :exports no
+#+BEGIN_SRC emacs-lisp  :tangle no :exports no
 (:keymaps 'override :states '(normal)
           "zM" '@fold-close-all
           "zm" '@fold-close
@@ -2212,7 +2212,7 @@ This function also stolen from doom emacs. It provide functionality for automati
           "zk" '@fold-previous)
 #+END_SRC
 *** Init hook
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @ts-fold-init ()
   "Init ts-fold."
   (interactive)
@@ -2231,7 +2231,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 
 *** Core package
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package ts-fold
   :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
   :hook ((tree-sitter-mode
@@ -2282,7 +2282,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ts-fold-indicators
   :after ts-fold
   :straight (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
@@ -2295,14 +2295,14 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Notes
 *** Settings
 Display buffer of quick note always at bottom
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
 (add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
 #+END_SRC
 
 *** Persistent scratch
 Override function for autosaving
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @save-scratch-buffer-p ()
   "Return non-nil if the current buffer is the scratch buffer."
   (and (get-buffer "*scratch*") (string= (buffer-name) "*scratch*")))
@@ -2312,7 +2312,7 @@ Override function for autosaving
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
-#+BEGIN_SRC emacs-lisp :results silent 
+#+BEGIN_SRC emacs-lisp  
 (defun @persistent-scratch-save (&optional file)
   "Save the current state of scratch buffers.
 When FILE is non-nil, the state is saved to FILE; when nil or when called
@@ -2346,7 +2346,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 #+END_SRC
 
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
  :general
  (:states '(normal visual)
@@ -2374,7 +2374,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 ** Formatters
 *** Format all mode. Common formatter
 Function for preventing better jump breaks
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun format-all-buffer--no-bufferjump ()
     "format-all-buffer without jumps of cursor"
     (interactive)
@@ -2397,7 +2397,7 @@ Function for preventing better jump breaks
 #+END_SRC
 
 *** Prettier
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package prettier
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
@@ -2420,7 +2420,7 @@ Function for preventing better jump breaks
            ("C-f [" . flymake-goto-prev-error)))
 #+END_SRC
 *** Flycheck
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package flycheck
   :bind (:map evil-normal-state-map
               ("SPC f ]" . flycheck-next-error)
@@ -2451,7 +2451,7 @@ Function for preventing better jump breaks
 
 ** AST. Tree sitter.
 *** Tree sitterm automatic grammar installation
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package treesit-auto
   :config
   (setq treesit-auto-install 'prompt)
@@ -2516,7 +2516,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 ;; (use-package treesit-langs
 ;;   :straight (:type git :host github :repo "ymarco/tree-sitter-langs")
 ;;   :hook ((typescript-ts-base-mode
@@ -2533,7 +2533,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 ;;   (defalias 'treesit-can-enable-p 'treesit-available-p))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package treesit
   :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
   :hook ((typescript-ts-base-mode
@@ -2578,7 +2578,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 ** Autocomplete
 *** Company mode
 **** Company package
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package company
   :defer t
   :hook (emacs-lisp-mode . company-mode)
@@ -2604,7 +2604,7 @@ This need for correct highlighting of incorrect spell-fu faces."
    '(company-quick-access-modifier 'super)))
 #+END_SRC
 **** Company box
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package company-box
   :hook (company-mode . company-box-mode))
 #+END_SRC
@@ -2659,7 +2659,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 : t
 
 Enable in minibuffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun corfu-enable-in-minibuffer ()
   "Enable Corfu in the minibuffer if `completion-at-point' is bound."
   (when (where-is-internal #'completion-at-point (list (current-local-map)))
@@ -2672,7 +2672,7 @@ Enable in minibuffer
 #+END_SRC
 
 Disalbe company mode
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (global-company-mode -1)
 (company-mode -1)
 (add-hook 'prog-mode-hook (lambda () (company-mode -1)))
@@ -2699,7 +2699,7 @@ Disalbe company mode
 :END:
 
 Use company backends for corfu
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package cape
   :commands (cape-dabbrev cape-file cape-keyword cape-symbol cape-abbrev
                           cape-ispell cape-line cape-dict cape-tex cape-sgml
@@ -2727,7 +2727,7 @@ Use company backends for corfu
 
 #+END_SRC
 ** Paren checker
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (show-paren-mode 1)
 (custom-set-faces
  `(show-paren-mismatch ((t (:foreground ,+m-color-secondary)))))
@@ -2758,7 +2758,7 @@ Perspective alternative for lsp-mode. Right now on the pause cause doesn't suppo
 https://github.com/manateelazycat/lsp-bridge/issues/500
 Also GDB is not working with apple silicon
 https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package lsp-bridge
   :after yasnippet
   :straight (:host github :repo "manateelazycat/lsp-bridge" :files ("acm" "core" "langserver" "multiserver" "test" "*.py" "*.el"))
@@ -2795,7 +2795,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 ** Lsp
 *** Lsp functions
 **** Uninstall server
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @lsp/uninstall-server (dir)
   "Delete a LSP server from `lsp-server-install-dir'."
   (interactive
@@ -2928,7 +2928,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+END_SRC
 
 **** YAML PRO
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package yaml-pro
   :defer t
   :hook (yaml-mode . yaml-pro-mode))
@@ -2936,7 +2936,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 
 *** LSP UI
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package lsp-ui
   :hook (lsp-mode . lsp-ui-mode)
   :bind (:map lsp-ui-peek-mode-map
@@ -2990,7 +2990,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
         (list (match-string 1))))))
 #+END_SRC
 *** Buffer position
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (add-to-list 'display-buffer-alist '("^\\*compilation\\*$" . (display-buffer-at-bottom)))
 #+END_SRC
 
@@ -3039,7 +3039,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 *** Display compilation buffer
 By default ~compile-goto-error~ open new window. Its redundant.
 #+NAME: display-compilation-buffer
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun display-buffer-from-compilation-p (_buffer-name _action)
   (unless current-prefix-arg
     (with-current-buffer (window-buffer)
@@ -3051,7 +3051,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
       display-buffer-alist)
 #+END_SRC
 *** Compile package
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package compile
   :defer t
   :general
@@ -3076,7 +3076,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 
 ** Debugger. Dap
 Function for deleting local terminals
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @dap-delete-local-terminal (&optional _)
   "Delete local terminal."
   (interactive (list (dap--cur-active-session-or-die)))
@@ -3091,7 +3091,7 @@ Function for deleting local terminals
 
 
 #+NAME: overrided-vterm-showing
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun dap-internal-terminal-vterm (command title debug-session)
   (with-current-buffer (dap--make-terminal-buffer title debug-session)
     (require 'vterm)
@@ -3102,7 +3102,7 @@ Function for deleting local terminals
 
 
 
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package dap-mode
   :demand
   :bind (:map evil-normal-state-map
@@ -3150,7 +3150,7 @@ Function for deleting local terminals
 #+END_SRC
 
 ** Brackets
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package rainbow-delimiters
   :defer t
   :hook (prog-mode . rainbow-delimiters-mode))
@@ -3159,7 +3159,7 @@ Function for deleting local terminals
 * Editing
 ** Undo redo
 *** Undo mode
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package undo-fu
   :defer t
   :bind (:map evil-normal-state-map
@@ -3167,7 +3167,7 @@ Function for deleting local terminals
               ("C-r" . undo-fu-only-redo)))
 #+END_SRC
 *** Undo sessions (history saving)
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package undo-fu-session
   :config
   (global-undo-fu-session-mode))
@@ -3207,7 +3207,7 @@ Function for deleting local terminals
   #+END_SRC
 ** Surround
 Package for quick editing/deleting brackets and bracket-likes symbols
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package evil-surround
   :config
   (global-evil-surround-mode 1))
@@ -3273,7 +3273,7 @@ TODO: check copilot + blamer
 
 ** Autopairs
 *** Electric
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package electric
   :defer t
   :hook ((prog-mode . electric-indent-local-mode)
@@ -3287,7 +3287,7 @@ TODO: check copilot + blamer
 #+END_SRC
 
 Correct position after blamer flicker
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @electric-pair--verify-cursor-position (&optional char)
   "Verify cusor position after inserting CHAR bracket."
 
@@ -3352,18 +3352,18 @@ cause its simple, and it works in all cases.
 #+END_SRC
 ** Case converter
 Allow to transform PASCAL_CASE -> camelCase -> snake_case
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package string-inflection
   :defer t
   :bind ("C-s-c" . string-inflection-all-cycle))
 #+END_SRC
 ** Macros
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package persistent-soft
   :defer t)
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package persistent-kmacro
   :straight (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
@@ -3377,7 +3377,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 
 * GIT
 ** Magit
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package magit
   :defer t
   :general
@@ -3421,7 +3421,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
   (setq magit-process-finish-apply-ansi-colors t))
 #+END_SRC
 ** Magit todos
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package magit-todos
   :defer t
   :general
@@ -3450,7 +3450,7 @@ Unused, cause support of key navigation is not so good? check
          ("SPC g l g" . gist-list)))
 #+END_SRC
 ** Gists 2
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package jist
   :ensure t
   :custom
@@ -3538,7 +3538,7 @@ Improved styles for git changes
   (global-blamer-mode 1))
 #+END_SRC
 ** Timemachine
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package git-timemachine
   :defer t
   :bind (:map evil-normal-state-map
@@ -3547,7 +3547,7 @@ Improved styles for git changes
 
 
 ** Smerge
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (global-set-key (kbd "C-c l") 'smerge-keep-lower)
 (global-set-key (kbd "C-c u") 'smerge-keep-upper)
 (global-set-key (kbd "C-c a") 'smerge-keep-all)
@@ -3556,7 +3556,7 @@ Improved styles for git changes
  
 #+END_SRC
 ** Browse at remote
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package browse-at-remote
   :defer t
   :general
@@ -3566,7 +3566,7 @@ Improved styles for git changes
 #+END_SRC
 
 ** Forge. Remote access to repo
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package forge
   :after magit
   :config
@@ -3574,7 +3574,7 @@ Improved styles for git changes
 #+END_SRC
 
 ** Code review
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package code-review
   :defer t
   :general
@@ -3634,14 +3634,14 @@ Improved styles for git changes
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package lispy
   :ensure t
   :hook (emacs-lisp-mode-hook . lispy-mode))
 #+END_SRC
 
 *** Formatter. Elisp autofmt
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package elisp-autofmt
   :defer t
   :hook (emacs-lisp-mode . elisp-autofmt-mode)
@@ -3667,13 +3667,13 @@ Improved styles for git changes
 
 ** Typescript
 *** Jest
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package jest
   :defer t)
 #+END_SRC
 
 *** Typescript package
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
   :defer t  
@@ -3690,7 +3690,7 @@ Improved styles for git changes
 #+RESULTS:
 : t
 *** Typescript repl
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ts-comint
   :defer t
   :ensure t)
@@ -3730,7 +3730,7 @@ Improved styles for git changes
 *** REPL
 **** NodeJs repl functions
 #+NAME: nodejs-repl-buffer-func
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun @open-nodejs-repl-here ()
   "Open nodejs repl inside current buffer!"
   (interactive)
@@ -3743,7 +3743,7 @@ Improved styles for git changes
 #+END_SRC
 
 **** NodeJs repl
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package nodejs-repl
   :ensure t
   :general
@@ -3801,7 +3801,7 @@ Improved styles for git changes
 ** Python
 *** Python repl
 Function for open repl in the current buffer
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @open-ipython-repl-here ()
   "Open python repl inside current buffer!"
   (interactive)
@@ -3813,7 +3813,7 @@ Function for open repl in the current buffer
         (run-python)))))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
   (use-package python
     :defer t
     :general
@@ -3989,7 +3989,7 @@ For install type ~npm install -g @volar/server~
 #+END_SRC
 ** HTML
 *** Emmet. Quick tag expanding
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package emmet-mode
   :hook ((scss-mode . emmet-mode) (css-mode . emmet-mode) (ng2-html-mode . emmet-mode) (html-mode . emmet-mode))
   :general 
@@ -4026,7 +4026,7 @@ For install type ~npm install -g @volar/server~
   :hook (dart-mode . flutter-test-mode))
 #+END_SRC
 *** Flutter mode
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package flutter
   :after dart-mode
   :general
@@ -4116,7 +4116,7 @@ For install type ~npm install -g @volar/server~
 
 * Org mode
 ** Publishing
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ox-gfm
   :defer t)
 #+END_SRC
@@ -4299,7 +4299,7 @@ For install type ~npm install -g @volar/server~
 #+END_SRC
 
 ** Prettify org priority
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
   (use-package org-fancy-priorities
     :after org
     :ensure t
@@ -4328,7 +4328,7 @@ For install type ~npm install -g @volar/server~
 #+RESULTS:
 
 ** Pretty org stars
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package org-superstar
   :after org
   :hook (org-mode . org-superstar-mode)
@@ -4466,7 +4466,7 @@ Dependency
 #+RESULTS:
 : +org/insert-item-above
 ** Org agenda
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @apply-agenda-directory-url ()
   "Upload agenda from nested dirs."
   (interactive)
@@ -4480,7 +4480,7 @@ Dependency
 #+END_SRC
 
 ** Table of contents
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package org-make-toc
   :after org
   :bind (:map org-mode-map
@@ -4488,7 +4488,7 @@ Dependency
 #+END_SRC
 
 ** Org exporters
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package ox-gfm
   :defer t
   :straight (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
@@ -4602,7 +4602,7 @@ Didn't mange to start work
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package grammarly
   :defer t
   :bind ("C-c g" . @check-region-via-grammarly)
@@ -4647,7 +4647,7 @@ Didn't mange to start work
   (global-wakatime-mode))
 #+END_SRC
 *** Ui 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package wakatime-ui
   :after wakatime-mode
   :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
@@ -4675,7 +4675,7 @@ Didn't mange to start work
 #+END_SRC
 *** Projectil persp hook
 #+NAME: projectile-persp-hook
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun @set-perps-workspace-name-by-switched-project ()
   "Set perps workspace name by switched project"
   (interactive)
@@ -4819,7 +4819,7 @@ Didn't mange to start work
 
 ** Consult
 Function for search in buffer depends or visual or normal line
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (defun @consult-line-or-region ()
   "Search in buffer depends or visual or normal line"
   (interactive)
@@ -4831,7 +4831,7 @@ Function for search in buffer depends or visual or normal line
 #+END_SRC
 
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package consult
   :defer t
   :general (:states '(normal visual)
@@ -4918,7 +4918,7 @@ Function for search in buffer depends or visual or normal line
   )
 #+END_SRC
 ** Projectile
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package consult-projectile
   :general (:states 'normal
                     "SPC pp" 'consult-projectile-switch-project
@@ -4935,7 +4935,7 @@ Function for search in buffer depends or visual or normal line
 Copy only content (not category)
 For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1afu1c/?utm_source=share&utm_medium=web2x&context=3
 #+NAME: embark-content-copy-function
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defun copy-grep-results-as-kill (strings)
   (embark-copy-as-kill
    (mapcar (lambda (string)
@@ -4958,7 +4958,7 @@ For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1
 Delete project
 
 #+NAME: embark-delete-project
-#+BEGIN_SRC emacs-lisp :results silent :tangle no
+#+BEGIN_SRC emacs-lisp  :tangle no
 (defvar-keymap embark-projectile-map
   :doc "Example keymap with a few file actions"
   :parent embark-general-map
@@ -4971,7 +4971,7 @@ Delete project
 
 
 *** Embark package
-#+BEGIN_SRC emacs-lisp :results silent :noweb yes
+#+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package embark
   :custom
   (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))
@@ -5005,7 +5005,7 @@ Delete project
 
 TODO: delete
 Preview
-#+BEGIN_SRC emacs-lisp :results silent 
+#+BEGIN_SRC emacs-lisp  
 (defun +vertico/embark-preview ()
   "Previews candidate in vertico buffer, unless it's a consult command"
   (interactive)
@@ -5036,7 +5036,7 @@ Preview
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package mini-frame
   :defer 2
   :custom
@@ -5051,7 +5051,7 @@ Preview
 #+END_SRC
 
 ** Icons
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package all-the-icons-completion
   :init
   (all-the-icons-completion-mode))
@@ -5061,7 +5061,7 @@ Preview
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package hotfuzz
   :after vertico
   :config
@@ -5069,7 +5069,7 @@ Preview
 #+END_SRC
 
 ** Bulk grep operation
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package wgrep
   :general 
   (:keymaps 'override
@@ -5092,7 +5092,7 @@ Preview
 #+END_SRC
 
 ** Pdf tools
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package pdf-tools
   :ensure t
   :defer t
@@ -5101,7 +5101,7 @@ Preview
 #+END_SRC
 
 ** Org pdf
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package org-pdftools
   :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
@@ -5114,7 +5114,7 @@ Figure out how to open url from history. Look usefull
 :header-args: :tangle no
 :END:
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package browse-hist
   :ensure t
   :general
@@ -5131,7 +5131,7 @@ Figure out how to open url from history. Look usefull
 :END:
 
 https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package emacs-gpt
   :straight (:package "emacs-gpt" :host nil :type git
              :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
@@ -5141,12 +5141,12 @@ https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
 
 ** Another GPT alternative
 Dependencies
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package openai
   :straight (:host github :repo "emacs-openai/openai"))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package codegpt 
   :straight (:type git :host github :repo "emacs-openai/codegpt")
   :config
@@ -5182,12 +5182,12 @@ boundaries of that region in buffer."
 :END:
 
 dependency
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package epc
   :defer t)
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package chatgpt
   :straight (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
   :ensure t
@@ -5201,7 +5201,7 @@ dependency
   (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
 #+END_SRC
 ** Pocket
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package pocket-reader
   :general
   (:keymaps 'override
@@ -5222,7 +5222,7 @@ dependency
 #+END_SRC
 
 ** PlantUML
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package plantuml-mode
   :defer t
   :config
@@ -5235,7 +5235,7 @@ dependency
 
 
 * Playground
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp 
 (use-package empv
   :ensure t
   :straight (:host github :repo "isamert/empv.el"))
