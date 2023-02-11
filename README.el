@@ -15,6 +15,7 @@
                         `(,@package-archives
                           ("melpa" . "http://melpa.org/packages/")
                           ;; ("melpa" . "http://melpa.milkbox.net/packages/")
+                          ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                           ("melpa-stable" . "http://stable.melpa.org/packages/")
                           ("org" . "https://orgmode.org/elpa/")
                           ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
@@ -54,6 +55,10 @@
 (defalias 'yes-or-no-p 'y-or-n-p)
 
 (setq initial-major-mode (quote fundamental-mode))
+
+(use-package direnv
+  :config
+  (direnv-mode))
 
 (defalias 'use-package! 'use-package
 "Alias for call use-package from doom modules")
@@ -159,6 +164,13 @@ list is returned as-is."
                if (eq (car-safe hook) 'quote)
                collect (cadr hook)
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
+
+(defvar @before-buffer-changed-hook nil
+  "Hook run before a buffer is changed.")
+
+(add-to-list 'window-buffer-change-functions
+             (lambda (&rest _)
+               (run-hooks '@before-buffer-changed-hook)))
 
 (defun my-add-additional-space-when-not-exist (_)
   "Add additional sapce if previous char is not space!"
@@ -336,7 +348,6 @@ If FORCE-P, delete without confirmation."
                (format "#L%d-L%d" l1 l2))
            ""
            )))
-     (message "rev: %s" rev)
      (if (not file)
          (if-let ((path (forge--split-remote-url (forge--get-remote))))
                   (message "https://%s/%s/%s/commit/%s" (nth 0 path) (nth 1 path) (nth 2 path) rev)
@@ -371,15 +382,6 @@ If FORCE-P, delete without confirmation."
     (end-of-line)
     (indent-according-to-mode)
     (evil-insert 1)))
-
-(defun my-run-sass-auto-fix ()
-  "Run sass auto fix if cli tool exist"
-  (interactive)
-  (save-window-excursion
-    (let ((default-directory (file-name-directory buffer-file-name)))
-      (async-shell-command "sass-lint-auto-fix")
-      ;; (revert-buffer-no-confirm)
-      (message "SASS FORMATTED"))))
 
 (defun my-insert-tab ()
   "Insert simple tab"
@@ -423,6 +425,17 @@ If FORCE-P, delete without confirmation."
         (t (evil-goto-definition))))
 
 (setq use-package-verbose t)
+
+(use-package all-the-icons
+  :ensure t
+  :config
+  (set-fontset-font t 'unicode (font-spec :family "all-the-icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "file-icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "github-octicons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "FontAwesome") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "Weather Icons") nil 'prepend)
+  (setq inhibit-compacting-font-caches t))
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
@@ -493,6 +506,9 @@ If FORCE-P, delete without confirmation."
  (defadvice load-theme (after run-after-load-theme-hook activate)
    "Run `after-load-theme-hook'."
    (run-hooks 'after-load-theme-hook))
+
+(defadvice load-theme (before theme-dont-propagate activate)
+ (mapcar #'disable-theme custom-enabled-themes))
 
 (fringe-mode '16)
 
@@ -676,6 +692,7 @@ If FORCE-P, delete without confirmation."
    "C-<tab>" 'my-insert-tab
    "C-h C-m" 'describe-mode
    "C-h C-f" 'describe-face
+   "s-p" 'yank-from-kill-ring
    "s-n" 'evil-buffer-new
    "s-P" 'xah-paste-from-register-1
    "C-x C-o" 'company-complete
@@ -685,7 +702,6 @@ If FORCE-P, delete without confirmation."
    "C-u" 'evil-delete-back-to-indentation
    "s-y" 'yas-expand
    "s-P" 'xah-paste-from-register-1
-   "s-p" 'yank-from-kill-ring
    "s-." 'ace-window)
   (general-define-key
    :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map)
@@ -712,7 +728,6 @@ If FORCE-P, delete without confirmation."
    :prefix "\\"
     "f" 'avy-goto-char
     "b" 'my-switch-to-xwidget-buffer
-    "k" 'save-buffer-without-dtw
     "w" 'avy-goto-word-0
     "]" 'flycheck-next-error
     "[" 'flycheck-previous-error
@@ -729,7 +744,7 @@ If FORCE-P, delete without confirmation."
     "c" 'dired-create-empty-file
     "p" 'format-all-buffer--no-bufferjump
     "s" 'publish-org-blog
-    "g" 'ace-window
+    "g" 'codegpt
     ;; Evil
     "=" 'evil-record-macro
     "-" 'evil-execute-macro
@@ -747,6 +762,7 @@ If FORCE-P, delete without confirmation."
    "tr" 'read-only-mode
    "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
    "hm" 'describe-mode
+   "om" (lambda () (interactive) (pop-to-buffer "*Messages*"))
    "mox" 'execute-extended-command
    "bI" 'ibuffer
    "vtt" 'my-toggle-transparency
@@ -891,17 +907,65 @@ If FORCE-P, delete without confirmation."
 (evilmi-load-plugin-rules '(ng2-html-mode) '(html))
 (global-evil-matchit-mode 1)
 
+(defun @better-jump-preserve-pos-advice (oldfun &rest args)
+  "Preserve position when jumping."
+  (let ((old-pos (point)))
+    (apply oldfun args)
+    (when (> (abs (- (line-number-at-pos old-pos) (line-number-at-pos (point))))
+             1)
+      (better-jumper-set-jump old-pos))))
+
 (use-package better-jumper
-  :hook (prog-mode . better-jumper-mode)
-  :general (:states '(normal, visual)
-            "C-o" 'better-jumper-jump-backward
-            "C-i" 'better-jumper-jump-forward))
+  ;; :hook
+  ;; (consult-after-jump . @better-jump-preserve-pos)
+  ;; (buffer-list-update . (lambda () (better-jumper-set-jump)))
+  ;; (@before-buffer-changed . (lambda () (better-jumper-set-jump)))
+  :general
+  (:states '(normal, visual)
+           "C-o" 'better-jumper-jump-backward
+           "C-i" 'better-jumper-jump-forward
+           "SPC sp" 'better-jumper-set-jump)
+  :custom
+  ;; (better-jumper-add-jump-behavior #'replace)
+  (better-jumper-use-evil-jump-advice nil)
+  :config
+  ;; (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
+  ;; (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
+  (advice-add '@find-definition :around #'@better-jump-preserve-pos-advice)
+  (advice-add '@find-definition :around 'evil-scroll-line-to-center)
+  (better-jumper-mode 1))
+
+(use-package ts-movement
+  ;; :straight (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
+  :load-path "vendor/ts-movement"
+  :bind (:map evil-normal-state-map
+              ("C-c ." . tsm/hydra/body)
+              ("\"" . tsm/clear-overlays)
+              ("M-[" . tsm/node-parent)
+              ("M-]" . tsm/node-child)
+              ("M-}" . tsm/node-next)
+              ("M-{" . tsm/node-prev))
+  :hook (prog-mode . ts-movement-mode))
+
+(use-package ts-hopper
+  :straight (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
+  :init
+  (ts-hopper-init)
+  :general (:states '(normal visual)
+                 :keymaps 'override
+                 "\'" 'ts-hopper-define-context
+                 "\\k" 'ts-hopper-mode
+                 "[" 'ts-hopper-hop-prev-context
+                 "]" 'ts-hopper-hop-next-context)
+  :config
+  (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 
 (use-package dired
   :defer t
+  :ensure nil
   :general
   (:keymaps 'dired-mode-map
-            "C-c C-e" 'wdired-change-to-wdired-mode)
+	    "C-c C-e" 'wdired-change-to-wdired-mode)
   :config
   (setq insert-directory-program "gls" dired-use-ls-dired t)
   (add-hook 'dired-mode-hook 'auto-revert-mode))
@@ -1109,6 +1173,7 @@ If FORCE-P, delete without confirmation."
                   (window-height . 0.3))))
 
 (use-package secret-mode
+  :straight (:type git :host github :repo "bkaestner/redacted.el")
   :defer t)
 
 (defun @persp-kill-other-buffers ()
@@ -1570,7 +1635,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
     "format-all-buffer without jumps of cursor"
     (interactive)
     (let ((point (point)) (wstart (window-start)))
-      (format-all-buffer)
+      (call-interactively 'format-all-buffer)
       (goto-char point)
       (set-window-start (selected-window) wstart)))
 
@@ -1587,8 +1652,9 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (use-package prettier
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
   :config
+  (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
+  :init
   (global-prettier-mode))
 
 (use-package flycheck
@@ -1604,13 +1670,13 @@ representing the time of the last `persistent-scratch-new-backup' call."
   (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
 
   (flycheck-add-mode 'javascript-eslint 'web-mode)
-  (flycheck-add-mode 'javascript-eslint 'typescript-mode))
+  (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
 
-(use-package autopair
-  :defer t
-
+(use-package treesit-auto
   :config
-  (autopair-global-mode))
+  (setq treesit-auto-install 'prompt)
+  (global-treesit-auto-mode))
 
 (use-package tree-sitter-langs
   :after spell-fu)
@@ -1644,13 +1710,77 @@ This need for correct highlighting of incorrect spell-fu faces."
   (push '(web-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
-  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+  ;; (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+
+  (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
+
+  ;; TODO: remove, 
+  (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
+  (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
+  (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
+  (push '(html-ts-mode . ng2-html) tree-sitter-major-mode-language-alist)
+
   (tree-sitter-require 'tsx)
   (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
 
 (use-package tree-edit
-
   :defer t)
+
+;; (use-package treesit-langs
+;;   :straight (:type git :host github :repo "ymarco/tree-sitter-langs")
+;;   :hook ((typescript-ts-base-mode
+;;           go-ts-mode
+;;           python-ts-mode
+;;           css-ts-mode) . init-tree-sitter-hl-mode)
+;;   :config
+;;   (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+;;   (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
+;;   (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
+;;   (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
+;;   (add-hook #'python-ts-mode-hook #'init-tree-sitter-hl-mode)
+
+;;   (defalias 'treesit-can-enable-p 'treesit-available-p))
+
+(use-package treesit
+  :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
+  :hook ((typescript-ts-base-mode
+          go-ts-mode
+          python-ts-mode
+          css-ts-mode) . init-tree-sitter-hl-mode)
+  :init
+  (setq treesit-language-source-alist
+   '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
+     (c . ("https://github.com/tree-sitter/tree-sitter-c"))
+     (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
+     (css . ("https://github.com/tree-sitter/tree-sitter-css"))
+     (go . ("https://github.com/tree-sitter/tree-sitter-go"))
+     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
+     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
+     (json . ("https://github.com/tree-sitter/tree-sitter-json"))
+     (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
+     (make . ("https://github.com/alemuller/tree-sitter-make"))
+     (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "ocaml/src" "ocaml"))
+     (python . ("https://github.com/tree-sitter/tree-sitter-python"))
+     (php . ("https://github.com/tree-sitter/tree-sitter-php"))
+     (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "typescripts" "tsx"))
+     (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
+     (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
+     (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
+     (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
+     (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
+  :custom 
+  ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
+  (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sitter"))
+  :config
+  (defun nf/treesit-install-all-languages ()
+    "Install all languages specified by `treesit-language-source-alist'."
+    (interactive)
+    (let ((languages (mapcar 'car treesit-language-source-alist)))
+      (dolist (lang languages)
+	      (treesit-install-language-grammar lang)
+	      (message "`%s' parser was installed." lang)
+	      (sit-for 0.75)))))
 
 (use-package company
   :defer t
@@ -1699,7 +1829,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (delete-directory dir 'recursive)
   (message "Uninstalled %S" (file-name-nondirectory dir)))
 
-(use-package lsp
+(use-package lsp-mode
   :after flycheck
   :hook ((clojure-mode
           scss-mode
@@ -1713,7 +1843,15 @@ This need for correct highlighting of incorrect spell-fu faces."
           ng2-ts-mode
           python-mode
           dart-mode
-          typescript-tsx-mode) . lsp-deferred)
+          typescript-tsx-mode
+
+          ;; Treesit
+          html-ts-mode
+          typescript-ts-mode
+          go-ts-mode
+          js-ts-mode
+          bash-ts-mode
+          tsx-ts-mode) . lsp-deferred)
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC fn" 'flycheck-next-error
@@ -1806,6 +1944,9 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (use-package lsp-ui
   :hook (lsp-mode . lsp-ui-mode)
+  :bind (:map lsp-ui-peek-mode-map
+              ("C-j" . lsp-ui-peek--select-next)
+              ("C-k" . lsp-ui-peek--select-prev))
   :config
   (setq lsp-ui-sideline-diagnostic-max-line-length 100
         lsp-ui-sideline-diagnostic-max-lines 8
@@ -1938,11 +2079,8 @@ This need for correct highlighting of incorrect spell-fu faces."
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
               ("SPC d w" . dap-ui-show-many-windows)
+              ("SPC d x" . dap-breakpoint-delete-all)
               ("SPC d W" . dap-ui-hide-many-windows)
-              ;; TODO: REMOVE
-              ;; ("SPC d p" . (lambda () (interactive)
-              ;;                (set-window-buffer nil (current-buffer))
-              ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :config
   (defun dap-internal-terminal-vterm (command title debug-session)
@@ -1962,10 +2100,10 @@ This need for correct highlighting of incorrect spell-fu faces."
                     (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
                     (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
                     ;; (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
-                    ))
-    (setq dap-ui-locals-expand-depth 3))
+                    )))
+    ;; (setq dap-ui-locals-expand-depth 3))
   ;; (setq dap-auto-configure-features '(locals controls tooltip))
-  (setq dap-auto-configure-features '(locals tooltip))
+  ;; (setq dap-auto-configure-features '(locals tooltip))
   (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
   (custom-set-faces
    '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
@@ -2058,7 +2196,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (turbo-log-payload-format-template "%s: ")
   :config
   (turbo-log-configure
-   :modes (typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
+   :modes (typescript-ts-mode tsx-ts-mode typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
    :post-insert-hooks (prettier-prettify lsp)
 ;; :msg-format-template "'🦄: %s'"
@@ -2241,12 +2379,31 @@ This need for correct highlighting of incorrect spell-fu faces."
    :keymaps 'override
    "SPC o r" 'browse-at-remote))
 
+(use-package forge
+  :after magit
+  :config
+  (setq auth-sources '("~/.authinfo")))
+
+(use-package code-review
+  :defer t
+  :general
+  (:states '(normal insert) :keymaps 'magit-mode-map
+            "C-c C-r" 'code-review-forge-pr-at-point)
+  (:states '(normal insert) :keymaps 'code-review-mode-map
+            "r" 'code-review-transient-api)
+  :config
+  (setq code-review-fill-column 80)
+  (setq code-review-download-dir "/tmp/code-review/")
+  (setq code-review-new-buffer-window-strategy #'switch-to-buffer)
+  (setq code-review-auth-login-marker 'forge))
+
 (use-package paren-face :defer t)
 
 (use-package elisp-mode
   :defer t
 
-  :hook ((emacs-lisp-mode . paren-face-mode))
+  :hook ((emacs-lisp-mode . paren-face-mode)
+         (emacs-lisp-mode . (lambda () (setq fill-column 80))))
 
   :bind (("C-c o" . outline-cycle)
          ("C-c r" . outline-show-all)
@@ -2289,13 +2446,19 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
-  :defer t
+  :defer t  
+  :hook (typescript-mode . (lambda () (setq-local fill-column 120)
+                             (typescript-ts-mode)))
   :custom
   (lsp-clients-typescript-server-args '("--stdio"))
   :config
   (setq typescript-indent-level 2)
-  (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode))
+  ;; (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode))
   (@setup-compilation-errors))
+
+(use-package ts-comint
+  :defer t
+  :ensure t)
 
 (use-package ng2-mode
   :after typescript-mode
@@ -2406,14 +2569,16 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 (setq lsp-pyright-multi-root nil)
 (use-package lsp-pyright
-  :defer t
+  :hook (python-mode . (lambda ()
+                          (require 'lsp-pyright)
+                          (lsp-deferred)))
   :config
   (setq lsp-pyright-auto-import-completions t)
   (setq lsp-pyright-auto-search-paths t)
   (setq lsp-pyright-log-level "trace")
   (setq lsp-pyright-multi-root nil)
   (setq lsp-pyright-use-library-code-for-types t)
-  (setq lsp-pyright-venv-directory "/Users/darkawower/.local/share/virtualenvs/spice-farm-YhO8T07I")
+  ;; (setq lsp-pyright-venv-directory "/Users/darkawower/.local/share/virtualenvs/spice-farm-YhO8T07I")
   (setq lsp-pyright-diagnostic-mode "workspace"))
 
 (use-package pipenv
@@ -2422,6 +2587,11 @@ This need for correct highlighting of incorrect spell-fu faces."
   :config
   (setenv "WORKON_HOME" (concat (getenv "HOME") "/.local/share/virtualenvs"))
   (add-hook 'pyvenv-post-activate-hooks #'lsp-restart-workspace)
+  ;; This hook will copy venv from pyvenv to lsp pyright
+  (add-hook 'pyvenv-post-activate-hooks (lambda ()
+                                          (setq lsp-pyright-venv-directory pyvenv-virtual-env)
+                                          (lsp-restart-workspace)))
+
   (setq pipenv-projectile-after-switch-function #'pipenv-projectile-after-switch-extended))
 
 (use-package lsp-volar
@@ -2524,7 +2694,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t)
 
 (use-package grip-mode
-  :after markdown-mode
+  :defer t
   :custom
   (browse-url-browser-function 'browse-url-generic)
   ;; (grip-url-browser #'browse-url-firefox-program)
@@ -2678,16 +2848,30 @@ This need for correct highlighting of incorrect spell-fu faces."
                            (push '("#+end_example" . "⇤" ) prettify-symbols-alist)
                            (push '("#+begin_src" . "↦" ) prettify-symbols-alist)
                            (push '("#+end_src" . "⇤" ) prettify-symbols-alist)
-                           (push '("#+TITLE:" . "") prettify-symbols-alist)
-                           (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
-                           (push '("#+ID:" . "") prettify-symbols-alist)
-                           (push '("#+FILETAGS:" . "") prettify-symbols-alist)
-                           (push '("#+STARTUP:" . "") prettify-symbols-alist)
-                           (push '("#+ACTIVE:" . "") prettify-symbols-alist)
+
+                           (push '("#+TITLE:" . "") prettify-symbols-alist)
+                           (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
+                           (push '("#+ID:" . "") prettify-symbols-alist)
+                           (push '("#+FILETAGS:" . "") prettify-symbols-alist)
+                           (push '("#+STARTUP:" . "") prettify-symbols-alist)
+                           (push '("#+ACTIVE:" . "") prettify-symbols-alist)
                            (push '("#+START_SPOILER" . "") prettify-symbols-alist)
                            (push '("#+CLOSE_SPOILER" . "") prettify-symbols-alist)
-                           (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
-                           (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+                           (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
+                           (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+
+
+                           ;; (push '("#+TITLE:" . "") prettify-symbols-alist)
+                           ;; (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
+                           ;; (push '("#+ID:" . "") prettify-symbols-alist)
+                           ;; (push '("#+FILETAGS:" . "") prettify-symbols-alist)
+                           ;; (push '("#+STARTUP:" . "") prettify-symbols-alist)
+                           ;; (push '("#+ACTIVE:" . "") prettify-symbols-alist)
+                           ;; (push '("#+START_SPOILER" . "") prettify-symbols-alist)
+                           ;; (push '("#+CLOSE_SPOILER" . "") prettify-symbols-alist)
+                           ;; (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
+                           ;; (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+
                            (prettify-symbols-mode)))
 
 (use-package org-fancy-priorities
@@ -2902,9 +3086,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   (global-spell-fu-mode)
   (my-set-spellfu-faces))
 
-(use-package lsp-grammarly
-  :defer t)
-
 (use-package google-translate
   :defer 10
   :bind (:map google-translate-minibuffer-keymap
@@ -3064,11 +3245,20 @@ This need for correct highlighting of incorrect spell-fu faces."
           '(projectile-switch-to-buffer . buffer)
           '(projectile-switch-project . project-file)))
 
+(defun @consult-line-or-region ()
+  "Search in buffer depends or visual or normal line"
+  (interactive)
+  (if (region-active-p)
+      (let ((substring (buffer-substring (region-beginning) (region-end))))
+        (deactivate-mark)
+        (consult-line substring))
+    (consult-line)))
+
 (use-package consult
   :defer t
   :general (:states '(normal visual)
                     :keymaps 'override
-                    "s-f" 'consult-line
+                    "s-f" '@consult-line-or-region
                     "SPC bB" 'consult-buffer
                     "SPC fP" '@open-emacs-config
                     "SPC /" 'consult-ripgrep
@@ -3123,7 +3313,7 @@ This need for correct highlighting of incorrect spell-fu faces."
    consult-bookmark consult-recent-file consult-xref consult--source-bookmark consult--source-file-register
    consult--source-recent-file consult--source-project-recent-file
    ;; my/command-wrapping-consult    ;; disable auto previews inside my command
-   :preview-key (list :debounce 0.2 (kbd "C-SPC")))
+   :preview-key (list :debounce 0.2 "C-SPC"))
 
   ;; Optionally configure the narrowing key.
   ;; Both < and C-+ work reasonably well.
@@ -3193,9 +3383,10 @@ This need for correct highlighting of incorrect spell-fu faces."
   
   (add-to-list 'embark-multitarget-actions 'copy-grep-results-as-kill)
   
-  (embark-define-keymap embark-consult-grep-map
-    "Keymap for actions for consult-grep results."
-    ("w" copy-grep-results-as-kill))
+  (defvar-keymap embark-consult-grep-map
+    :doc "Keymap for actions for consult-grep results."
+    :parent embark-general-map
+    "w" #'copy-grep-results-as-kill)
   
   (setf (alist-get 'consult-grep embark-keymap-alist) 'embark-consult-grep-map))
 
@@ -3245,26 +3436,37 @@ This need for correct highlighting of incorrect spell-fu faces."
   (browser-hist-default-browser 'brave)
   :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
 
-(use-package emacs-gpt
-  :straight (:package "emacs-gpt" :host nil :type git
-             :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
-  ;; :load-path "~/pure-emacs"
-  ;; :ensure nil)
+(use-package openai
+  :straight (:host github :repo "emacs-openai/openai"))
 
-(use-package epc
-  :defer t)
-
-(use-package chatgpt
-  :straight (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
-  :ensure t
-  :general
-  (:keymaps 'override
-            "s-d" 'chatgpt-query)
-  :init
-  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/")
+(use-package codegpt 
+  :straight (:type git :host github :repo "emacs-openai/codegpt")
   :config
-   (require 'epc)
-  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+  (add-to-list 'codegpt-action-alist '("JSDoc" . "Write JSDoc for this method"))
+  (defun codegpt--internal (instruction start end)
+    "Do INSTRUCTION with partial code.
+
+The partial code is defined in with the region, and the START nad END are
+boundaries of that region in buffer."
+    (let ((text (string-trim (buffer-substring start end)))
+          (original-window (selected-window)))
+      (codegpt--ask-in-buffer instruction
+        (insert text "\n\n")
+        (openai-completion
+         (buffer-string)
+         (lambda (data)
+           (openai--with-buffer codegpt-buffer-name
+             (openai--pop-to-buffer codegpt-buffer-name)
+             (let* ((choices (openai-completion--data-choices data))
+                    (result (openai-completion--get-choice choices))
+                    (original-point (point)))
+               (insert "\n" (string-trim result) "\n")
+               (fill-paragraph original-point (point))
+               (end-of-buffer)))
+           (unless codegpt-focus-p
+             (select-window original-window))))
+        (unless codegpt-focus-p
+          (select-window original-window))))))
 
 (use-package pocket-reader
   :general

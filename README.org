@@ -1,8 +1,10 @@
+#+PROPERTY: header-args :results silent
 #+STARTUP: content
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
 
 
+#+TITLE: Emacs config
 
 * Installation
 For install emacs on macos use brew:
@@ -15,6 +17,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (setq warning-minimum-level :emergency)
 (setq warning-suppress-log-types '((comp) (undo discard-info)))
 #+END_SRC
+
 ** Garbage collector
 #+BEGIN_SRC emacs-lisp
   (let* ((normal-gc-cons-threshold (* 20 1024 1024))
@@ -29,13 +32,14 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+END_SRC
 
 ** Melpa
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (require 'package)
 
 (customize-set-variable 'package-archives
                         `(,@package-archives
                           ("melpa" . "http://melpa.org/packages/")
                           ;; ("melpa" . "http://melpa.milkbox.net/packages/")
+                          ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                           ("melpa-stable" . "http://stable.melpa.org/packages/")
                           ("org" . "https://orgmode.org/elpa/")
                           ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
@@ -43,6 +47,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (customize-set-variable 'package-enable-at-startup nil)
 (package-initialize)
 #+END_SRC
+
 
 ** Straight
 #+BEGIN_SRC emacs-lisp
@@ -114,6 +119,13 @@ Use package
 #+BEGIN_SRC emacs-lisp :results silent
 (setq initial-major-mode (quote fundamental-mode))
 #+END_SRC
+*** Environment variables
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package direnv
+  :config
+  (direnv-mode))
+#+END_SRC
+
 ** Patches
 *** Alias for doom use-package!
 #+BEGIN_SRC emacs-lisp :results silent
@@ -250,6 +262,16 @@ list is returned as-is."
                collect (cadr hook)
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 #+END_SRC
+** Custom hooks
+#+BEGIN_SRC emacs-lisp :results silent
+(defvar @before-buffer-changed-hook nil
+  "Hook run before a buffer is changed.")
+
+(add-to-list 'window-buffer-change-functions
+             (lambda (&rest _)
+               (run-hooks '@before-buffer-changed-hook)))
+#+END_SRC
+
 
 * Custom functions
 ** Org
@@ -472,7 +494,6 @@ If FORCE-P, delete without confirmation."
                (format "#L%d-L%d" l1 l2))
            ""
            )))
-     (message "rev: %s" rev)
      (if (not file)
          (if-let ((path (forge--split-remote-url (forge--get-remote))))
                   (message "https://%s/%s/%s/commit/%s" (nth 0 path) (nth 1 path) (nth 2 path) rev)
@@ -521,19 +542,6 @@ If FORCE-P, delete without confirmation."
 #+RESULTS:
 : my-insert-todo-by-current-git-branch
 
-** Sass autofix
-For correct work you need to install sass-lint-auto-fix
-~yarn global add sass-lint-auto-fix~
-#+BEGIN_SRC emacs-lisp
-(defun my-run-sass-auto-fix ()
-  "Run sass auto fix if cli tool exist"
-  (interactive)
-  (save-window-excursion
-    (let ((default-directory (file-name-directory buffer-file-name)))
-      (async-shell-command "sass-lint-auto-fix")
-      ;; (revert-buffer-no-confirm)
-      (message "SASS FORMATTED"))))
-#+END_SRC
 ** Insert tab
 #+BEGIN_SRC emacs-lisp
 (defun my-insert-tab ()
@@ -621,6 +629,20 @@ Uncomment when u need to profile ;p
 #+END_SRC
 
 * UI
+** All the icons.
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package all-the-icons
+  :ensure t
+  :config
+  (set-fontset-font t 'unicode (font-spec :family "all-the-icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "file-icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "github-octicons") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "FontAwesome") nil 'prepend)
+  (set-fontset-font t 'unicode (font-spec :family "Weather Icons") nil 'prepend)
+  (setq inhibit-compacting-font-caches t))
+#+END_SRC
+
 ** Full size from startup
 #+BEGIN_SRC emacs-lisp :results silent
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
@@ -713,7 +735,7 @@ Very pretty titlebar for Mac os
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
-** Column indicator
+** Column indicator. display-fill-column-indicator
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package display-fill-column-indicator
   :defer t
@@ -731,6 +753,11 @@ Very pretty titlebar for Mac os
   (defadvice load-theme (after run-after-load-theme-hook activate)
     "Run `after-load-theme-hook'."
     (run-hooks 'after-load-theme-hook))
+#+END_SRC
+*** Automatic reset theme
+#+BEGIN_SRC emacs-lisp :results silent
+(defadvice load-theme (before theme-dont-propagate activate)
+ (mapcar #'disable-theme custom-enabled-themes))
 #+END_SRC
 
 ** Paddings
@@ -1116,6 +1143,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "C-<tab>" 'my-insert-tab
  "C-h C-m" 'describe-mode
  "C-h C-f" 'describe-face
+ "s-p" 'yank-from-kill-ring
  "s-n" 'evil-buffer-new
  "s-P" 'xah-paste-from-register-1
  "C-x C-o" 'company-complete
@@ -1129,7 +1157,6 @@ Override function for auto-dark mode for applying function for nano theme changi
  "C-u" 'evil-delete-back-to-indentation
  "s-y" 'yas-expand
  "s-P" 'xah-paste-from-register-1
- "s-p" 'yank-from-kill-ring
  "s-." 'ace-window)
 #+END_SRC
 *** Evil. Normal space state map.
@@ -1143,6 +1170,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "tr" 'read-only-mode
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
+ "om" (lambda () (interactive) (pop-to-buffer "*Messages*"))
  "mox" 'execute-extended-command
  "bI" 'ibuffer
  "vtt" 'my-toggle-transparency
@@ -1215,7 +1243,6 @@ Override function for auto-dark mode for applying function for nano theme changi
    :prefix "\\"
     "f" 'avy-goto-char
     "b" 'my-switch-to-xwidget-buffer
-    "k" 'save-buffer-without-dtw
     "w" 'avy-goto-word-0
     "]" 'flycheck-next-error
     "[" 'flycheck-previous-error
@@ -1232,7 +1259,7 @@ Override function for auto-dark mode for applying function for nano theme changi
     "c" 'dired-create-empty-file
     "p" 'format-all-buffer--no-bufferjump
     "s" 'publish-org-blog
-    "g" 'ace-window
+    "g" 'codegpt
     ;; Evil
     "=" 'evil-record-macro
     "-" 'evil-execute-macro
@@ -1402,7 +1429,6 @@ Bookmark for navigation inside file
 #+END_SRC
 
 
-
 ** Quick jump by pairtags
 #+BEGIN_SRC emacs-lisp
 (use-package evil-matchit
@@ -1413,11 +1439,35 @@ Bookmark for navigation inside file
 #+END_SRC
 ** Better jump
 #+BEGIN_SRC emacs-lisp :results silent
+(defun @better-jump-preserve-pos-advice (oldfun &rest args)
+  "Preserve position when jumping."
+  (let ((old-pos (point)))
+    (apply oldfun args)
+    (when (> (abs (- (line-number-at-pos old-pos) (line-number-at-pos (point))))
+             1)
+      (better-jumper-set-jump old-pos))))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package better-jumper
-  :hook (prog-mode . better-jumper-mode)
-  :general (:states '(normal, visual)
-            "C-o" 'better-jumper-jump-backward
-            "C-i" 'better-jumper-jump-forward))
+  ;; :hook
+  ;; (consult-after-jump . @better-jump-preserve-pos)
+  ;; (buffer-list-update . (lambda () (better-jumper-set-jump)))
+  ;; (@before-buffer-changed . (lambda () (better-jumper-set-jump)))
+  :general
+  (:states '(normal, visual)
+           "C-o" 'better-jumper-jump-backward
+           "C-i" 'better-jumper-jump-forward
+           "SPC sp" 'better-jumper-set-jump)
+  :custom
+  ;; (better-jumper-add-jump-behavior #'replace)
+  (better-jumper-use-evil-jump-advice nil)
+  :config
+  ;; (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
+  ;; (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
+  (advice-add '@find-definition :around #'@better-jump-preserve-pos-advice)
+  (advice-add '@find-definition :around 'evil-scroll-line-to-center)
+  (better-jumper-mode 1))
 #+END_SRC
 
 ** HOLD Remember last position. Blinky mode
@@ -1434,35 +1484,35 @@ Bookmark for navigation inside file
             "SPC rv" 'binky-binky)
   :hook (after-init-hook . binky-mode))
 #+END_SRC
-** HOLD Tree sitte movement
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
+** Tree sitter movement
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package ts-movement
   ;; :straight (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
-  :load-path "site-lisp/ts-movement"
-  :hook
-  (bash-ts-mode-hook . ts-movement-mode)
-  (c++-ts-mode-hook . ts-movement-mode)
-  (c-ts-mode-hook . ts-movement-mode)
-  (cmake-ts-mode-hook . ts-movement-mode)
-  (csharp-ts-mode-hook . ts-movement-mode)
-  (css-ts-mode-hook . ts-movement-mode)
-  (dockerfile-ts-mode-hook . ts-movement-mode)
-  (go-mod-ts-mode-hook . ts-movement-mode)
-  (go-ts-mode-hook . ts-movement-mode)
-  (java-ts-mode-hook . ts-movement-mode)
-  (js-ts-mode-hook . ts-movement-mode)
-  (json-ts-mode-hook . ts-movement-mode)
-  (python-ts-mode-hook . ts-movement-mode)
-  (ruby-ts-mode-hook . ts-movement-mode)
-  (rust-ts-mode-hook . ts-movement-mode)
-  (toml-ts-mode-hook . ts-movement-mode)
-  (tsx-ts-mode-hook . ts-movement-mode)
-  (typescript-ts-mode-hook . ts-movement-mode)
-  (yaml-ts-mode-hook . ts-movement-mode))
+  :load-path "vendor/ts-movement"
+  :bind (:map evil-normal-state-map
+              ("C-c ." . tsm/hydra/body)
+              ("\"" . tsm/clear-overlays)
+              ("M-[" . tsm/node-parent)
+              ("M-]" . tsm/node-child)
+              ("M-}" . tsm/node-next)
+              ("M-{" . tsm/node-prev))
+  :hook (prog-mode . ts-movement-mode))
+#+END_SRC
+
+** Tree sitter movement. Ts hopper
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ts-hopper
+  :straight (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
+  :init
+  (ts-hopper-init)
+  :general (:states '(normal visual)
+                 :keymaps 'override
+                 "\'" 'ts-hopper-define-context
+                 "\\k" 'ts-hopper-mode
+                 "[" 'ts-hopper-hop-prev-context
+                 "]" 'ts-hopper-hop-next-context)
+  :config
+  (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
 
 
@@ -1470,14 +1520,15 @@ Bookmark for navigation inside file
 ** Files
 *** Dired configs
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package dired
-  :defer t
-  :general
-  (:keymaps 'dired-mode-map
-            "C-c C-e" 'wdired-change-to-wdired-mode)
-  :config
-  (setq insert-directory-program "gls" dired-use-ls-dired t)
-  (add-hook 'dired-mode-hook 'auto-revert-mode))
+  (use-package dired
+    :defer t
+    :ensure nil
+    :general
+    (:keymaps 'dired-mode-map
+	      "C-c C-e" 'wdired-change-to-wdired-mode)
+    :config
+    (setq insert-directory-program "gls" dired-use-ls-dired t)
+    (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
 *** Dired batteries ;3
@@ -1717,8 +1768,9 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 ** Secret mode
 Something like screensaver
 #+BEGIN_SRC emacs-lisp
-(use-package secret-mode
-  :defer t)
+  (use-package secret-mode
+    :straight (:type git :host github :repo "bkaestner/redacted.el")
+    :defer t)
 #+END_SRC
 ** Workspace
 *** HOLD Preserve everything?
@@ -2076,7 +2128,8 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Close all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/close-all-folds))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-close-all))
         (t (evil-close-folds))))
 
@@ -2084,7 +2137,8 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Close the fold under the cursor."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
+  (cond ((equal major-mode 'org-mode) (+org/close-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
         ((bound-and-true-p ts-fold-mode) (ts-fold-close))
         (t (evil-close-fold))))
 
@@ -2093,7 +2147,8 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Open all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/open-all-folds))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-open-all))
         (t (evil-open-folds))))
 
@@ -2101,7 +2156,8 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Open the fold under the cursor."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
+  (cond ((equal major-mode 'org-mode) (+org/open-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
         ((bound-and-true-p ts-fold-mode) (ts-fold-open))
         (t (evil-open-fold))))
 
@@ -2109,7 +2165,8 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Toggle all folds."
 
   (interactive)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
+  (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
+        ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
         ((bound-and-true-p ts-fold-mode) (ts-fold-toggle-all))
         (t (evil-toggle-fold))))
 
@@ -2117,11 +2174,12 @@ This function also stolen from doom emacs. It provide functionality for automati
   "Toggle fold at point."
 
   (interactive)
-  (save-excursion 
+  (save-excursion
     (end-of-line)
-  (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
-        (t (evil-toggle-fold)))))
+    (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
+          ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
+          ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
+          (t (evil-toggle-fold)))))
 
 
 (defun @fold-next ()
@@ -2343,8 +2401,9 @@ Function for preventing better jump breaks
 (use-package prettier
   :bind (:map evil-normal-state-map
               ("\+p" . prettier-prettify))
-  ;; :hook ((typescript-tsx-mode typescript-mode js2-mode json-mode ng2-mode web-mode css-mode scss-mode) . prettier-mode)
   :config
+  (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
+  :init
   (global-prettier-mode))
 #+END_SRC
 
@@ -2375,7 +2434,8 @@ Function for preventing better jump breaks
   (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
 
   (flycheck-add-mode 'javascript-eslint 'web-mode)
-  (flycheck-add-mode 'javascript-eslint 'typescript-mode))
+  (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
 #+END_SRC
 
 *** HOLD Flymake posframe
@@ -2389,15 +2449,15 @@ Function for preventing better jump breaks
 
 #+END_SRC
 
-** Automatic braces/quotes ending
-#+BEGIN_SRC emacs-lisp
-(use-package autopair
-  :defer t
-
-  :config
-  (autopair-global-mode))
-#+END_SRC
 ** AST. Tree sitter.
+*** Tree sitterm automatic grammar installation
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package treesit-auto
+  :config
+  (setq treesit-auto-install 'prompt)
+  (global-treesit-auto-mode))
+#+END_SRC
+
 *** Tree sitter package
 #+BEGIN_SRC emacs-lisp
 (use-package tree-sitter-langs
@@ -2432,16 +2492,88 @@ This need for correct highlighting of incorrect spell-fu faces."
   (push '(web-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
-  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+  ;; (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+
+  (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
+
+  ;; TODO: remove, 
+  (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
+  (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
+  (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
+  (push '(html-ts-mode . ng2-html) tree-sitter-major-mode-language-alist)
+
   (tree-sitter-require 'tsx)
   (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
 
 (use-package tree-edit
-
   :defer t)
 #+END_SRC
 
 #+RESULTS:
+
+*** Tree sitter core
+
+# Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
+
+#+BEGIN_SRC emacs-lisp :results silent
+;; (use-package treesit-langs
+;;   :straight (:type git :host github :repo "ymarco/tree-sitter-langs")
+;;   :hook ((typescript-ts-base-mode
+;;           go-ts-mode
+;;           python-ts-mode
+;;           css-ts-mode) . init-tree-sitter-hl-mode)
+;;   :config
+;;   (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+;;   (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
+;;   (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
+;;   (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
+;;   (add-hook #'python-ts-mode-hook #'init-tree-sitter-hl-mode)
+
+;;   (defalias 'treesit-can-enable-p 'treesit-available-p))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package treesit
+  :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
+  :hook ((typescript-ts-base-mode
+          go-ts-mode
+          python-ts-mode
+          css-ts-mode) . init-tree-sitter-hl-mode)
+  :init
+  (setq treesit-language-source-alist
+   '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
+     (c . ("https://github.com/tree-sitter/tree-sitter-c"))
+     (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
+     (css . ("https://github.com/tree-sitter/tree-sitter-css"))
+     (go . ("https://github.com/tree-sitter/tree-sitter-go"))
+     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
+     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
+     (json . ("https://github.com/tree-sitter/tree-sitter-json"))
+     (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
+     (make . ("https://github.com/alemuller/tree-sitter-make"))
+     (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "ocaml/src" "ocaml"))
+     (python . ("https://github.com/tree-sitter/tree-sitter-python"))
+     (php . ("https://github.com/tree-sitter/tree-sitter-php"))
+     (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "typescripts" "tsx"))
+     (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
+     (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
+     (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
+     (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
+     (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
+  :custom 
+  ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
+  (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sitter"))
+  :config
+  (defun nf/treesit-install-all-languages ()
+    "Install all languages specified by `treesit-language-source-alist'."
+    (interactive)
+    (let ((languages (mapcar 'car treesit-language-source-alist)))
+      (dolist (lang languages)
+	      (treesit-install-language-grammar lang)
+	      (message "`%s' parser was installed." lang)
+	      (sit-for 0.75)))))
+#+END_SRC
 
 ** Autocomplete
 *** Company mode
@@ -2674,10 +2806,10 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (message "Uninstalled %S" (file-name-nondirectory dir)))
 #+END_SRC
 
-*** Core package
+*** LSP-mode Core package
 
 #+BEGIN_SRC emacs-lisp
-(use-package lsp
+(use-package lsp-mode
   :after flycheck
   :hook ((clojure-mode
           scss-mode
@@ -2691,7 +2823,15 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
           ng2-ts-mode
           python-mode
           dart-mode
-          typescript-tsx-mode) . lsp-deferred)
+          typescript-tsx-mode
+
+          ;; Treesit
+          html-ts-mode
+          typescript-ts-mode
+          go-ts-mode
+          js-ts-mode
+          bash-ts-mode
+          tsx-ts-mode) . lsp-deferred)
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC fn" 'flycheck-next-error
@@ -2796,9 +2936,12 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 
 *** LSP UI
 
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package lsp-ui
   :hook (lsp-mode . lsp-ui-mode)
+  :bind (:map lsp-ui-peek-mode-map
+              ("C-j" . lsp-ui-peek--select-next)
+              ("C-k" . lsp-ui-peek--select-prev))
   :config
   (setq lsp-ui-sideline-diagnostic-max-line-length 100
         lsp-ui-sideline-diagnostic-max-lines 8
@@ -2807,6 +2950,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
         lsp-ui-doc-show-with-mouse nil
         lsp-ui-doc-border +m-color-main))
 #+END_SRC
+
 
 *** Flutter (dart)
 #+BEGIN_SRC emacs-lisp
@@ -2977,11 +3121,8 @@ Function for deleting local terminals
               ("SPC d s" . dap-ui-sessions)
               ("SPC d e" . dap-debug-last)
               ("SPC d w" . dap-ui-show-many-windows)
+              ("SPC d x" . dap-breakpoint-delete-all)
               ("SPC d W" . dap-ui-hide-many-windows)
-              ;; TODO: REMOVE
-              ;; ("SPC d p" . (lambda () (interactive)
-              ;;                (set-window-buffer nil (current-buffer))
-              ;;                (dap-breakpoint-toggle)))
               ("SPC d e" . dap-debug-edit-template))
   :config
   <<overrided-vterm-showing>>
@@ -2996,10 +3137,10 @@ Function for deleting local terminals
                     (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
                     (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
                     ;; (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
-                    ))
-    (setq dap-ui-locals-expand-depth 3))
+                    )))
+    ;; (setq dap-ui-locals-expand-depth 3))
   ;; (setq dap-auto-configure-features '(locals controls tooltip))
-  (setq dap-auto-configure-features '(locals tooltip))
+  ;; (setq dap-auto-configure-features '(locals tooltip))
   (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
   (custom-set-faces
    '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
@@ -3172,7 +3313,7 @@ cause its simple, and it works in all cases.
   :config
   (autopair-global-mode))
 #+END_SRC
-** Quick log inserting
+** Turbo log. Quick log inserting
 #+BEGIN_SRC emacs-lisp
 (use-package turbo-log
   :defer t
@@ -3191,7 +3332,7 @@ cause its simple, and it works in all cases.
   (turbo-log-payload-format-template "%s: ")
   :config
   (turbo-log-configure
-   :modes (typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
+   :modes (typescript-ts-mode tsx-ts-mode typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
    :post-insert-hooks (prettier-prettify lsp)
 ;; :msg-format-template "'🦄: %s'"
@@ -3424,6 +3565,30 @@ Improved styles for git changes
    "SPC o r" 'browse-at-remote))
 #+END_SRC
 
+** Forge. Remote access to repo
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package forge
+  :after magit
+  :config
+  (setq auth-sources '("~/.authinfo")))
+#+END_SRC
+
+** Code review
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package code-review
+  :defer t
+  :general
+  (:states '(normal insert) :keymaps 'magit-mode-map
+            "C-c C-r" 'code-review-forge-pr-at-point)
+  (:states '(normal insert) :keymaps 'code-review-mode-map
+            "r" 'code-review-transient-api)
+  :config
+  (setq code-review-fill-column 80)
+  (setq code-review-download-dir "/tmp/code-review/")
+  (setq code-review-new-buffer-window-strategy #'switch-to-buffer)
+  (setq code-review-auth-login-marker 'forge))
+#+END_SRC
+
 
 * Languages
 ** Emacs lisp mode (elisp)
@@ -3436,7 +3601,8 @@ Improved styles for git changes
 (use-package elisp-mode
   :defer t
 
-  :hook ((emacs-lisp-mode . paren-face-mode))
+  :hook ((emacs-lisp-mode . paren-face-mode)
+         (emacs-lisp-mode . (lambda () (setq fill-column 80))))
 
   :bind (("C-c o" . outline-cycle)
          ("C-c r" . outline-show-all)
@@ -3510,17 +3676,26 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp :results silent
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
-  :defer t
+  :defer t  
+  :hook (typescript-mode . (lambda () (setq-local fill-column 120)
+                             (typescript-ts-mode)))
   :custom
   (lsp-clients-typescript-server-args '("--stdio"))
   :config
   (setq typescript-indent-level 2)
-  (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode))
+  ;; (add-to-list 'auto-mode-alist '("\.ts\'" . typescript-mode))
   (@setup-compilation-errors))
 #+END_SRC
 
 #+RESULTS:
 : t
+*** Typescript repl
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package ts-comint
+  :defer t
+  :ensure t)
+#+END_SRC
+
 
 ** Angular
 #+BEGIN_SRC emacs-lisp
@@ -3663,19 +3838,21 @@ Function for open repl in the current buffer
               (setq indent-tabs-mode nil)
               (setq tab-width 4))))
 #+END_SRC
-*** LSP
+*** LSP. Pyright
 
 #+BEGIN_SRC emacs-lisp
 (setq lsp-pyright-multi-root nil)
 (use-package lsp-pyright
-  :defer t
+  :hook (python-mode . (lambda ()
+                          (require 'lsp-pyright)
+                          (lsp-deferred)))
   :config
   (setq lsp-pyright-auto-import-completions t)
   (setq lsp-pyright-auto-search-paths t)
   (setq lsp-pyright-log-level "trace")
   (setq lsp-pyright-multi-root nil)
   (setq lsp-pyright-use-library-code-for-types t)
-  (setq lsp-pyright-venv-directory "/Users/darkawower/.local/share/virtualenvs/spice-farm-YhO8T07I")
+  ;; (setq lsp-pyright-venv-directory "/Users/darkawower/.local/share/virtualenvs/spice-farm-YhO8T07I")
   (setq lsp-pyright-diagnostic-mode "workspace"))
 #+END_SRC
 *** Pipenv
@@ -3686,6 +3863,11 @@ Function for open repl in the current buffer
   :config
   (setenv "WORKON_HOME" (concat (getenv "HOME") "/.local/share/virtualenvs"))
   (add-hook 'pyvenv-post-activate-hooks #'lsp-restart-workspace)
+  ;; This hook will copy venv from pyvenv to lsp pyright
+  (add-hook 'pyvenv-post-activate-hooks (lambda ()
+                                          (setq lsp-pyright-venv-directory pyvenv-virtual-env)
+                                          (lsp-restart-workspace)))
+
   (setq pipenv-projectile-after-switch-function #'pipenv-projectile-after-switch-extended))
 #+END_SRC
 *** Keys
@@ -3922,7 +4104,7 @@ For install type ~npm install -g @volar/server~
 *** Realtime preview
 #+BEGIN_SRC emacs-lisp
 (use-package grip-mode
-  :after markdown-mode
+  :defer t
   :custom
   (browse-url-browser-function 'browse-url-generic)
   ;; (grip-url-browser #'browse-url-firefox-program)
@@ -3931,9 +4113,6 @@ For install type ~npm install -g @volar/server~
     (setq grip-github-user (car credential)
           grip-github-password (cadr credential))))
 #+END_SRC
-
-#+RESULTS:
-: t
 
 * Org mode
 ** Publishing
@@ -4092,21 +4271,35 @@ For install type ~npm install -g @volar/server~
                            (push '("#+end_example" . "⇤" ) prettify-symbols-alist)
                            (push '("#+begin_src" . "↦" ) prettify-symbols-alist)
                            (push '("#+end_src" . "⇤" ) prettify-symbols-alist)
-                           (push '("#+TITLE:" . "") prettify-symbols-alist)
-                           (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
-                           (push '("#+ID:" . "") prettify-symbols-alist)
-                           (push '("#+FILETAGS:" . "") prettify-symbols-alist)
-                           (push '("#+STARTUP:" . "") prettify-symbols-alist)
-                           (push '("#+ACTIVE:" . "") prettify-symbols-alist)
+
+                           (push '("#+TITLE:" . "") prettify-symbols-alist)
+                           (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
+                           (push '("#+ID:" . "") prettify-symbols-alist)
+                           (push '("#+FILETAGS:" . "") prettify-symbols-alist)
+                           (push '("#+STARTUP:" . "") prettify-symbols-alist)
+                           (push '("#+ACTIVE:" . "") prettify-symbols-alist)
                            (push '("#+START_SPOILER" . "") prettify-symbols-alist)
                            (push '("#+CLOSE_SPOILER" . "") prettify-symbols-alist)
-                           (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
-                           (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+                           (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
+                           (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+
+
+                           ;; (push '("#+TITLE:" . "") prettify-symbols-alist)
+                           ;; (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
+                           ;; (push '("#+ID:" . "") prettify-symbols-alist)
+                           ;; (push '("#+FILETAGS:" . "") prettify-symbols-alist)
+                           ;; (push '("#+STARTUP:" . "") prettify-symbols-alist)
+                           ;; (push '("#+ACTIVE:" . "") prettify-symbols-alist)
+                           ;; (push '("#+START_SPOILER" . "") prettify-symbols-alist)
+                           ;; (push '("#+CLOSE_SPOILER" . "") prettify-symbols-alist)
+                           ;; (push '("#+BEGIN_HIDDEN" . "") prettify-symbols-alist)
+                           ;; (push '("#+END_HIDDEN" . "") prettify-symbols-alist)
+
                            (prettify-symbols-mode)))
 #+END_SRC
 
 ** Prettify org priority
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
   (use-package org-fancy-priorities
     :after org
     :ensure t
@@ -4123,6 +4316,7 @@ For install type ~npm install -g @volar/server~
                                       (?4 . "☕")
                                       (?I . "Important"))))
 #+END_SRC
+
 ** Org indent
 #+BEGIN_SRC emacs-lisp
 (use-package org-indent
@@ -4134,13 +4328,14 @@ For install type ~npm install -g @volar/server~
 #+RESULTS:
 
 ** Pretty org stars
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package org-superstar
   :after org
   :hook (org-mode . org-superstar-mode)
   :config
   (setq org-directory "~/Yandex.Disk.localized/Dropbox/org"))
 #+END_SRC
+
 ** Org roam
 One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp
@@ -4171,7 +4366,6 @@ One of the best Zettelkasten implementation
 #+END_SRC
 
 #+RESULTS:
-: websocket
 ** HOLD Visual roam ui nodes                                      
 :PROPERTIES:
 :header-args: :tangle no
@@ -4389,11 +4583,43 @@ Dependency
   (global-spell-fu-mode)
   (my-set-spellfu-faces))
 #+END_SRC
-** Grammar
+** HOLD Grammarly lsp
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+Didn't mange to start work
+
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-grammarly
-  :defer t)
+  :ensure t
+  :hook (text-mode . (lambda ()
+                       (require 'lsp-grammarly)
+                       (lsp))))
 #+END_SRC
+** HOLD Grammarly
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package grammarly
+  :defer t
+  :bind ("C-c g" . @check-region-via-grammarly)
+  :config
+  (defun test-on-message (data)
+    "On message callback with DATA."
+    (message "[DATA] %s" data))
+
+  ;; Set callback for receiving data.
+  (add-to-list 'grammarly-on-message-function-list 'test-on-message)
+
+  (defun @check-region-via-grammarly (beg end)
+    (interactive "r")
+    (grammarly-check-text (buffer-substring-no-properties beg end)))
+  (setq grammarly-auto-activate t))
+#+END_SRC
+
 ** Google translate
 #+BEGIN_SRC emacs-lisp
 (use-package google-translate
@@ -4592,12 +4818,25 @@ Dependency
 **
 
 ** Consult
+Function for search in buffer depends or visual or normal line
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @consult-line-or-region ()
+  "Search in buffer depends or visual or normal line"
+  (interactive)
+  (if (region-active-p)
+      (let ((substring (buffer-substring (region-beginning) (region-end))))
+        (deactivate-mark)
+        (consult-line substring))
+    (consult-line)))
+#+END_SRC
+
+
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package consult
   :defer t
   :general (:states '(normal visual)
                     :keymaps 'override
-                    "s-f" 'consult-line
+                    "s-f" '@consult-line-or-region
                     "SPC bB" 'consult-buffer
                     "SPC fP" '@open-emacs-config
                     "SPC /" 'consult-ripgrep
@@ -4652,7 +4891,7 @@ Dependency
    consult-bookmark consult-recent-file consult-xref consult--source-bookmark consult--source-file-register
    consult--source-recent-file consult--source-project-recent-file
    ;; my/command-wrapping-consult    ;; disable auto previews inside my command
-   :preview-key (list :debounce 0.2 (kbd "C-SPC")))
+   :preview-key (list :debounce 0.2 "C-SPC"))
 
   ;; Optionally configure the narrowing key.
   ;; Both < and C-+ work reasonably well.
@@ -4708,9 +4947,10 @@ For more details check https://www.reddit.com/r/emacs/comments/zou9x0/comment/j1
 
 (add-to-list 'embark-multitarget-actions 'copy-grep-results-as-kill)
 
-(embark-define-keymap embark-consult-grep-map
-  "Keymap for actions for consult-grep results."
-  ("w" copy-grep-results-as-kill))
+(defvar-keymap embark-consult-grep-map
+  :doc "Keymap for actions for consult-grep results."
+  :parent embark-general-map
+  "w" #'copy-grep-results-as-kill)
 
 (setf (alist-get 'consult-grep embark-keymap-alist) 'embark-consult-grep-map)
 #+END_SRC
@@ -4765,7 +5005,7 @@ Delete project
 
 TODO: delete
 Preview
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent 
 (defun +vertico/embark-preview ()
   "Previews candidate in vertico buffer, unless it's a consult command"
   (interactive)
@@ -4885,7 +5125,11 @@ Figure out how to open url from history. Look usefull
   (browser-hist-default-browser 'brave)
   :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
 #+END_SRC
-** GPT AI alternative
+** HOLD GPT AI alternative
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package emacs-gpt
@@ -4895,7 +5139,48 @@ https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
   ;; :ensure nil)
 #+END_SRC
 
-** GPT AI
+** Another GPT alternative
+Dependencies
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package openai
+  :straight (:host github :repo "emacs-openai/openai"))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package codegpt 
+  :straight (:type git :host github :repo "emacs-openai/codegpt")
+  :config
+  (add-to-list 'codegpt-action-alist '("JSDoc" . "Write JSDoc for this method"))
+  (defun codegpt--internal (instruction start end)
+    "Do INSTRUCTION with partial code.
+
+The partial code is defined in with the region, and the START nad END are
+boundaries of that region in buffer."
+    (let ((text (string-trim (buffer-substring start end)))
+          (original-window (selected-window)))
+      (codegpt--ask-in-buffer instruction
+        (insert text "\n\n")
+        (openai-completion
+         (buffer-string)
+         (lambda (data)
+           (openai--with-buffer codegpt-buffer-name
+             (openai--pop-to-buffer codegpt-buffer-name)
+             (let* ((choices (openai-completion--data-choices data))
+                    (result (openai-completion--get-choice choices))
+                    (original-point (point)))
+               (insert "\n" (string-trim result) "\n")
+               (fill-paragraph original-point (point))
+               (end-of-buffer)))
+           (unless codegpt-focus-p
+             (select-window original-window))))
+        (unless codegpt-focus-p
+          (select-window original-window))))))
+#+END_SRC
+** HOLD GPT AI
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 dependency
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package epc
@@ -4915,7 +5200,6 @@ dependency
    (require 'epc)
   (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
 #+END_SRC
-
 ** Pocket
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package pocket-reader
