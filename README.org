@@ -671,6 +671,14 @@ Very pretty titlebar for Mac os
       +m-color-green "#00D364"
       +org-todo-onhold "#FFAA00")
 #+END_SRC
+** Faces
+#+BEGIN_SRC emacs-lisp :results silent
+(defface +org-todo-onhold-face
+  `((t (:foreground ,+org-todo-onhold :weight bold)))
+  "Face for TODO items with the ONHOLD keyword."
+  :group 'org-faces)
+#+END_SRC
+
 ** HOLD Modeline
 :PROPERTIES:
 :header-args:  :tangle config.el
@@ -1450,10 +1458,9 @@ Bookmark for navigation inside file
 
 #+BEGIN_SRC emacs-lisp 
 (use-package better-jumper
-  ;; :hook
-  ;; (consult-after-jump . @better-jump-preserve-pos)
-  ;; (buffer-list-update . (lambda () (better-jumper-set-jump)))
-  ;; (@before-buffer-changed . (lambda () (better-jumper-set-jump)))
+  :demand t
+  :hook
+  (buffer-list-update . #'@better-jump-preserve-pos-advice)
   :general
   (:states '(normal, visual)
            "C-o" 'better-jumper-jump-backward
@@ -1463,13 +1470,11 @@ Bookmark for navigation inside file
   ;; (better-jumper-add-jump-behavior #'replace)
   (better-jumper-use-evil-jump-advice nil)
   :config
-  ;; (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
-  ;; (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
-  (advice-add '@find-definition :around #'@better-jump-preserve-pos-advice)
-  (advice-add '@find-definition :around 'evil-scroll-line-to-center)
+  (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
+  (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
+  (advice-add '@find-definition :before (lambda () (call-interactively #'better-jumper-set-jump)))
   (better-jumper-mode 1))
 #+END_SRC
-
 ** HOLD Remember last position. Blinky mode
 :PROPERTIES:
 :header-args: :tangle no
@@ -1914,6 +1919,7 @@ new project directory.")
           (save-excursion
             (display-buffer-in-side-window
              warnings '((window-height . shrink-window-if-larger-than-buffer))))))))
+
   (defun +workspaces-init-persp-mode-h ()
     (cond (persp-mode
            ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
@@ -1950,6 +1956,7 @@ new project directory.")
 #+END_SRC
 
 **** Workgroups
+
 #+BEGIN_SRC emacs-lisp 
 (use-package workgroups)
 #+END_SRC
@@ -2246,7 +2253,9 @@ This function also stolen from doom emacs. It provide functionality for automati
           go-mode
           bash-mode
           css-mode
-          scss-mode) . @ts-fold-init)
+          scss-mode
+          go-ts-mode
+          typescript-ts-mode) . @ts-fold-init)
   :general
   <<ts-fold-general-keybindings>>
   :config
@@ -2264,6 +2273,15 @@ This function also stolen from doom emacs. It provide functionality for automati
   (add-to-list 'ts-fold-range-alist '(scss-mode . ((keyframe_block_list . ts-fold-range-seq)
                                                    (block . ts-fold-range-seq)
                                                    (comment . ts-fold-range-c-like-comment))) t)
+
+
+  (add-to-list 'ts-fold-range-alist '(typescript-ts-mode . ((export_clause . ts-fold-range-seq)
+                                                            (statement_block . ts-fold-range-seq)
+                                                            (comment . ts-fold-range-c-like-comment))))
+
+  (add-to-list 'ts-fold-range-alist `(typescript-ts-mode . ,(ts-fold-parsers-typescript)))
+  (add-to-list 'ts-fold-range-alist `(go-ts-mode . ,(ts-fold-parsers-go)))
+  ;; (add-to-list 'ts-fold-range-alist '(go-ts-mode . ts-fold-summary-go))
 
   ;; TODO: DOESN'T WORK for scss, needs another rules (check it later for custom pareser)
   (add-to-list 'ts-fold-range-alist '(scss-mode . (css-mode
@@ -3135,12 +3153,9 @@ Function for deleting local terminals
                     (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
                     (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
                     (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
-                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30)))
-                    ;; (,dap-ui--debug-window-buffer    . ((side . bottom) (slot . 2) (window-width  . 0.30)))
-                    )))
+                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30))))))
     ;; (setq dap-ui-locals-expand-depth 3))
-  ;; (setq dap-auto-configure-features '(locals controls tooltip))
-  ;; (setq dap-auto-configure-features '(locals tooltip))
+  (setq dap-auto-configure-features '(locals tooltip))
   (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
   (custom-set-faces
    '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
@@ -3644,6 +3659,17 @@ Improved styles for git changes
   :hook (emacs-lisp-mode . elisp-autofmt-mode)
   :custom
   (elisp-autofmt-python-bin "/opt/homebrew/bin/python3"))
+#+END_SRC
+*** HOLD Lisp + evil (evil-cleverparens)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp
+(use-package evil-cleverparens
+  :ensure t
+  :defer t
+  :hook (emacs-lisp-mode . evil-cleverparens-mode))
 #+END_SRC
 
 
@@ -4180,15 +4206,15 @@ For install type ~npm install -g @volar/server~
           ("PROGRESS"   . org-todo)
           ("DONE"       . org-todo)
           ("IDEA"       . org-todo)
-          ("[?]"        . +org-todo-onhold)
-          ("WAIT"       . +org-todo-onhold)
-          ("TEST"       . +org-todo-active)
-          ("FEEDBACK"   . +org-todo-onhold)
-          ("REVIEW"     . +org-todo-onhold)
-          ("HOLD"       . +org-todo-onhold)
+          ("[?]"        . +org-todo-onhold-face)
+          ("WAIT"       . +org-todo-onhold-face)
+          ("TEST"       . +org-todo-active-face)
+          ("FEEDBACK"   . +org-todo-onhold-face)
+          ("REVIEW"     . +org-todo-onhold-face)
+          ("HOLD"       . +org-todo-onhold-face)
           ("PROJ"       . +org-todo-project)
-          ("BLOCK"       . +org-todo-cancel)
-          ("REJECTED"       . +org-todo-cancel)
+          ("BLOCK"      . +org-todo-cancel)
+          ("REJECTED"   . +org-todo-cancel)
           ("KILL"       . +org-todo-cancel)))
 
   (setq org-hide-emphasis-markers t)
@@ -4363,10 +4389,7 @@ One of the best Zettelkasten implementation
 #+END_SRC
 
 #+RESULTS:
-** HOLD Visual roam ui nodes                                      
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+** Visual roam ui nodes                                      
 #+BEGIN_SRC emacs-lisp
 (use-package org-roam-ui
   :after org-roam
@@ -4580,19 +4603,18 @@ Dependency
   (global-spell-fu-mode)
   (my-set-spellfu-faces))
 #+END_SRC
-** HOLD Grammarly lsp
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
+** Grammarly lsp
 Didn't mange to start work
 
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-grammarly
-  :ensure t
-  :hook (text-mode . (lambda ()
+  :hook
+  (text-mode . (lambda ()
+                 (require 'lsp-grammarly)
+                 (lsp-deferred)))
+  (org-mode . (lambda ()
                        (require 'lsp-grammarly)
-                       (lsp))))
+                       (lsp-deferred))))
 #+END_SRC
 ** HOLD Grammarly
 :PROPERTIES:
@@ -4616,6 +4638,21 @@ Didn't mange to start work
     (grammarly-check-text (buffer-substring-no-properties beg end)))
   (setq grammarly-auto-activate t))
 #+END_SRC
+** Lsp ltex. Grammarly lsp server
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package lsp-ltex
+  :ensure t)
+  ;; :hook
+  ;; (text-mode . (lambda ()
+  ;;                (require 'lsp-ltex)
+  ;;                (lsp-deferred)))  ; or lsp-deferred
+  ;; (org-mode . (lambda ()
+  ;;                (require 'lsp-ltex)
+  ;;                (lsp-deferred)))
+  ;; :init
+  ;; (setq lsp-ltex-version "15.2.0-mac-x64"))
+#+END_SRC
+
 
 ** Google translate
 #+BEGIN_SRC emacs-lisp
