@@ -5,7 +5,6 @@
 
 
 #+TITLE: Emacs config
-
 * Installation
 For install emacs on macos use brew:
 #+BEGIN_SRC bash :tangle no
@@ -48,8 +47,11 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 (package-initialize)
 #+END_SRC
 
+** HOLD Straight
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 
-** Straight
 #+BEGIN_SRC emacs-lisp
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -89,6 +91,53 @@ Use package
 (require 'quelpa-use-package)
 (setq use-package-ensure-function 'quelpa)
 #+END_SRC
+** TODO Modern package manager.
+*** Elpaca package.
+#+BEGIN_SRC emacs-lisp :results silent
+(defvar elpaca-installer-version 0.1)
+(defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
+(defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+(defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
+                              :ref nil
+                              :files (:defaults (:exclude "extensions"))
+                              :build (:not elpaca--activate-package)))
+(when-let ((repo  (expand-file-name "repos/elpaca/" elpaca-directory))
+           (build (expand-file-name "elpaca/" elpaca-builds-directory))
+           (order (cdr elpaca-order))
+           ((add-to-list 'load-path (if (file-exists-p build) build repo)))
+           ((not (file-exists-p repo))))
+  (condition-case-unless-debug err
+      (if-let ((buffer (pop-to-buffer-same-window "*elpaca-installer*"))
+               ((zerop (call-process "git" nil buffer t "clone"
+                                     (plist-get order :repo) repo)))
+               (default-directory repo)
+               ((zerop (call-process "git" nil buffer t "checkout"
+                                     (or (plist-get order :ref) "--"))))
+               (emacs (concat invocation-directory invocation-name))
+               ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                     "--eval" "(byte-recompile-directory \".\" 0 'force)"))))
+          (progn (require 'elpaca)
+                 (elpaca-generate-autoloads "elpaca" repo)
+                 (kill-buffer buffer))
+        (error "%s" (with-current-buffer buffer (buffer-string))))
+    ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+(require 'elpaca-autoloads)
+(add-hook 'after-init-hook #'elpaca-process-queues)
+(elpaca `(,@elpaca-order))
+#+END_SRC
+*** Elpaca use-package
+#+BEGIN_SRC emacs-lisp :results silent
+;; Install use-package support
+(elpaca elpaca-use-package
+  ;; Enable :elpaca use-package keyword.
+  (elpaca-use-package-mode)
+  ;; Assume :elpaca t unless otherwise specified.
+  (setq elpaca-use-package-by-default t))
+
+;; Block until current queue processed.
+(elpaca-wait)
+#+END_SRC
+
 ** VC install macro
 #+BEGIN_SRC emacs-lisp 
 (unless (package-installed-p 'vc-use-package)
@@ -99,7 +148,7 @@ Use package
 ** Startup time boost
 #+BEGIN_SRC emacs-lisp 
 (use-package fnhh
-  :straight (:type git :host github :repo "a13/fnhh")
+  :elpaca (:type git :host github :repo "a13/fnhh")
   :config
   (fnhh-mode 1))
 #+END_SRC
@@ -159,7 +208,7 @@ Load private configs
 #+BEGIN_SRC emacs-lisp 
 (use-package doom-lib
   :ensure t
-  :straight (doom-lib
+  :elpaca (doom-lib
              :host github
              :repo "hlissner/doom-emacs"
              :files ("lisp/doom-lib.el" "lisp/lib/buffers.el")))
@@ -271,7 +320,6 @@ list is returned as-is."
 ;;              (lambda (&rest _)
 ;;                (run-hooks '@before-buffer-changed-hook)))
 #+END_SRC
-
 
 * Custom functions
 ** Org
@@ -694,13 +742,6 @@ Very pretty titlebar for Mac os
     :after dired
     :hook (dired-mode . all-the-icons-dired-mode))
 #+END_SRC
-** Rainbows colors
-#+BEGIN_SRC emacs-lisp 
-  (use-package rainbow-mode
-    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
-    :defer t)
-#+END_SRC
-
 ** Highlight keywords
 #+BEGIN_SRC emacs-lisp
 (use-package hl-todo
@@ -719,9 +760,9 @@ Very pretty titlebar for Mac os
 #+END_SRC
 ** Highlight hex colors
 #+BEGIN_SRC emacs-lisp 
-(use-package rainbow-mode
-  :defer t
-  :hook ((css-mode emacs-lisp-mode org-mode) . rainbow-mode))
+  (use-package rainbow-mode
+    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
+    :defer t)
 #+END_SRC
 ** Pixel scroll
 #+BEGIN_SRC emacs-lisp 
@@ -747,10 +788,10 @@ Very pretty titlebar for Mac os
 #+BEGIN_SRC emacs-lisp 
 (use-package display-fill-column-indicator
   :defer t
+  :elpaca nil
   :config
   (setq display-fill-column-indicator-column 80))
 #+END_SRC
-
 
 * Theme
 ** Functions
@@ -923,7 +964,7 @@ Argument APPEARANCE should be light or dark."
 #+BEGIN_SRC emacs-lisp 
 (use-package lambda-line
   :ensure t
-  :straight (:type git :host github :repo "lambda-emacs/lambda-line") 
+  :elpaca (:type git :host github :repo "lambda-emacs/lambda-line")
   :custom
   (lambda-line-icon-time t) ;; requires ClockFace font (see below)
   (lambda-line-clockface-update-fontset "ClockFaceRect") ;; set clock icon
@@ -969,8 +1010,8 @@ Argument APPEARANCE should be light or dark."
   :ensure t
   ;; :vc (:fetcher "github" :repo catppuccin/emacs :rev 86b16248ef2ce450def4a00a0ca5170c102da623)
   ;; :vc (:fetcher "github" :repo "catppuccin/emacs")
-  :straight (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
-;; :straight t
+  :elpaca (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
+;; :elpaca t
   :config
   (setq catppuccin-flavor 'latte))
 #+END_SRC
@@ -982,7 +1023,7 @@ Argument APPEARANCE should be light or dark."
 
 #+BEGIN_SRC emacs-lisp 
 (use-package splash-screen
-  :straight (:host github :repo "rougier/emacs-splash"))
+  :elpaca (:host github :repo "rougier/emacs-splash"))
 #+END_SRC
 ** HOLD Dashboard
 Doesn't work with chemacs and emacs 29
@@ -1093,29 +1134,6 @@ Override function for auto-dark mode for applying function for nano theme changi
   (toggle-scroll-bar -1)
   (setq ring-bell-function 'ignore)
 #+END_SRC
-** Highlight todo keywords
-#+BEGIN_SRC emacs-lisp
-(use-package hl-todo
-  :defer 1
-  :hook (org-mode . hl-todo-mode)
-  :config
-  (setq hl-todo-keyword-faces
-        '(("TODO"   . "#E5C07B")
-          ("HOLD"   . "#E5C07B")
-          ("FIXME"  . "#E06C75")
-          ("DEBUG"  . "#C678DD")
-          ("REFACTOR"  . "#C678DD")
-          ("GOTCHA" . "#FF4500")
-          ("NOTE"   . "#98C379")
-          ("QUESTION"   . "#98C379")
-          ("STUB"   . "#61AFEF")))
-  (global-hl-todo-mode 1)
-  (hl-todo-mode))
-#+END_SRC
-
-#+RESULTS:
-: t
-
 * Keybindings
 ** Key checker
 #+BEGIN_SRC emacs-lisp
@@ -1282,6 +1300,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 *** Configs
 #+BEGIN_SRC emacs-lisp :exports none :noweb yes
 (use-package general
+  :demand t
   :config
   <<general-global-mode-map>>
   <<general-evil-insert-mode-map>>
@@ -1301,6 +1320,7 @@ Override function for auto-dark mode for applying function for nano theme changi
    "C-c C-c" 'org-edit-src-exit)
 
 (general-override-mode))
+(elpaca-wait)
 #+END_SRC
 
 #+RESULTS:
@@ -1482,7 +1502,7 @@ Bookmark for navigation inside file
 
 #+BEGIN_SRC emacs-lisp 
 (use-package binky-mode
-  :straight (binky-mode :type git :host github :repo "liuyinz/binky-mode")
+  :elpaca (binky-mode :type git :host github :repo "liuyinz/binky-mode")
   :general
   (:keymaps 'override
             :states '(normal visual)
@@ -1490,10 +1510,10 @@ Bookmark for navigation inside file
   :hook (after-init-hook . binky-mode))
 #+END_SRC
 ** Tree sitter movement
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package ts-movement
-  ;; :straight (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
-  :load-path "vendor/ts-movement"
+  ;; :elpaca (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
+  ;; :load-path "vendor/ts-movement"
   :bind (:map evil-normal-state-map
               ("C-c ." . tsm/hydra/body)
               ("\"" . tsm/clear-overlays)
@@ -1507,7 +1527,7 @@ Bookmark for navigation inside file
 ** Tree sitter movement. Ts hopper
 #+BEGIN_SRC emacs-lisp 
 (use-package ts-hopper
-  :straight (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
+  :elpaca (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
   :init
   (ts-hopper-init)
   :general (:states '(normal visual)
@@ -1527,6 +1547,7 @@ Bookmark for navigation inside file
 #+BEGIN_SRC emacs-lisp 
   (use-package dired
     :defer t
+    :elpaca nil
     :ensure nil
     :general
     (:keymaps 'dired-mode-map
@@ -1774,7 +1795,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 Something like screensaver
 #+BEGIN_SRC emacs-lisp
   (use-package secret-mode
-    :straight (:type git :host github :repo "bkaestner/redacted.el")
+    :elpaca (:type git :host github :repo "bkaestner/redacted.el")
     :defer t)
 #+END_SRC
 ** Workspace
@@ -1787,7 +1808,7 @@ Doesn't work now
 #+BEGIN_SRC emacs-lisp 
 (use-package eyebrowse-restore
   :ensure t
-  :straight (:host github
+  :elpaca (:host github
              :repo "FrostyX/eyebrowse-restore"
              :branch "main")
   :config
@@ -2047,6 +2068,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+BEGIN_SRC emacs-lisp 
 (use-package ibuffer
   :defer t
+  :elpaca nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -2233,6 +2255,14 @@ This function also stolen from doom emacs. It provide functionality for automati
                                   go-mode
                                   scss-mode
                                   css-mode
+                                  typescript-ts-mode
+                                  go-ts-mode
+                                  bash-ts-mode
+                                  python-ts-mode
+                                  json-ts-mode
+                                  html-ts-mode
+                                  scss-ts-mode
+                                  css-ts-mode
                                   bash-mode)))
     (ts-fold-mode 1)))
 #+END_SRC
@@ -2240,7 +2270,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 *** Core package
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package ts-fold
-  :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :elpaca (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
   :hook ((tree-sitter-mode
           web-mode
           ng2-html-mode
@@ -2303,7 +2333,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+BEGIN_SRC emacs-lisp 
 (use-package ts-fold-indicators
   :after ts-fold
-  :straight (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :elpaca (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
   :config
   (setq ts-fold-indicators-fringe 'right-fringe)
   (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
@@ -2536,7 +2566,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 #+BEGIN_SRC emacs-lisp 
 ;; (use-package treesit-langs
-;;   :straight (:type git :host github :repo "ymarco/tree-sitter-langs")
+;;   :elpaca (:type git :host github :repo "ymarco/tree-sitter-langs")
 ;;   :hook ((typescript-ts-base-mode
 ;;           go-ts-mode
 ;;           python-ts-mode
@@ -2553,6 +2583,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit
+  :elpaca nil
   :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
   :hook ((typescript-ts-base-mode
           go-ts-mode
@@ -2579,7 +2610,7 @@ This need for correct highlighting of incorrect spell-fu faces."
      (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
      (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
      (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
-  :custom 
+  :custom
   ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
   (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sitter"))
   :config
@@ -2705,7 +2736,7 @@ Disalbe company mode
 #+BEGIN_SRC emacs-lisp
   (use-package corfu-doc
     :after corfu
-    :straight (corfu-doc :type git :host github :repo "galeo/corfu-doc")
+    :elpaca (corfu-doc :type git :host github :repo "galeo/corfu-doc")
     :hook (corfu-mode . corfu-doc-mode)
     :bind (:map corfu-map
                 ("M-j" . corfu-doc-scroll-down)
@@ -2779,7 +2810,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+BEGIN_SRC emacs-lisp 
 (use-package lsp-bridge
   :after yasnippet
-  :straight (:host github :repo "manateelazycat/lsp-bridge" :files ("acm" "core" "langserver" "multiserver" "test" "*.py" "*.el"))
+  :elpaca (:host github :repo "manateelazycat/lsp-bridge" :files ("acm" "core" "langserver" "multiserver" "test" "*.py" "*.el"))
   :general
   (:keymaps 'override
             :states '(normal visual)
@@ -2936,10 +2967,8 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+RESULTS:
 
 *** YAML
-**** LSP
-
-
-#+BEGIN_SRC emacs-lisp
+**** HOLD LSP
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package lsp-yaml
   :defer t
   :hook (yaml-mode . lsp-mode))
@@ -3072,6 +3101,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package compile
   :defer t
+  :elpaca nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -3232,7 +3262,7 @@ TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
   :defer 5
-  :straight (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
+  :elpaca (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
   :general
   (:keymaps 'override
             "s-]" 'copilot-next-completion
@@ -3290,6 +3320,7 @@ TODO: check copilot + blamer
 *** Electric
 #+BEGIN_SRC emacs-lisp 
 (use-package electric
+  :elpaca nil
   :config
   (setq electric-pair-preserve-balance nil
         electric-pair-delete-adjacent-pairs nil
@@ -3329,7 +3360,7 @@ cause its simple, and it works in all cases.
 #+BEGIN_SRC emacs-lisp
 (use-package turbo-log
   :defer t
-  :straight (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
+  :elpaca (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
          ("C-s-h" . turbo-log-comment-all-logs)
@@ -3377,7 +3408,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 
 #+BEGIN_SRC emacs-lisp 
 (use-package persistent-kmacro
-  :straight (:host github :repo "artawower/persistent-kmacro.el")
+  :elpaca (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
@@ -3509,7 +3540,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
   :defer 5
-  :straight (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
+  :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -3612,7 +3643,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package elisp-mode
   :defer t
-
+  :elpaca nil
   :hook ((emacs-lisp-mode . paren-face-mode)
          (emacs-lisp-mode . (lambda () (setq fill-column 80))))
 
@@ -3625,7 +3656,7 @@ Improved styles for git changes
          ("C-c e" . outline-hide-entry)
          ("C-c t" . outline-toggle-children)
          ("C-c b" . outline-cycle-buffer)
-         ;; TODO: eval buffer or region 
+         ;; TODO: eval buffer or region
          ("C-c C-c" . eval-buffer))
 
   :config
@@ -3978,12 +4009,6 @@ I don't remember why I need this code. Currently commented.
              :help "Complete symbol before point"]))
         map))
 #+END_SRC
-** VUE
-For install type ~npm install -g @volar/server~
-#+BEGIN_SRC emacs-lisp
-(use-package lsp-volar
-  :defer t)
-#+END_SRC
 ** WEB development
 #+BEGIN_SRC emacs-lisp
 (use-package web-mode
@@ -4026,6 +4051,7 @@ For install type ~npm install -g @volar/server~
 ** SCSS/CSS
 #+BEGIN_SRC emacs-lisp
   (use-package css-mode
+    :elpaca nil
     :defer 10
     :config
     (defun revert-buffer-no-confirm ()
@@ -4148,6 +4174,9 @@ For install type ~npm install -g @volar/server~
 #+BEGIN_SRC emacs-lisp
 (use-package org
   :mode (("\\.org$" . org-mode))
+  :hook
+  (org-mode . org-indent-mode)
+  :elpaca nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -4340,16 +4369,6 @@ For install type ~npm install -g @volar/server~
                                       (?I . "Important"))))
 #+END_SRC
 
-** Org indent
-#+BEGIN_SRC emacs-lisp
-(use-package org-indent
-  :after org
-  :init
-  (add-hook 'org-mode-hook 'org-indent-mode))
-#+END_SRC
-
-#+RESULTS:
-
 ** Pretty org stars
 #+BEGIN_SRC emacs-lisp 
 (use-package org-superstar
@@ -4404,7 +4423,7 @@ One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp
 (use-package org-yt
   :after org
-  :straight (:host github :repo "TobiasZawada/org-yt")
+  :elpaca (:host github :repo "TobiasZawada/org-yt")
   :config
   (defun org-image-link (protocol link _description)
     "Interpret LINK as base64-encoded image data."
@@ -4430,10 +4449,9 @@ One of the best Zettelkasten implementation
 #+RESULTS:
 : t
 
-** Roam publisher
+** REVIEW Roam publisher
 My own package for publish roam files
-
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package web-roam
   :defer t
   :bind (:map evil-normal-state-map
@@ -4480,7 +4498,7 @@ Dependency
     :bind (:map org-mode-map
                 ("<C-return>" . +org/insert-item-below)
                 ("<C-S-return>" . +org/insert-item-above))
-    :straight (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
+    :elpaca (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
 #+END_SRC
 
 #+RESULTS:
@@ -4494,6 +4512,7 @@ Dependency
                                  (directory-files-recursively "~/projects/pet" "\\.org$"))))
 
 (use-package org-agenda
+  :elpaca nil
   :defer t
   :config
   (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
@@ -4511,7 +4530,7 @@ Dependency
 #+BEGIN_SRC emacs-lisp 
 (use-package ox-gfm
   :defer t
-  :straight (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
+  :elpaca (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
 #+END_SRC
 
 
@@ -4684,7 +4703,7 @@ Didn't mange to start work
 #+BEGIN_SRC emacs-lisp 
 (use-package wakatime-ui
   :after wakatime-mode
-  :straight (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
+  :elpaca (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
   :config
@@ -4778,6 +4797,7 @@ Didn't mange to start work
   (add-hook 'minibuffer-setup-hook 'vertico-repeat-save))
 
 (use-package vertico-repeat
+  :elpaca nil
   :after vertico)
 
 (use-package orderless
@@ -4788,11 +4808,13 @@ Didn't mange to start work
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
+  :elpaca nil
   :config
   (savehist-mode))
 
 ;; A few more useful configurations...
 (use-package emacs
+  :elpaca nil
   :init
   ;; Add prompt indicator to `completing-read-multiple'.
   ;; Alternatively try `consult-completing-read-multiple'.
@@ -5157,7 +5179,7 @@ Figure out how to open url from history. Look usefull
             "SPC bh" 'browser-hist-search)
   :custom
   (browser-hist-default-browser 'brave)
-  :straight (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
+  :elpaca (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
 #+END_SRC
 ** HOLD GPT AI alternative
 :PROPERTIES:
@@ -5167,7 +5189,7 @@ Figure out how to open url from history. Look usefull
 https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
 #+BEGIN_SRC emacs-lisp 
 (use-package emacs-gpt
-  :straight (:package "emacs-gpt" :host nil :type git
+  :elpaca (:package "emacs-gpt" :host nil :type git
              :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
   ;; :load-path "~/pure-emacs"
   ;; :ensure nil)
@@ -5177,12 +5199,12 @@ https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
 Dependencies
 #+BEGIN_SRC emacs-lisp 
 (use-package openai
-  :straight (:host github :repo "emacs-openai/openai"))
+  :elpaca (:host github :repo "emacs-openai/openai"))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp 
 (use-package codegpt 
-  :straight (:type git :host github :repo "emacs-openai/codegpt")
+  :elpaca (:type git :host github :repo "emacs-openai/codegpt")
   :config
   (add-to-list 'codegpt-action-alist '("JSDoc" . "Write JSDoc for this method"))
   (defun codegpt--internal (instruction start end)
@@ -5223,7 +5245,7 @@ dependency
 
 #+BEGIN_SRC emacs-lisp 
 (use-package chatgpt
-  :straight (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
+  :elpaca (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
   :ensure t
   :general
   (:keymaps 'override
@@ -5272,7 +5294,7 @@ dependency
 #+BEGIN_SRC emacs-lisp 
 (use-package empv
   :ensure t
-  :straight (:host github :repo "isamert/empv.el"))
+  :elpaca (:host github :repo "isamert/empv.el"))
 #+END_SRC
 
 
