@@ -11,86 +11,6 @@ For install emacs on macos use brew:
 brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no-frame-refocus --with-native-comp --with-dbus --with-imagemagick
 #+END_SRC
 * Initial configs
-** Warning level
-#+BEGIN_SRC emacs-lisp
-(setq warning-minimum-level :emergency)
-(setq warning-suppress-log-types '((comp) (undo discard-info)))
-#+END_SRC
-
-** Garbage collector
-#+BEGIN_SRC emacs-lisp
-  (let* ((normal-gc-cons-threshold (* 20 1024 1024))
-       (init-gc-cons-threshold (* 128 1024 1024)))
-  (setq gc-cons-threshold init-gc-cons-threshold)
-  (add-hook 'emacs-startup-hook
-            (lambda () (setq gc-cons-threshold (* 20 1024 1024)))))
-#+END_SRC
-** Max process
-#+BEGIN_SRC emacs-lisp
-  (setq read-process-output-max (* 1024 1024))
-#+END_SRC
-
-** Melpa
-#+BEGIN_SRC emacs-lisp 
-(require 'package)
-
-(customize-set-variable 'package-archives
-                        `(,@package-archives
-                          ("melpa" . "http://melpa.org/packages/")
-                          ;; ("melpa" . "http://melpa.milkbox.net/packages/")
-                          ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
-                          ("melpa-stable" . "http://stable.melpa.org/packages/")
-                          ("org" . "https://orgmode.org/elpa/")
-                          ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
-                          ))
-(customize-set-variable 'package-enable-at-startup nil)
-(package-initialize)
-#+END_SRC
-
-** HOLD Straight
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-#+BEGIN_SRC emacs-lisp
-(defvar bootstrap-version)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 5))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
-;; (setq straight-use-package-by-default t)
-(straight-use-package 'use-package)
-(setq use-package-always-ensure nil)
-#+END_SRC
-** HOLD Quelpa
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-#+BEGIN_SRC emacs-lisp 
-(unless (package-installed-p 'quelpa)
-  (with-temp-buffer
-    (url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
-    (eval-buffer)
-    (quelpa-self-upgrade)))
-#+END_SRC
-
-Use package
-#+BEGIN_SRC emacs-lisp 
-(quelpa
- '(quelpa-use-package
-   :fetcher git
-   :url "https://github.com/quelpa/quelpa-use-package.git"))
-(require 'quelpa-use-package)
-(setq use-package-ensure-function 'quelpa)
-#+END_SRC
 ** TODO Modern package manager.
 *** Elpaca package.
 #+BEGIN_SRC emacs-lisp :results silent
@@ -137,14 +57,118 @@ Use package
 ;; Block until current queue processed.
 (elpaca-wait)
 #+END_SRC
+*** Elpaca general
+#+BEGIN_SRC emacs-lisp :results silent
+(with-eval-after-load 'general
+  (general-define-key
+   :states '(normal visual)
+   :prefix "SPC"
+   "pm" 'elpaca-status)
 
-** VC install macro
+  (general-define-key
+    :states '(normal)
+    :keymaps 'elpaca-ui-mode-map
+    "i" 'elpaca-ui-mark-install
+    "s" 'elpaca-ui-execute-marks
+    "S" 'elpaca-ui-search
+    "d" 'elpaca-ui-mark-delete
+    "u" 'elpaca-ui-mark-update
+    "U" 'elpaca-update-all
+    "r" 'elpaca-ui-mark-rebuild)
+)
+#+END_SRC
+
+
+
+** Warning level
+#+BEGIN_SRC emacs-lisp
+(setq warning-minimum-level :emergency)
+(setq warning-suppress-log-types '((comp) (undo discard-info)))
+#+END_SRC
+
+** Garbage collector
+#+BEGIN_SRC emacs-lisp
+  (let* ((normal-gc-cons-threshold (* 20 1024 1024))
+       (init-gc-cons-threshold (* 128 1024 1024)))
+  (setq gc-cons-threshold init-gc-cons-threshold)
+  (add-hook 'emacs-startup-hook
+            (lambda () (setq gc-cons-threshold (* 20 1024 1024)))))
+#+END_SRC
+** Max process
+#+BEGIN_SRC emacs-lisp
+  (setq read-process-output-max (* 1024 1024))
+#+END_SRC
+
+** Melpa
+#+BEGIN_SRC emacs-lisp 
+(require 'package)
+
+(customize-set-variable 'package-archives
+                        `(,@package-archives
+                          ("melpa" . "http://melpa.org/packages/")
+                          ;; ("melpa" . "http://melpa.milkbox.net/packages/")
+                          ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
+                          ("melpa-stable" . "http://stable.melpa.org/packages/")
+                          ("org" . "https://orgmode.org/elpa/")
+                          ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
+                          ))
+(customize-set-variable 'package-enable-at-startup nil)
+;; (package-initialize)
+#+END_SRC
+
+** HOLD Straight
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 5))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+;; (setq straight-use-package-by-default t)
+(straight-use-package 'use-package)
+(setq use-package-always-ensure nil)
+#+END_SRC
+** HOLD Quelpa
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp 
+(unless (package-installed-p 'quelpa)
+  (with-temp-buffer
+    (url-insert-file-contents "https://raw.githubusercontent.com/quelpa/quelpa/master/quelpa.el")
+    (eval-buffer)
+    (quelpa-self-upgrade)))
+#+END_SRC
+
+Use package
+#+BEGIN_SRC emacs-lisp 
+(quelpa
+ '(quelpa-use-package
+   :fetcher git
+   :url "https://github.com/quelpa/quelpa-use-package.git"))
+(require 'quelpa-use-package)
+(setq use-package-ensure-function 'quelpa)
+#+END_SRC
+** HOLD VC install macro
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp 
 (unless (package-installed-p 'vc-use-package)
   (package-vc-install "https://github.com/slotThe/vc-use-package"))
 (require 'vc-use-package)
 #+END_SRC
-
 ** Startup time boost
 #+BEGIN_SRC emacs-lisp 
 (use-package fnhh
@@ -349,12 +373,13 @@ Init org mode faces for headlines
 (defun @setup-org-mode-faces ()
   "Setup faces for org mode"
   (custom-set-faces
-   '(org-document-title ((t (:inherit outline-1 :height 2.5))))
-   '(org-level-1 ((t (:inherit outline-1 :height 2.0))))
-   '(org-level-2 ((t (:inherit outline-2 :height 2.0))))
-   '(org-level-3 ((t (:inherit outline-3 :height 2.0))))
-   '(org-level-4 ((t (:inherit outline-4 :height 2.0))))
-   '(org-level-5 ((t (:inherit outline-5 :height 2.0))))))
+   '(org-document-title ((t (:inherit outline-1 :height 2.5)))))
+   ;; '(org-level-1 ((t (:inherit outline-5 :height 2.0))))
+   ;; '(org-level-2 ((t (:inherit outline-5 :height 2.0))))
+   ;; '(org-level-3 ((t (:inherit outline-5 :height 2.0))))
+   ;; '(org-level-4 ((t (:inherit outline-5 :height 2.0))))
+   ;; '(org-level-5 ((t (:inherit outline-5 :height 2.0)))))
+)
 #+END_SRC
 
 #+RESULTS:
@@ -377,7 +402,7 @@ Init org mode faces for headlines
       (setq browse-url-browser-function #'browse-url-default-browser)
       (advice-remove 'browse-url #'my-switch-to-xwidget-buffer))))
 #+END_SRC
-** Navigation
+** KILL Navigation
 #+BEGIN_SRC emacs-lisp
 (defun switch-to-first-matching-buffer (regex)
   (switch-to-buffer (car (remove-if-not (apply-partially #'string-match-p regex)
@@ -398,7 +423,10 @@ Focus buffer by name
 #+RESULTS:
 : +select-window-by-name
 
-*** Switch to buffer
+*** KILL Switch to buffer
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp 
 (defun @change-buffer (change-buffer)
   "Call CHANGE-BUFFER until current buffer is not in `my-skippable-buffers'."
@@ -423,6 +451,39 @@ Focus buffer by name
   (@change-buffer 'previous-buffer))
 #+END_SRC
 
+*** KILL Switch to buffer [2]
+#+BEGIN_SRC emacs-lisp :results silent
+(defvar @exclude-navigation-buffers-regexps '("^\\*" "^magit")
+  "List of regexps to exclude from navigation.")
+
+(defun @next-buffer ()
+  "Navigate to next visited buffer"
+  (interactive)
+  (@change-buffer 'next-buffer))
+
+(defun @previous-buffer ()
+  "Navigate to previous visited buffer"
+  (interactive)
+  (@change-buffer 'previous-buffer))
+
+(defun @skip-navigate-buffer-p (buffer-name)
+  "Check if BUFFER-NAME should be skipped"
+  (some (lambda (regexp)
+          (string-match-p regexp buffer-name))
+        @exclude-navigation-buffers-regexps))
+
+(defun @change-buffer (change-buffer-fn)
+"Call CHANGE-BUFFER-FN until current buffer is matched by regexp.
+CHANGE-BUFFER-FN can be `next-buffer' or `previous-buffer'"
+  (interactive)
+  (let ((bread-crumb (buffer-name)))
+    (funcall change-buffer-fn)
+    (while
+        (and
+          (not (string= bread-crumb (buffer-name)))
+          (@skip-navigate-buffer-p (buffer-name)))
+      (funcall change-buffer-fn))))
+#+END_SRC
 
 ** Terminal
 #+BEGIN_SRC emacs-lisp
@@ -612,15 +673,15 @@ TODO: check why it doesn;t work
 (defun @switch-to-scratch ()
   "Switch to scratch buffer"
   (interactive)
-  (let* ((buffer-name "*scratch*")
+  (let* ((buffer-name "*quicknote*")
          (buffer-exist (get-buffer buffer-name))
          (buffer (get-buffer-create buffer-name)))
     (with-current-buffer buffer
       (pop-to-buffer buffer)
+      (org-mode)
       (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
         (persistent-scratch-restore))
-      (evil-insert-state)
-      )))
+      (evil-insert-state))))
 #+END_SRC
 
 ** Sass autofix
@@ -675,6 +736,8 @@ Uncomment when u need to profile ;p
 #+BEGIN_SRC emacs-lisp 
 (setq use-package-verbose t)
 #+END_SRC
+
+
 
 * UI
 ** All the icons.
@@ -1011,7 +1074,17 @@ Argument APPEARANCE should be light or dark."
   ;; :vc (:fetcher "github" :repo catppuccin/emacs :rev 86b16248ef2ce450def4a00a0ca5170c102da623)
   ;; :vc (:fetcher "github" :repo "catppuccin/emacs")
   :elpaca (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
-;; :elpaca t
+  :config
+  (setq catppuccin-flavor 'latte))
+#+END_SRC
+** HOLD Original catppuccini
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp :results silent
+
+(use-package catppuccin-theme
+  :ensure t
   :config
   (setq catppuccin-flavor 'latte))
 #+END_SRC
@@ -1117,6 +1190,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 #+BEGIN_SRC emacs-lisp :noweb yes 
 (use-package auto-dark
   ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  :after posframe
   :config
   ;; <<nano-theme-switcher>>
   (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
@@ -1197,6 +1271,10 @@ Override function for auto-dark mode for applying function for nano theme changi
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
  "om" (lambda () (interactive) (pop-to-buffer "*Messages*"))
+ "oM" (lambda () (interactive)
+        (pop-to-buffer "*Messages*")
+        (read-only-mode -1)
+        (erase-buffer))
  "mox" 'execute-extended-command
  "bI" 'ibuffer
  "vtt" 'my-toggle-transparency
@@ -1218,10 +1296,6 @@ Override function for auto-dark mode for applying function for nano theme changi
  "wv" 'evil-window-vsplit
  "ws" 'evil-window-split
  ;; ;; Buffers
- "b ]" '@next-buffer
- "b [" '@previous-buffer
- "]" '@next-buffer
- "[" '@previous-buffer
  "." 'find-file
  "hv" 'describe-variable
  "hf" 'describe-function
@@ -1379,8 +1453,7 @@ Evil should respect visual line mode
 (use-package evil-collection
   :after evil
   :config
-  (evil-collection-init)
-  (evil-commentary-mode))
+  (evil-collection-init))
 
 (use-package evil
   :init
@@ -1397,6 +1470,13 @@ Evil should respect visual line mode
 
 #+RESULTS:
 | lambda | nil | (interactive) | (org-eval-in-calendar '(calendar-backward-day 1)) |
+
+** Evil commentrary
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package evil-commentary
+  :bind (:map evil-normal-state-map
+              ("gc" . evil-commentary)))
+#+END_SRC
 
 ** Bookmarks
 Bookmark for navigation inside file
@@ -1452,21 +1532,22 @@ Bookmark for navigation inside file
     :defer t
     :config
     (setq aw-ignored-buffers (delq 'treemacs-mode aw-ignored-buffers))
-    (add-to-list 'aw-ignored-buffers 'dap-ui--locals-buffer)
+    ;; (add-to-list 'aw-ignored-buffers 'dap-ui--locals-buffer)
     <<avy-ignore-current-buffer-fn>>)
 #+END_SRC
 
-
-** Quick jump by pairtags
+** Evil matchit. Quick jump by pairtags
 #+BEGIN_SRC emacs-lisp
 (use-package evil-matchit
-:defer t)
-
-(evilmi-load-plugin-rules '(ng2-html-mode) '(html))
-(global-evil-matchit-mode 1)
+  :hook
+  (html-mode . evil-matchit-mode)
+  (ng2-html-mode . evil-matchit-mode)
+  :init
+  (evilmi-load-plugin-rules '(ng2-html-mode) '(html)))
 #+END_SRC
 ** Better jump
-#+BEGIN_SRC emacs-lisp 
+#+NAME: better-jump-fn
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun @better-jump-preserve-pos-advice (oldfun &rest args)
   "Preserve position when jumping."
   (let ((old-pos (point)))
@@ -1476,11 +1557,9 @@ Bookmark for navigation inside file
       (better-jumper-set-jump old-pos))))
 #+END_SRC
 
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp :noweb yes
 (use-package better-jumper
   :demand t
-  :hook
-  (buffer-list-update . #'@better-jump-preserve-pos-advice)
   :general
   (:states '(normal, visual)
            "C-o" 'better-jumper-jump-backward
@@ -1490,6 +1569,7 @@ Bookmark for navigation inside file
   ;; (better-jumper-add-jump-behavior #'replace)
   (better-jumper-use-evil-jump-advice nil)
   :config
+  <<better-jump-fn>>
   (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
   (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
   (advice-add '@find-definition :before (lambda () (call-interactively #'better-jumper-set-jump)))
@@ -1509,8 +1589,11 @@ Bookmark for navigation inside file
             "SPC rv" 'binky-binky)
   :hook (after-init-hook . binky-mode))
 #+END_SRC
-** Tree sitter movement
-#+BEGIN_SRC emacs-lisp :tangle no
+** HOLD Tree sitter movement
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp 
 (use-package ts-movement
   ;; :elpaca (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
   ;; :load-path "vendor/ts-movement"
@@ -1540,6 +1623,21 @@ Bookmark for navigation inside file
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
 
+** Buffer hop. Smart jump between visited buffers.
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package buffer-hop
+  :elpaca (buffer-hop :type git :host github :repo "artawower/buffer-hop.el")
+  :defer 2
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC ]" 'buffer-hop-next
+           "SPC [" 'buffer-hop-prev
+           "SPC br" 'buffer-hop-jump-to-recently-buffer)
+  :config
+  (global-buffer-hop-mode))
+#+END_SRC
+
 
 * Common emacs packages
 ** Files
@@ -1548,7 +1646,6 @@ Bookmark for navigation inside file
   (use-package dired
     :defer t
     :elpaca nil
-    :ensure nil
     :general
     (:keymaps 'dired-mode-map
 	      "C-c C-e" 'wdired-change-to-wdired-mode)
@@ -1557,11 +1654,14 @@ Bookmark for navigation inside file
     (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
-*** Dired batteries ;3
+*** Dirvish. Dired batteries ;3
 Dirvish.
 #+BEGIN_SRC emacs-lisp
 (use-package dirvish
   :init
+  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
+  :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "501f6c3660dfb90dce843db9d154e5328949e7d9")
+  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "973e526ac51f022fbc091843fb9a853b8d55da92")
   (dirvish-override-dired-mode)
   :custom
   ;; Go back home? Just press `bh'
@@ -1594,8 +1694,11 @@ Dirvish.
   (advice-add #'+dired/quit-all :after (lambda () (interactive) (dirvish-kill (dirvish-prop :dv))))
   :bind
   ;; Bind `dirvish|dirvish-side|dirvish-dwim' as you see fit
-  (("C-c f" . dirvish-fd)
+  (("C-c f" . dirvish)
+   :map dirvish-mode-map
+   ("q" . dirvish-quit)
    :map dired-mode-map ; Dirvish respects all the keybindings in this map
+   ("q" . dirvish-quit)
    ("h" . dired-up-directory)
    ("j" . dired-next-line)
    ("k" . dired-previous-line)
@@ -1645,15 +1748,17 @@ I didn't use treemacs anymore, but sometime
 *** File info
 #+BEGIN_SRC emacs-lisp 
 (use-package file-info
-  :bind (("C-c d" . 'file-info-show))
+  :bind
+  (("C-c d" . 'file-info-show)
+   ("s-'" . 'file-info-show))
   :defer t
   :config
   (setq hydra-hint-display-type 'posframe)
   (setq hydra-posframe-show-params '(:poshandler posframe-poshandler-frame-center
-                                               :internal-border-width 3
-                                               :internal-border-color "#61AFEF"
-                                               :left-fringe 16
-                                               :right-fringe 16)))
+                                                 :internal-border-width 2
+                                                 :internal-border-color "#61AFEF"
+                                                 :left-fringe 16
+                                                 :right-fringe 16)))
 #+END_SRC
 
 *** Open in finder
@@ -1664,7 +1769,6 @@ I didn't use treemacs anymore, but sometime
               ("SPC o f" . reveal-in-osx-finder))
   :ensure t)
 #+END_SRC
-
 
 ** Terminal
 *** Vterm functions
@@ -1687,27 +1791,38 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 
 #+BEGIN_SRC emacs-lisp 
 (defun @vterm-open-here ()
-  "Open nodejs repl inside current buffer!"
+  "Open vterm inside current buffer!"
   (interactive)
   (let ((nodejs-repl-buffer-name "*vterm*"))
     (if (get-buffer nodejs-repl-buffer-name)
         (switch-to-buffer nodejs-repl-buffer-name)
       (progn
-        (switch-to-buffer nodejs-repl-buffer-name)
+        (pop-to-buffer vterm-buffer-name)
+        (vterm)))))
+
+(defun @vterm-open-last ()
+  "Open vterm inside current buffer!"
+  (interactive)
+  (let ((vterm-buffer-name "*vterm*"))
+    (if (get-buffer vterm-buffer-name)
+        (pop-to-buffer vterm-buffer-name)
+      (progn
+        (pop-to-buffer vterm-buffer-name)
         (vterm)))))
 #+END_SRC
 
 *** Vterm
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package vterm
-  :defer 5
+  :defer t
   :hook (vterm-mode . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
   :custom
   (vterm-max-scrollback 5000)
   :general
   (:states '(normal visual)
            "SPC ov" 'vterm
-           "SPC oV" '@vterm-open-here)
+           "SPC oV" '@vterm-open-here
+           "SPC oL" '@vterm-open-last)
   (:keymaps '(vterm-mode-map vterm-copy-mode-map)
             "C-u" 'vterm--self-insert)
 
@@ -1760,7 +1875,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 **** Vterm package
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package vterm-toggle
-  :defer 5
+  :defer t
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC oh" (lambda () (interactive)
@@ -1786,6 +1901,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
                           (+vterm/toggle args)))))
 
   :config
+  (setq vterm-always-compile-module t)
   (setq vterm-kill-buffer-on-exit nil)
   (setq vterm-toggle-scope 'project)
   <<vterm-open-bottom-config>>)
@@ -1794,7 +1910,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 ** Secret mode
 Something like screensaver
 #+BEGIN_SRC emacs-lisp
-  (use-package secret-mode
+  (use-package redacted
     :elpaca (:type git :host github :repo "bkaestner/redacted.el")
     :defer t)
 #+END_SRC
@@ -1817,7 +1933,8 @@ Doesn't work now
 
 *** Persp mode
 **** Kill other buffers from current workspace
-#+BEGIN_SRC emacs-lisp 
+#+NAME: kill-other-buffers-fn
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun @persp-kill-other-buffers ()
   "Kill all buffers except current buffer."
   (interactive)
@@ -1834,6 +1951,7 @@ Doesn't work now
 **** Persp doom configs
 #+BEGIN_SRC emacs-lisp 
 (load "~/pure-emacs/vendor/doom-workspaces.el")
+(elpaca-wait)
 #+END_SRC
 
 **** Persp buffer advices
@@ -1977,8 +2095,7 @@ new project directory.")
 #+END_SRC
 
 **** Workgroups
-
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
 (use-package workgroups)
 #+END_SRC
 
@@ -2035,6 +2152,7 @@ TODO: change binding to general
   <<persp-mode-custom>>
   :config
   (set-persp-parameter 'dont-save-to-file t nil)
+  <<kill-other-buffers-fn>>
   <<persp-buffer-advices>>
   (persp-mode 1)
   ;; <<persp-add-buffer>>
@@ -2137,11 +2255,12 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 ** Backups
 #+BEGIN_SRC emacs-lisp 
-(use-package no-littering)
-(setq backup-directory-alist `(("." . "~/.emacs-saves")))
-(setq auto-save-file-name-transforms
-      `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
-(setq backup-by-copying t)
+(use-package no-littering
+  :config
+  (setq backup-directory-alist `(("." . "~/.emacs-saves")))
+  (setq auto-save-file-name-transforms
+        `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+  (setq backup-by-copying t))
 #+END_SRC
 
 ** Folding (origami)
@@ -2317,13 +2436,14 @@ This function also stolen from doom emacs. It provide functionality for automati
   (add-to-list 'ts-fold-range-alist '(scss-mode . (css-mode
                                                    (keyframe_block_list . ts-fold-range-seq)
                                                    (block . ts-fold-range-seq)
-                                                   (comment . ts-fold-range-c-like-comment))))
+                                                   (comment . ts-fold-range-c-like-comment)))))
 
 
-  (add-to-list 'ts-fold-foldable-node-alist '(ng2-ts-mode comment statement_block export_clause))
-  (add-to-list 'ts-fold-foldable-node-alist '(web-mode comment element))
-  (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
-  (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
+  ;; TODO: check changes for correct mode cast
+  ;; (add-to-list 'ts-fold-foldable-node-alist '(ng2-ts-mode comment statement_block export_clause))
+  ;; (add-to-list 'ts-fold-foldable-node-alist '(web-mode comment element))
+  ;; (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
+  ;; (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
 #+END_SRC
 *** HOLD Ts fold Indicators
 :PROPERTIES:
@@ -2339,13 +2459,12 @@ This function also stolen from doom emacs. It provide functionality for automati
   (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
 #+END_SRC
 
-
 ** Notes
 *** Settings
 Display buffer of quick note always at bottom
 #+BEGIN_SRC emacs-lisp 
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
-(add-to-list 'display-buffer-alist '("^\\*quick:scratch\\*$" . (display-buffer-at-bottom)))
+(add-to-list 'display-buffer-alist '("^\\*quicknote\\*$" . (display-buffer-at-bottom)))
 #+END_SRC
 
 *** Persistent scratch
@@ -2353,7 +2472,7 @@ Override function for autosaving
 #+BEGIN_SRC emacs-lisp 
 (defun @save-scratch-buffer-p ()
   "Return non-nil if the current buffer is the scratch buffer."
-  (and (get-buffer "*scratch*") (string= (buffer-name) "*scratch*")))
+  (and (get-buffer "*quicknote*") (string= (buffer-name) "*quicknote*")))
 
 (setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
@@ -2448,7 +2567,7 @@ Function for preventing better jump breaks
 #+BEGIN_SRC emacs-lisp 
 (use-package prettier
   :bind (:map evil-normal-state-map
-              ("\+p" . prettier-prettify))
+              ("SPC fp" . prettier-prettify))
   :config
   (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
   :init
@@ -2468,7 +2587,7 @@ Function for preventing better jump breaks
            ("C-f [" . flymake-goto-prev-error)))
 #+END_SRC
 *** Flycheck
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
 (use-package flycheck
   :bind (:map evil-normal-state-map
               ("SPC f ]" . flycheck-next-error)
@@ -2560,27 +2679,9 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 #+RESULTS:
 
-*** Tree sitter core
+*** Treesit core
 
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
-
-#+BEGIN_SRC emacs-lisp 
-;; (use-package treesit-langs
-;;   :elpaca (:type git :host github :repo "ymarco/tree-sitter-langs")
-;;   :hook ((typescript-ts-base-mode
-;;           go-ts-mode
-;;           python-ts-mode
-;;           css-ts-mode) . init-tree-sitter-hl-mode)
-;;   :config
-;;   (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
-;;   (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
-;;   (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
-;;   (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
-;;   (add-hook #'python-ts-mode-hook #'init-tree-sitter-hl-mode)
-
-;;   (defalias 'treesit-can-enable-p 'treesit-available-p))
-#+END_SRC
-
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit
   :elpaca nil
@@ -2625,11 +2726,15 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+END_SRC
 
 ** Autocomplete
-*** Company mode
+*** HOLD Company mode
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 **** Company package
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
 (use-package company
   :defer t
+  :after lsp
   :hook (emacs-lisp-mode . company-mode)
   :bind (:map evil-insert-state-map
               ("C-'" . company-yasnippet)
@@ -2650,7 +2755,8 @@ This need for correct highlighting of incorrect spell-fu faces."
   (setq company-dabbrev-char-regexp "[A-z:-]")
   (custom-set-variables
    '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
-   '(company-quick-access-modifier 'super)))
+   '(company-quick-access-modifier 'super))
+  (global-company-mode))
 #+END_SRC
 **** Company box
 #+BEGIN_SRC emacs-lisp 
@@ -2658,11 +2764,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   :hook (company-mode . company-box-mode))
 #+END_SRC
 
-*** HOLD Corfu
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
+*** Corfu
 **** Corfu package
 #+BEGIN_SRC emacs-lisp
 (use-package corfu
@@ -2699,16 +2801,13 @@ This need for correct highlighting of incorrect spell-fu faces."
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
   (evil-make-overriding-map corfu-map)
-  (setq lsp-completion-provider :corfu)
+  (setq lsp-completion-provider :none)
 
   (global-corfu-mode))
 #+END_SRC
 
-#+RESULTS:
-: t
-
-Enable in minibuffer
-#+BEGIN_SRC emacs-lisp 
+**** HOLD Enable in minibuffer
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun corfu-enable-in-minibuffer ()
   "Enable Corfu in the minibuffer if `completion-at-point' is bound."
   (when (where-is-internal #'completion-at-point (list (current-local-map)))
@@ -2721,7 +2820,7 @@ Enable in minibuffer
 #+END_SRC
 
 Disalbe company mode
-#+BEGIN_SRC emacs-lisp  :tangle no
+#+BEGIN_SRC emacs-lisp :tangle no
 (global-company-mode -1)
 (company-mode -1)
 (add-hook 'prog-mode-hook (lambda () (company-mode -1)))
@@ -2731,22 +2830,40 @@ Disalbe company mode
 
 #+RESULTS:
 : completion-at-point
+**** Corfu quick
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-quick
+  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
+  :bind (:map corfu-map
+              ("<tab>" . corfu-quick-insert))
+  :after corfu
+  :custom
+  (corfu-quick1 "123456789")
+  (corfu-quick2 "123456789"))
+#+END_SRC
 
 **** Corfu doc
-#+BEGIN_SRC emacs-lisp
-  (use-package corfu-doc
-    :after corfu
-    :elpaca (corfu-doc :type git :host github :repo "galeo/corfu-doc")
-    :hook (corfu-mode . corfu-doc-mode)
-    :bind (:map corfu-map
-                ("M-j" . corfu-doc-scroll-down)
-                ("M-k" . corfu-doc-scroll-up)))
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-info
+  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-info.el"))
+  :after corfu)
 #+END_SRC
-*** HOLD Cape
-:PROPERTIES:
-:header-args: :tangle no
-:END:
 
+**** Corfu popup doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :bind (:map corfu-map
+              ("C-m" . corfu-popupinfo-documentation))
+  :custom
+  (corfu-echo-delay nil)
+  :after corfu
+  :config
+  (corfu-popupinfo-mode))
+#+END_SRC
+
+
+*** Cape
 Use company backends for corfu
 #+BEGIN_SRC emacs-lisp 
 (use-package cape
@@ -2801,8 +2918,6 @@ Use company backends for corfu
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-
-
 Perspective alternative for lsp-mode. Right now on the pause cause doesn't support angular.
 https://github.com/manateelazycat/lsp-bridge/issues/500
 Also GDB is not working with apple silicon
@@ -2860,27 +2975,29 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
   :after flycheck
-  :hook ((clojure-mode
-          scss-mode
-          go-mode
-          css-mode
-          js-mode
-          typescript-mode
-          vue-mode
-          web-mode
-          html-mode
-          ng2-ts-mode
-          python-mode
-          dart-mode
-          typescript-tsx-mode
+  :hook
+  ((clojure-mode
+    scss-mode
+    go-mode
+    css-mode
+    js-mode
+    typescript-mode
+    vue-mode
+    web-mode
+    html-mode
+    ng2-ts-mode
+    python-mode
+    dart-mode
+    typescript-tsx-mode
 
-          ;; Treesit
-          html-ts-mode
-          typescript-ts-mode
-          go-ts-mode
-          js-ts-mode
-          bash-ts-mode
-          tsx-ts-mode) . lsp-deferred)
+    ;; Treesit
+    html-ts-mode
+    typescript-ts-mode
+    go-ts-mode
+    js-ts-mode
+    bash-ts-mode
+    tsx-ts-mode) . lsp-deferred)
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC fn" 'flycheck-next-error
@@ -2895,10 +3012,15 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
                     "SPC cr" 'lsp-rename)
   :init
   (setq lsp-headerline-breadcrumb-enable nil)
+  ;; Configuration for corfu
+  ;; https://github.com/minad/corfu/wiki#configuring-corfu-for-lsp-mode
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(flex))) ;; Configure flex
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
-  ;; (lsp-completion-provider :none)
+  (lsp-completion-provider :none)
   (lsp-enable-on-type-formatting nil)
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
@@ -2924,7 +3046,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
           (:fileMatch ["ng-openapi-gen.json"] :url "https://raw.githubusercontent.com/cyclosproject/ng-openapi-gen/master/ng-openapi-gen-schema.json")
           (:fileMatch ["package.json"] :url "http://json-schema.org/draft-07/schema")
           ])
-  (set-face-attribute 'lsp-face-highlight-read nil :background "#61AFEF")
+  (set-face-attribute 'lsp-face-highlight-read nil :foreground "#61AFEF" :bold t :underline nil)
   ;; Flycheck patch checkers
   (require 'flycheck)
   (require 'lsp-diagnostics)
@@ -2949,7 +3071,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (set-face-foreground 'lsp-face-highlight-read +m-color-secondary)
   (set-face-foreground 'lsp-face-highlight-textual +m-color-secondary)
 
-  
+
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
   (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
@@ -2967,22 +3089,14 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+RESULTS:
 
 *** YAML
-**** HOLD LSP
-#+BEGIN_SRC emacs-lisp :tangle no
-(use-package lsp-yaml
-  :defer t
-  :hook (yaml-mode . lsp-mode))
-#+END_SRC
-
 **** YAML PRO
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
 (use-package yaml-pro
   :defer t
   :hook (yaml-mode . yaml-pro-mode))
 #+END_SRC
 
 *** LSP UI
-
 #+BEGIN_SRC emacs-lisp 
 (use-package lsp-ui
   :hook (lsp-mode . lsp-ui-mode)
@@ -2997,7 +3111,6 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
         lsp-ui-doc-show-with-mouse nil
         lsp-ui-doc-border +m-color-main))
 #+END_SRC
-
 
 *** Flutter (dart)
 #+BEGIN_SRC emacs-lisp
@@ -3269,7 +3382,8 @@ TODO: check copilot + blamer
             "s-[" 'copilot-previous-completion
             "s-l" 'copilot-accept-completion
             "s-j" 'copilot-complete
-            "s-;" 'copilot-accept-completion-by-word)
+            "s-;" 'copilot-accept-completion-by-word
+            "s-/" 'copilot-accept-completion-by-line)
   :custom
   (copilot-idle-delay 0.1)
   :config
@@ -3283,7 +3397,7 @@ TODO: check copilot + blamer
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
                                             (copilot-clear-overlay)))
-)
+  )
 
 #+END_SRC
 
@@ -3321,6 +3435,9 @@ TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp 
 (use-package electric
   :elpaca nil
+  :hook
+  (html-mode . sgml-electric-tag-pair-mode)
+  (ng2-html-mode . sgml-electric-tag-pair-mode)
   :config
   (setq electric-pair-preserve-balance nil
         electric-pair-delete-adjacent-pairs nil
@@ -3345,7 +3462,6 @@ Correct position after blamer flicker
 
 (advice-add 'electric-pair--insert :after #'@electric-pair--verify-cursor-position)
 #+END_SRC
-
 
 *** Autopair mode
 NOTE: this package is used instead of electric pair mode
@@ -3602,6 +3718,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp 
 (use-package browse-at-remote
   :defer t
+  :elpaca nil
   :general
   (:states '(normal visual)
    :keymaps 'override
@@ -3631,7 +3748,6 @@ Improved styles for git changes
   (setq code-review-new-buffer-window-strategy #'switch-to-buffer)
   (setq code-review-auth-login-marker 'forge))
 #+END_SRC
-
 
 * Languages
 ** Emacs lisp mode (elisp)
@@ -4013,9 +4129,11 @@ I don't remember why I need this code. Currently commented.
 #+BEGIN_SRC emacs-lisp
 (use-package web-mode
   :defer t
-  :mode (("\\.vue\\'" . web-mode)
-         ("\\.tsx\\'" . typescript-tsx-mode)
-         ("\\.jsx\\'" . web-mode))
+  :mode
+  ("\\.vue\\'" . web-mode)
+  ("\\.tsx\\'" . typescript-tsx-mode)
+  ("\\.jsx\\'" . web-mode)
+  ("\\.astro\\'" . web-mode)
   :config
   (setq web-mode-enable-auto-quoting nil)
   (setq web-mode-comment-formats
@@ -4164,34 +4282,72 @@ I don't remember why I need this code. Currently commented.
 #+END_SRC
 
 * Org mode
-** Publishing
+** KILL Publishing
 #+BEGIN_SRC emacs-lisp 
 (use-package ox-gfm
+  :elpaca (:host github :repo "jkitchin/ox-gfm")
   :defer t)
+#+END_SRC
+
+** Org babels
+*** async code
+#+BEGIN_SRC emacs-lisp
+(use-package ob-async
+  :defer t
+  :config
+  (setq ob-async-no-async-languages-alist '("ipython")))
+#+END_SRC
+*** HTTP requests
+Dependency
+
+#+BEGIN_SRC emacs-lisp
+(use-package restclient
+  :after org)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package ob-restclient
+  :after org)
+#+END_SRC
+*** Dart
+#+BEGIN_SRC emacs-lisp
+(use-package ob-dart
+  :after org
+  :defer t
+  :config
+  (add-to-list 'org-babel-load-languages  '(dart . t)))
+#+END_SRC
+*** Typescript
+#+BEGIN_SRC emacs-lisp
+(use-package ob-typescript
+  :after org)
+
+(elpaca-wait)
 #+END_SRC
 
 ** Org package
 #+BEGIN_SRC emacs-lisp
 (use-package org
+  :defer t
   :mode (("\\.org$" . org-mode))
   :hook
   (org-mode . org-indent-mode)
   :elpaca nil
   :general
   (:states '(normal visual)
-           :keymaps 'override
-           "SPC m t" 'org-todo
-           "SPC m n" 'org-store-link
-           "SPC m l l" 'org-insert-link
-           "SPC nl" 'org-store-link
-           "SPC dt" 'org-time-stamp-inactive
-           "SPC mlt" 'org-toggle-link-display)
+   :keymaps 'override
+   "SPC m t" 'org-todo
+   "SPC m n" 'org-store-link
+   "SPC m l l" 'org-insert-link
+   "SPC nl" 'org-store-link
+   "SPC dt" 'org-time-stamp-inactive
+   "SPC mlt" 'org-toggle-link-display)
   (:states '(normal visual)
-           :keymaps 'org-mode-map
-           "SPC dt" 'org-time-stamp-inactive
-           "SPC st" 'org-set-tags-command
-           "SPC mx" 'org-toggle-checkbox
-           "<return>" '+org/dwim-at-point)
+   :keymaps 'org-mode-map
+   "SPC dt" 'org-time-stamp-inactive
+   "SPC st" 'org-set-tags-command
+   "SPC mx" 'org-toggle-checkbox
+   "<return>" '+org/dwim-at-point)
   (:keymaps 'org-read-date-minibuffer-local-map
             "C-s" 'org-goto-calendar)
   (:keymaps 'calendar-mode-map
@@ -4201,6 +4357,7 @@ I don't remember why I need this code. Currently commented.
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
   :config
+  (setq org-confirm-babel-evaluate nil)
   (setq org-src-preserve-indentation t)
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu")))
@@ -4277,7 +4434,8 @@ I don't remember why I need this code. Currently commented.
 
   (org-babel-do-load-languages
    'org-babel-load-languages
-   '((typescript . t)
+   '(
+     ;; (typescript . t)
      (js . t)
      (python . t)
      (restclient . t)))
@@ -4408,10 +4566,10 @@ One of the best Zettelkasten implementation
 #+END_SRC
 
 #+RESULTS:
-** Visual roam ui nodes                                      
+** Visual roam ui nodes
 #+BEGIN_SRC emacs-lisp
 (use-package org-roam-ui
-  :after org-roam
+  :defer t
   :config
   (setq org-roam-ui-sync-theme t
         org-roam-ui-follow t
@@ -4457,40 +4615,6 @@ My own package for publish roam files
   :bind (:map evil-normal-state-map
               ("SPC n p" . web-roam-publish-file)))
 #+END_SRC
-** Org babels
-*** async code
-#+BEGIN_SRC emacs-lisp
-(use-package ob-async
-  :defer t
-  :config
-  (setq ob-async-no-async-languages-alist '("ipython")))
-#+END_SRC
-*** HTTP requests
-Dependency
-
-#+BEGIN_SRC emacs-lisp
-(use-package restclient
-  :defer t)
-#+END_SRC
-#+BEGIN_SRC emacs-lisp
-(use-package ob-restclient
-  :defer 8)
-#+END_SRC
-*** Dart
-#+BEGIN_SRC emacs-lisp
-(use-package ob-dart
-  :after org
-  :defer t
-  :config
-  (add-to-list 'org-babel-load-languages  '(dart . t)))
-#+END_SRC
-*** Typescript
-#+BEGIN_SRC emacs-lisp
-(use-package ob-typescript
-  :defer t
-  :config
-  (setq ob-async-no-async-languages-alist '("ipython")))
-#+END_SRC
 ** Org functions for pretty inserting
 #+BEGIN_SRC emacs-lisp
   (use-package org-insert
@@ -4531,6 +4655,18 @@ Dependency
 (use-package ox-gfm
   :defer t
   :elpaca (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
+#+END_SRC
+
+** IDEA Latex preview
+Debug for my own project
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package org-latex-impatient
+  :defer t
+  :hook (org-mode . org-latex-impatient-mode)
+  :init
+  (setq org-latex-impatient-tex2svg-bin
+        ;; location of tex2svg executable
+        "tex2svg"))
 #+END_SRC
 
 
@@ -4630,10 +4766,7 @@ Didn't mange to start work
   :hook
   (text-mode . (lambda ()
                  (require 'lsp-grammarly)
-                 (lsp-deferred)))
-  (org-mode . (lambda ()
-                       (require 'lsp-grammarly)
-                       (lsp-deferred))))
+                 (lsp-deferred))))
 #+END_SRC
 ** HOLD Grammarly
 :PROPERTIES:
@@ -4712,13 +4845,19 @@ Didn't mange to start work
 
 ** Recent
 #+BEGIN_SRC emacs-lisp
-(recentf-mode)
+(use-package recentf
+  :after consult
+  :elpaca nil
+  :init
+  (recentf-mode 1)
+  :config
+  (setq recentf-max-menu-items 100))
 #+END_SRC
-
 ** Projectile
 *** Projectile package
 #+BEGIN_SRC emacs-lisp :noweb yes
   (use-package projectile
+    :elpaca nil
     :general
     (:states 'normal
              "SPC pa" 'projectile-add-known-project)
@@ -4759,6 +4898,7 @@ Didn't mange to start work
 #+BEGIN_SRC emacs-lisp
 (use-package vertico
   :defer t
+  :elpaca (:host github :repo "minad/vertico" :files ("vertico.el" "extensions/*.el"))
   :bind (:map evil-normal-state-map
               ("SPC ;" . vertico-repeat-last)
               ("SPC '" . vertico-repeat)
@@ -4788,17 +4928,19 @@ Didn't mange to start work
                          (insert "/"))))
   :init
   (vertico-mode)
-  (vertico-buffer-mode -1)
   (setq vertico-cycle t)
   :config
   (setq read-file-name-completion-ignore-case t
         read-buffer-completion-ignore-case t
         completion-ignore-case t)
+  (require 'vertico-repeat)
   (add-hook 'minibuffer-setup-hook 'vertico-repeat-save))
 
+(elpaca-wait)
+
 (use-package vertico-repeat
-  :elpaca nil
-  :after vertico)
+   :elpaca nil
+   :after vertico)
 
 (use-package orderless
   :init
@@ -5071,7 +5213,6 @@ Preview
         (embark-dwim)))))
 #+END_SRC
 
-
 ** Vertico posframe                                               
 *** HOLD Posframe
 :PROPERTIES:
@@ -5289,8 +5430,10 @@ dependency
   (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
 #+END_SRC
 
-
-* Playground
+* HOLD Playground
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp 
 (use-package empv
   :ensure t
@@ -5302,6 +5445,14 @@ dependency
 
 
 
+
+
+
+
+
+#+BEGIN_SRC emacs-lisp :results silent
+(require 'tempel)
+#+END_SRC
 
 
 
