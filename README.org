@@ -211,6 +211,7 @@ Load private configs
 #+BEGIN_SRC emacs-lisp
 (ignore-errors
   (load! "~/pure-emacs/private.el"))
+(elpaca-wait)
 #+END_SRC
 
 *** Browser
@@ -226,6 +227,11 @@ Load private configs
 #+BEGIN_SRC emacs-lisp 
 (set-default 'truncate-lines t)
 #+END_SRC
+*** Common configs
+#+BEGIN_SRC emacs-lisp :results silent
+(setq inhibit-message nil)
+#+END_SRC
+
 
 * Libs (functions and macros)
 ** Doom libs (honestly spizjeno)
@@ -740,6 +746,14 @@ Uncomment when u need to profile ;p
 
 
 * UI
+** Olivetti
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package olivetti
+  :hook
+  (prog-mode . olivetti-mode)
+  (ng2-html-mode . olivetti-mode))
+#+END_SRC
+
 ** All the icons.
 #+BEGIN_SRC emacs-lisp 
 (use-package all-the-icons
@@ -824,7 +838,7 @@ Very pretty titlebar for Mac os
 ** Highlight hex colors
 #+BEGIN_SRC emacs-lisp 
   (use-package rainbow-mode
-    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode). rainbow-mode)
+    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode help-mode). rainbow-mode)
     :defer t)
 #+END_SRC
 ** Pixel scroll
@@ -1014,9 +1028,8 @@ Argument APPEARANCE should be light or dark."
 *** Doom theme switcher
 #+NAME: doom-theme-switcher
 #+BEGIN_SRC emacs-lisp  :tangle no
-;; (setq auto-dark-dark-theme 'doom-moonlight)
 (setq auto-dark-dark-theme 'catppuccin-frappe)
-(setq auto-dark-light-theme 'doom-one-light)
+(setq auto-dark-light-theme 'catppuccin)
 #+END_SRC
 
 *** Lambda modeline
@@ -1061,21 +1074,19 @@ Argument APPEARANCE should be light or dark."
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
 ** Catppuccini theme
-#+BEGIN_SRC emacs-lisp 
-;; (setq straight-current-profile 'pinned)
-;; (add-to-list 'straight-x-pinned-packages
-;;                '("catppuccin-theme" . "86b16248ef2ce450def4a00a0ca5170c102da623"))
-
-;; (package-vc-install "https://github.com/catppuccin/emacs" "300e7ba1d5b4225db4f9f2d451eac1238073d3ba")
-;; (package-vc-install "https://github.com/catppuccin/emacs" "785c9f57a43c4c90041290556d999db3d9da5be9")
-
+Original
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package catppuccin-theme
   :ensure t
-  ;; :vc (:fetcher "github" :repo catppuccin/emacs :rev 86b16248ef2ce450def4a00a0ca5170c102da623)
-  ;; :vc (:fetcher "github" :repo "catppuccin/emacs")
-  :elpaca (catppuccin :type git :host github :repo "artawower/emacs" :branch "old")
   :config
-  (setq catppuccin-flavor 'latte))
+  (setq catppuccin-flavor 'latte)
+  (set-face-attribute 'highlight nil :background "#dce0e8"))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp 
+(use-package catppuccin-theme
+  :ensure t
+  :elpaca (catppuccin :type git :host github :repo "artawower/emacs" :branch "old"))
 #+END_SRC
 ** HOLD Original catppuccini
 :PROPERTIES:
@@ -1176,12 +1187,14 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 #+RESULTS:
 : nano-change-theme
 
-** Theme switcher
+** Auto dark mode. Theme switcher. 
 Function for setting terminal color after theme switch
 #+BEGIN_SRC emacs-lisp 
-(defun @set-vterm-autocomplete-color ()
+(defun @set-colors-after-theme-loaded ()
   "Change color of autocomplete inside vterm"
   (interactive)
+  ;; Face for completion navigation
+  (set-face-attribute 'highlight nil :background "#dce0e8")
   (when (facep 'vterm-color-black)
     (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
 #+END_SRC
@@ -1190,11 +1203,12 @@ Override function for auto-dark mode for applying function for nano theme changi
 #+BEGIN_SRC emacs-lisp :noweb yes 
 (use-package auto-dark
   ;; :hook ((after-load-theme-hook auto-dark-mode) . (lambda () (set-face-attribute 'vterm-color-black nil :foreground +m-color-secondary :background +m-color-secondary)))
+  ;; :elpaca (:host github :repo "LionyxML/auto-dark-emacs" :rev "19040dfd1e0ad2e89a12bbdd045559711bf3193e")
   :after posframe
   :config
   ;; <<nano-theme-switcher>>
-  (add-hook 'auto-dark-dark-mode-hook #'@set-vterm-autocomplete-color)
-  (add-hook 'auto-dark-light-mode-hook #'@set-vterm-autocomplete-color)
+  (add-hook 'auto-dark-dark-mode-hook #'@set-colors-after-theme-loaded)
+  (add-hook 'auto-dark-light-mode-hook #'@set-colors-after-theme-loaded)
   (add-hook 'auto-dark-dark-mode-hook #'posframe-delete-all)
   (add-hook 'auto-dark-light-mode-hook #'posframe-delete-all)
   <<doom-theme-switcher>>
@@ -1243,6 +1257,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "C-<tab>" 'my-insert-tab
  "C-h C-m" 'describe-mode
  "C-h C-f" 'describe-face
+ "C-x C-'" 'execute-extended-command
  "s-p" 'yank-from-kill-ring
  "s-n" 'evil-buffer-new
  "s-P" 'xah-paste-from-register-1
@@ -1282,6 +1297,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "+" 'narrow-to-region
  "-" 'widen
  "er" 'eval-region
+ "ox" 'execute-extended-command
  "ti" 'my-insert-todo-by-current-git-branch
 
  ;; ;; Presentation
@@ -1321,7 +1337,7 @@ Override function for auto-dark mode for applying function for nano theme changi
 #+NAME: general-minibuffer-mode-map
 #+BEGIN_SRC emacs-lisp  :tangle no
 (general-define-key
- :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map)
+ :keymaps '(minibuffer-local-map read--expression-map minibuffer-local-shell-command-map evil-ex-completion-map)
  "C-w" 'backward-kill-word
  "C-k" 'previous-history-element
  "C-p" 'previous-history-element
@@ -1333,6 +1349,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "<escape>" 'keyboard-escape-quit
  "C-x" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 #+END_SRC
+*** Evil 
 
 *** Evil. Leader.
 #+NAME: general-normal-leader-mode-map
@@ -1378,7 +1395,6 @@ Override function for auto-dark mode for applying function for nano theme changi
   :config
   <<general-global-mode-map>>
   <<general-evil-insert-mode-map>>
-  <<general-minibuffer-mode-map>>
   <<evil-normal-insert-mode-map>>
   <<general-normal-leader-mode-map>>
   <<evil-spc-mode-map>>
@@ -1458,14 +1474,15 @@ Evil should respect visual line mode
 (use-package evil
   :init
   (setq evil-want-keybinding nil)
-  (evil-mode 1)
   :config
+
   <<evil-shifting-config>>
   <<evil-respect-visual-line-mode>>
   (setq evil-respect-visual-line-mode t)
   (evil-set-undo-system 'undo-redo)
   (setq-default evil-kill-on-visual-paste nil)
-  (evil-mode 1))
+  (evil-mode 1)
+  <<general-minibuffer-mode-map>>)
 #+END_SRC
 
 #+RESULTS:
@@ -1640,6 +1657,11 @@ Bookmark for navigation inside file
 
 
 * Common emacs packages
+** Autorevert
+#+BEGIN_SRC emacs-lisp :results silent
+(global-auto-revert-mode nil)
+#+END_SRC
+
 ** Files
 *** Dired configs
 #+BEGIN_SRC emacs-lisp 
@@ -1647,6 +1669,9 @@ Bookmark for navigation inside file
     :defer t
     :elpaca nil
     :general
+    (:keymaps 'override
+              :states 'normal
+              "SPC fi" 'image-dired)
     (:keymaps 'dired-mode-map
 	      "C-c C-e" 'wdired-change-to-wdired-mode)
     :config
@@ -2463,8 +2488,8 @@ This function also stolen from doom emacs. It provide functionality for automati
 *** Settings
 Display buffer of quick note always at bottom
 #+BEGIN_SRC emacs-lisp 
-(add-to-list 'display-buffer-alist '("^\\*scratch\\*$" . (display-buffer-at-bottom)))
-(add-to-list 'display-buffer-alist '("^\\*quicknote\\*$" . (display-buffer-at-bottom)))
+(add-to-list 'display-buffer-alist '("^\\*scratch\\*$" (display-buffer-below-selected) (window-height . 0.4)))
+(add-to-list 'display-buffer-alist '("^\\*quicknote\\*$" (display-buffer-below-selected) (window-height . 0.4)))
 #+END_SRC
 
 *** Persistent scratch
@@ -3385,7 +3410,7 @@ TODO: check copilot + blamer
             "s-;" 'copilot-accept-completion-by-word
             "s-/" 'copilot-accept-completion-by-line)
   :custom
-  (copilot-idle-delay 0.1)
+  (copilot-idle-delay 0.2)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -3656,7 +3681,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
   :defer 5
-  :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
+  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -4669,6 +4694,20 @@ Debug for my own project
         "tex2svg"))
 #+END_SRC
 
+** Org AI. 
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package org-ai
+  :elpaca nil
+  :load-path (lambda () "~/pure-emacs/vendor/org-ai")
+  :commands (org-ai-mode)
+  :custom
+  (org-ai-openai-api-token open-ai-key)
+  :init
+  (add-hook 'org-mode-hook #'org-ai-mode)
+  :config
+  (advice-add 'keyboard-quit :before #'org-ai-keyboard-quit))
+#+END_SRC
+
 
 * Spell checker
 # :PROPERTIES:
@@ -5042,7 +5081,8 @@ Function for search in buffer depends or visual or normal line
                     "SPC si" 'consult-imenu
                     "SPC RET" 'consult-bookmark
                     "SPC cm" 'consult-mark
-                    "SPC fr" 'consult-recent-file
+                    "SPC fR" 'consult-recent-file
+                    "SPC fr" 'projectile-recentf
                     "SPC SPC" 'consult-projectile-find-file
                     "M-n" (lambda () (interactive) (search-forward (car consult--line-history)))
                     "M-p" (lambda () (interactive) (search-backward (car consult--line-history))))
