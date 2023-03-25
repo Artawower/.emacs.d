@@ -210,7 +210,7 @@ Use package
 Load private configs
 #+BEGIN_SRC emacs-lisp
 (ignore-errors
-  (load! "~/pure-emacs/private.el"))
+  (load "~/pure-emacs/private.el"))
 (elpaca-wait)
 #+END_SRC
 
@@ -751,7 +751,9 @@ Uncomment when u need to profile ;p
 (use-package olivetti
   :hook
   (prog-mode . olivetti-mode)
-  (ng2-html-mode . olivetti-mode))
+  (ng2-html-mode . olivetti-mode)
+  :custom
+  (olivetti-body-width 150))
 #+END_SRC
 
 ** All the icons.
@@ -1073,6 +1075,15 @@ Argument APPEARANCE should be light or dark."
   :config
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
+** Hide modeline
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package hide-mode-line
+  :hook
+  (prog-mode . hide-mode-line-mode)
+  (text-mode . hide-mode-line-mode)
+  (org-mode . hide-mode-line-mode))
+#+END_SRC
+
 ** Catppuccini theme
 Original
 #+BEGIN_SRC emacs-lisp :results silent
@@ -1476,6 +1487,7 @@ Evil should respect visual line mode
   (setq evil-want-keybinding nil)
   :config
 
+  (setq evil-v$-excludes-newline t)
   <<evil-shifting-config>>
   <<evil-respect-visual-line-mode>>
   (setq evil-respect-visual-line-mode t)
@@ -1659,7 +1671,8 @@ Bookmark for navigation inside file
 * Common emacs packages
 ** Autorevert
 #+BEGIN_SRC emacs-lisp :results silent
-(global-auto-revert-mode nil)
+(setq global-auto-revert-mode nil)
+(setq auto-revert-verbose nil)
 #+END_SRC
 
 ** Files
@@ -2666,7 +2679,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 (use-package tree-sitter
   :after (evil tree-sitter-langs)
   :hook ((go-mode
-          web-mode
           typescript-mode
           css-mode
           typescript-tsx-mode
@@ -2715,30 +2727,33 @@ This need for correct highlighting of incorrect spell-fu faces."
           go-ts-mode
           python-ts-mode
           css-ts-mode) . init-tree-sitter-hl-mode)
+  (go-ts-mode . (lambda () (setq-local tab-width 2)))
+  (go-ts-mode . format-all-mode)
   :init
   (setq treesit-language-source-alist
-   '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
-     (c . ("https://github.com/tree-sitter/tree-sitter-c"))
-     (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
-     (css . ("https://github.com/tree-sitter/tree-sitter-css"))
-     (go . ("https://github.com/tree-sitter/tree-sitter-go"))
-     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
-     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
-     (json . ("https://github.com/tree-sitter/tree-sitter-json"))
-     (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
-     (make . ("https://github.com/alemuller/tree-sitter-make"))
-     (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "ocaml/src" "ocaml"))
-     (python . ("https://github.com/tree-sitter/tree-sitter-python"))
-     (php . ("https://github.com/tree-sitter/tree-sitter-php"))
-     (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "typescripts" "tsx"))
-     (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
-     (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
-     (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
-     (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
-     (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
+        '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
+          (c . ("https://github.com/tree-sitter/tree-sitter-c"))
+          (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
+          (css . ("https://github.com/tree-sitter/tree-sitter-css"))
+          (go . ("https://github.com/tree-sitter/tree-sitter-go"))
+          (html . ("https://github.com/tree-sitter/tree-sitter-html"))
+          (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
+          (json . ("https://github.com/tree-sitter/tree-sitter-json"))
+          (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
+          (make . ("https://github.com/alemuller/tree-sitter-make"))
+          (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "ocaml/src" "ocaml"))
+          (python . ("https://github.com/tree-sitter/tree-sitter-python"))
+          (php . ("https://github.com/tree-sitter/tree-sitter-php"))
+          (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "typescripts" "tsx"))
+          (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
+          (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
+          (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
+          (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
+          (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
   :custom
   ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
   (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sitter"))
+  (go-ts-mode-indent-offset 2)
   :config
   (defun nf/treesit-install-all-languages ()
     "Install all languages specified by `treesit-language-source-alist'."
@@ -2826,31 +2841,17 @@ This need for correct highlighting of incorrect spell-fu faces."
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
   (evil-make-overriding-map corfu-map)
-  (setq lsp-completion-provider :none)
+  (setq lsp-completion-provider :capf)
 
   (global-corfu-mode))
 #+END_SRC
 
-**** HOLD Enable in minibuffer
-#+BEGIN_SRC emacs-lisp :tangle no
-(defun corfu-enable-in-minibuffer ()
-  "Enable Corfu in the minibuffer if `completion-at-point' is bound."
-  (when (where-is-internal #'completion-at-point (list (current-local-map)))
-    ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
-    (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
-                corfu-popupinfo-delay nil)
-    (corfu-mode 1)))
-
-(add-hook 'minibuffer-setup-hook #'corfu-enable-in-minibuffer)
-#+END_SRC
-
-Disalbe company mode
+**** Disalbe company mode
 #+BEGIN_SRC emacs-lisp :tangle no
 (global-company-mode -1)
 (company-mode -1)
 (add-hook 'prog-mode-hook (lambda () (company-mode -1)))
 #+END_SRC
-
 
 
 #+RESULTS:
@@ -2873,6 +2874,20 @@ Disalbe company mode
   :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-info.el"))
   :after corfu)
 #+END_SRC
+**** Corfu save history
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-history
+  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
+  :after corfu
+  :config
+  (with-eval-after-load 'safehist
+    (cl-pushnew 'corfu-history savehist-additional-variables))
+   (setq corfu-sort-override-function 'corfu-history--sort)
+
+  (corfu-history-mode))
+#+END_SRC
+
 
 **** Corfu popup doc
 #+BEGIN_SRC emacs-lisp :results silent
@@ -2888,23 +2903,26 @@ Disalbe company mode
 #+END_SRC
 
 
-*** Cape
+*** HOLD Cape
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package cape-yasnippet
+  :elpaca (:host github :repo "elken/cape-yasnippet"))
+#+END_SRC
+
 Use company backends for corfu
 #+BEGIN_SRC emacs-lisp 
 (use-package cape
+  :after (cape-yasnippet corfu)
   :commands (cape-dabbrev cape-file cape-keyword cape-symbol cape-abbrev
                           cape-ispell cape-line cape-dict cape-tex cape-sgml
                           cape-rfc1345)
   :init
-  ;; Use Company backends as Capfs.
-  (setq-local completion-at-point-functions
-              ;; TODO add more capfs here
-              (mapcar #'cape-company-to-capf
-                      (list #'company-files #'company-ispell #'company-dabbrev
-                            #'company-elisp #'company-css #'company-etags
-                            #'company-R-library #'company-R-args #'company-R-objects
-                            ;; #'company-anaconda #'company-lua #'company-shell
-                            ))))
+  (setq dabbrev-limit 3)
+  (setq completion-at-point-functions
+        (list (cape-super-capf #'lsp-completion-at-point #'cape-dabbrev #'cape-yasnippet))))
 #+END_SRC
 
 *** Pretty icon
@@ -3022,6 +3040,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
     js-ts-mode
     bash-ts-mode
     tsx-ts-mode) . lsp-deferred)
+  (web-mode . lsp-deferred)
   (lsp-completion-mode . my/lsp-mode-setup-completion)
   :general (:states '(normal visual)
                     :keymaps 'override
@@ -3045,7 +3064,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   :custom
   (lsp-headerline-breadcrumb-enable nil)
   (lsp-idle-delay 0.3)
-  (lsp-completion-provider :none)
+  (lsp-completion-provider :capf)
   (lsp-enable-on-type-formatting nil)
   (lsp-eldoc-render-all nil)
   (lsp-prefer-flymake nil)
@@ -3338,6 +3357,13 @@ Function for deleting local terminals
   :defer t
   :hook (prog-mode . rainbow-delimiters-mode))
 #+END_SRC
+** Codemetrics
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package codemetrics
+  :elpaca (:host github :repo "jcs-elpa/codemetrics")
+  :defer t)
+#+END_SRC
+
 
 * Editing
 ** Undo redo
@@ -3559,6 +3585,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 #+END_SRC
 
 
+
 * GIT
 ** Magit
 #+BEGIN_SRC emacs-lisp 
@@ -3604,6 +3631,17 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
    #'my-remove-cr)
   (setq magit-process-finish-apply-ansi-colors t))
 #+END_SRC
+** HOLD TODO Pretty graph
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+Very pretty, But not so usefull without hooks ;c
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package magit-pretty-graph
+  :elpaca (:host github :repo "georgek/magit-pretty-graph"))
+
+#+END_SRC
+
 ** Magit todos
 #+BEGIN_SRC emacs-lisp 
 (use-package magit-todos
@@ -4016,7 +4054,7 @@ Function for open repl in the current buffer
       :keymaps 'override
       "SPC r p" '@open-ipython-repl-here)
     :config
-    (setq python-shell-interpreter "ipython"))
+   (setq python-shell-interpreter "ipython"))
 #+END_SRC
 
 *** Mode
@@ -4307,13 +4345,6 @@ I don't remember why I need this code. Currently commented.
 #+END_SRC
 
 * Org mode
-** KILL Publishing
-#+BEGIN_SRC emacs-lisp 
-(use-package ox-gfm
-  :elpaca (:host github :repo "jkitchin/ox-gfm")
-  :defer t)
-#+END_SRC
-
 ** Org babels
 *** async code
 #+BEGIN_SRC emacs-lisp
@@ -4486,6 +4517,13 @@ Dependency
 
 #+RESULTS:
 : org-previous-visible-heading
+** Org modern indent
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package org-modern-indent
+  :elpaca (org-modern-indent :type git :host github :repo "jdtsmith/org-modern-indent"))
+  :config ; add late to hook
+  (add-hook 'org-mode-hook #'org-modern-indent-mode 90)
+#+END_SRC
 
 ** Ligatures for org mode
 #+BEGIN_SRC emacs-lisp
@@ -4636,9 +4674,11 @@ One of the best Zettelkasten implementation
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp :tangle no
 (use-package web-roam
-  :defer t
-  :bind (:map evil-normal-state-map
-              ("SPC n p" . web-roam-publish-file)))
+  :elpaca (:host github :repo "Artawower/web-roam.el")
+  :general (:states '(normal visual)
+                    :keymaps 'org-mode-map
+                    "SPC np" 'web-roam-publish-file))
+
 #+END_SRC
 ** Org functions for pretty inserting
 #+BEGIN_SRC emacs-lisp
@@ -4700,14 +4740,12 @@ Debug for my own project
   :elpaca nil
   :load-path (lambda () "~/pure-emacs/vendor/org-ai")
   :commands (org-ai-mode)
-  :custom
-  (org-ai-openai-api-token open-ai-key)
   :init
   (add-hook 'org-mode-hook #'org-ai-mode)
   :config
+  (setq org-ai-openai-api-token open-ai-key)
   (advice-add 'keyboard-quit :before #'org-ai-keyboard-quit))
 #+END_SRC
-
 
 * Spell checker
 # :PROPERTIES:
