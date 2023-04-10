@@ -14,37 +14,43 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 ** TODO Modern package manager.
 *** Elpaca package.
 #+BEGIN_SRC emacs-lisp :results silent
-(defvar elpaca-installer-version 0.1)
+(defvar elpaca-installer-version 0.3)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
+(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
 (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
                               :ref nil
                               :files (:defaults (:exclude "extensions"))
                               :build (:not elpaca--activate-package)))
-(when-let ((repo  (expand-file-name "repos/elpaca/" elpaca-directory))
-           (build (expand-file-name "elpaca/" elpaca-builds-directory))
-           (order (cdr elpaca-order))
-           ((add-to-list 'load-path (if (file-exists-p build) build repo)))
-           ((not (file-exists-p repo))))
-  (condition-case-unless-debug err
-      (if-let ((buffer (pop-to-buffer-same-window "*elpaca-installer*"))
-               ((zerop (call-process "git" nil buffer t "clone"
-                                     (plist-get order :repo) repo)))
-               (default-directory repo)
-               ((zerop (call-process "git" nil buffer t "checkout"
-                                     (or (plist-get order :ref) "--"))))
-               (emacs (concat invocation-directory invocation-name))
-               ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
-                                     "--eval" "(byte-recompile-directory \".\" 0 'force)"))))
-          (progn (require 'elpaca)
-                 (elpaca-generate-autoloads "elpaca" repo)
-                 (kill-buffer buffer))
-        (error "%s" (with-current-buffer buffer (buffer-string))))
-    ((error) (warn "%s" err) (delete-directory repo 'recursive))))
-(require 'elpaca-autoloads)
+(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+       (build (expand-file-name "elpaca/" elpaca-builds-directory))
+       (order (cdr elpaca-order))
+       (default-directory repo))
+  (add-to-list 'load-path (if (file-exists-p build) build repo))
+  (unless (file-exists-p repo)
+    (make-directory repo t)
+    (condition-case-unless-debug err
+        (if-let ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
+                 ((zerop (call-process "git" nil buffer t "clone"
+                                       (plist-get order :repo) repo)))
+                 ((zerop (call-process "git" nil buffer t "checkout"
+                                       (or (plist-get order :ref) "--"))))
+                 (emacs (concat invocation-directory invocation-name))
+                 ((zerop (call-process emacs nil buffer nil "-Q" "-L" "." "--batch"
+                                       "--eval" "(byte-recompile-directory \".\" 0 'force)")))
+                 ((require 'elpaca))
+                 ((elpaca-generate-autoloads "elpaca" repo)))
+            (kill-buffer buffer)
+          (error "%s" (with-current-buffer buffer (buffer-string))))
+      ((error) (warn "%s" err) (delete-directory repo 'recursive))))
+  (unless (require 'elpaca-autoloads nil t)
+    (require 'elpaca)
+    (elpaca-generate-autoloads "elpaca" repo)
+    (load "./elpaca-autoloads")))
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
 #+END_SRC
+
 *** Elpaca use-package
 #+BEGIN_SRC emacs-lisp :results silent
 ;; Install use-package support
@@ -78,8 +84,57 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 )
 #+END_SRC
 
+** Env
+https://www.reddit.com/r/emacs/comments/f8xwau/hack_replace_execpathfromshell/
+#+BEGIN_SRC emacs-lisp
+;;; Code to replace exec-path-from-shell
+;; Need to create file in $HOME/.emacs.d/.local/env
+;; use this command to create the file  `printenv > $HOME/.emacs.d/.local/env'
+(defconst my-local-dir (concat user-emacs-directory ".local/"))
 
+(defconst my-env-file (concat my-local-dir "env"))
 
+(defun my-load-envvars-file (file &optional noerror)
+  "Read and set envvars from FILE.
+If NOERROR is non-nil, don't throw an error if the file doesn't exist or is
+unreadable. Returns the names of envvars that were changed."
+  (if (not (file-readable-p file))
+      (unless noerror
+        (signal 'file-error (list "Couldn't read envvar file" file)))
+    (let (envvars environment)
+      (with-temp-buffer
+        (save-excursion
+          (insert "\n")
+          (insert-file-contents file))
+        (while (re-search-forward "\n *\\([^#= \n]*\\)=" nil t)
+          (push (match-string 1) envvars)
+          (push (buffer-substring
+                 (match-beginning 1)
+                 (1- (or (save-excursion
+                           (when (re-search-forward "^\\([^= ]+\\)=" nil t)
+                             (line-beginning-position)))
+                         (point-max))))
+                environment)))
+      (when environment
+        (setq process-environment
+              (append (nreverse environment) process-environment)
+              exec-path
+              (if (member "PATH" envvars)
+                  (append (split-string (getenv "PATH") path-separator t)
+                          (list exec-directory))
+                exec-path)
+              shell-file-name
+              (if (member "SHELL" envvars)
+                  (or (getenv "SHELL") shell-file-name)
+                shell-file-name))
+        envvars))))
+
+(when (and (or (display-graphic-p)
+               (daemonp))
+           (file-exists-p my-env-file))
+  (my-load-envvars-file my-env-file))
+;;; Code to replace exec-path-from-shell
+#+END_SRC
 ** Warning level
 #+BEGIN_SRC emacs-lisp
 (setq warning-minimum-level :emergency)
@@ -185,8 +240,9 @@ Use package
 #+END_SRC
 *** Alias for yes/no
 #+BEGIN_SRC emacs-lisp
-(setq confirm-kill-emacs 'y-or-n-p)
-(defalias 'yes-or-no-p 'y-or-n-p)
+(ignore-errors
+  (setq confirm-kill-emacs 'y-or-n-p)
+  (defalias 'yes-or-no-p 'y-or-n-p))
 #+END_SRC
 *** Initial buffer
 #+BEGIN_SRC emacs-lisp 
@@ -227,7 +283,10 @@ Load private configs
 #+BEGIN_SRC emacs-lisp 
 (set-default 'truncate-lines t)
 #+END_SRC
-*** Common configs
+*** HOLD Common configs
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp :results silent
 (setq inhibit-message nil)
 #+END_SRC
@@ -350,7 +409,6 @@ list is returned as-is."
 ;;              (lambda (&rest _)
 ;;                (run-hooks '@before-buffer-changed-hook)))
 #+END_SRC
-
 * Custom functions
 ** Org
 Add additional space before link insert
@@ -674,21 +732,6 @@ TODO: check why it doesn;t work
     (call-interactively 'find-file)))
 #+END_SRC
 
-** Switch to scratch buffer
-#+BEGIN_SRC emacs-lisp 
-(defun @switch-to-scratch ()
-  "Switch to scratch buffer"
-  (interactive)
-  (let* ((buffer-name "*quicknote*")
-         (buffer-exist (get-buffer buffer-name))
-         (buffer (get-buffer-create buffer-name)))
-    (with-current-buffer buffer
-      (pop-to-buffer buffer)
-      (org-mode)
-      (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
-        (persistent-scratch-restore))
-      (evil-insert-state))))
-#+END_SRC
 
 ** Sass autofix
 For correct work you need to install sass-lint-auto-fix
@@ -713,6 +756,7 @@ Need to steal from doom emacs!
   "Find lsp definition when lsp exist and enabled, or find evil definition."
   (interactive)
   (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
+        ((and (bound-and-true-p eglot) eglot) (eglot-find-typeDefinition))
         ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
@@ -744,31 +788,44 @@ Uncomment when u need to profile ;p
 #+END_SRC
 
 
-
 * UI
-** Olivetti
+** HOLD Olivetti
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package olivetti
   :hook
   (prog-mode . olivetti-mode)
   (ng2-html-mode . olivetti-mode)
   :custom
-  (olivetti-body-width 150))
+  (olivetti-recall-visual-line-mode-entry-state t)
+  (olivetti-body-width 150)
+  :config
+  (visual-line-mode -1))
 #+END_SRC
 
 ** All the icons.
 #+BEGIN_SRC emacs-lisp 
 (use-package all-the-icons
-  :ensure t
-  :config
-  (set-fontset-font t 'unicode (font-spec :family "all-the-icons") nil 'prepend)
-  (set-fontset-font t 'unicode (font-spec :family "file-icons") nil 'prepend)
-  (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'prepend)
-  (set-fontset-font t 'unicode (font-spec :family "github-octicons") nil 'prepend)
-  (set-fontset-font t 'unicode (font-spec :family "FontAwesome") nil 'prepend)
-  (set-fontset-font t 'unicode (font-spec :family "Weather Icons") nil 'prepend)
-  (setq inhibit-compacting-font-caches t))
+  :ensure t)
+  ;; :config
+  ;; (set-fontset-font t 'unicode (font-spec :family "all-the-icons") nil 'prepend)
+  ;; (set-fontset-font t 'unicode (font-spec :family "file-icons") nil 'prepend)
+  ;; (set-fontset-font t 'unicode (font-spec :family "Material Icons") nil 'prepend)
+  ;; (set-fontset-font t 'unicode (font-spec :family "github-octicons") nil 'prepend)
+  ;; (set-fontset-font t 'unicode (font-spec :family "FontAwesome") nil 'prepend)
+  ;; (set-fontset-font t 'unicode (font-spec :family "Weather Icons") nil 'prepend)
+  ;; (setq inhibit-compacting-font-caches t))
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package all-the-icons-completion
+  :after (marginalia all-the-icons)
+  :hook (marginalia-mode . all-the-icons-completion-marginalia-setup)
+  :init
+  (all-the-icons-completion-mode))
+ #+END_SRC
 
 ** Full size from startup
 #+BEGIN_SRC emacs-lisp 
@@ -860,6 +917,7 @@ Very pretty titlebar for Mac os
 
 (add-hook 'after-init-hook #'@correct-my-fringe)
 (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
+(setq-default left-margin-width 2 right-margin-width 2)
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
@@ -1076,12 +1134,20 @@ Argument APPEARANCE should be light or dark."
   (setq doom-modeline-buffer-file-name-style 'file-name))
 #+END_SRC
 ** Hide modeline
+*** Hide modeline mode
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package hide-mode-line
   :hook
   (prog-mode . hide-mode-line-mode)
   (text-mode . hide-mode-line-mode)
   (org-mode . hide-mode-line-mode))
+#+END_SRC
+*** Window divider
+#+BEGIN_SRC emacs-lisp
+(setq window-divider-default-places t
+      window-divider-default-bottom-width 1
+      window-divider-default-right-width 0)
+(window-divider-mode +1)
 #+END_SRC
 
 ** Catppuccini theme
@@ -1281,7 +1347,6 @@ Override function for auto-dark mode for applying function for nano theme changi
 (general-define-key
  :states '(insert)
  "C-u" 'evil-delete-back-to-indentation
- "s-y" 'yas-expand
  "s-P" 'xah-paste-from-register-1
  "s-." 'ace-window)
 #+END_SRC
@@ -1491,7 +1556,7 @@ Evil should respect visual line mode
   <<evil-shifting-config>>
   <<evil-respect-visual-line-mode>>
   (setq evil-respect-visual-line-mode t)
-  (evil-set-undo-system 'undo-redo)
+  (evil-set-undo-system 'undo-fu)
   (setq-default evil-kill-on-visual-paste nil)
   (evil-mode 1)
   <<general-minibuffer-mode-map>>)
@@ -1636,21 +1701,6 @@ Bookmark for navigation inside file
   :hook (prog-mode . ts-movement-mode))
 #+END_SRC
 
-** Tree sitter movement. Ts hopper
-#+BEGIN_SRC emacs-lisp 
-(use-package ts-hopper
-  :elpaca (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
-  :init
-  (ts-hopper-init)
-  :general (:states '(normal visual)
-                 :keymaps 'override
-                 "\'" 'ts-hopper-define-context
-                 "\\k" 'ts-hopper-mode
-                 "[" 'ts-hopper-hop-prev-context
-                 "]" 'ts-hopper-hop-next-context)
-  :config
-  (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
-#+END_SRC
 
 ** Buffer hop. Smart jump between visited buffers.
 #+BEGIN_SRC emacs-lisp :results silent
@@ -1667,6 +1717,35 @@ Bookmark for navigation inside file
   (global-buffer-hop-mode))
 #+END_SRC
 
+** Buffer frog. Another one buffer navigation
+#+BEGIN_SRC emacs-lisp
+(use-package frog-jump-buffer
+  :elpaca (:host github :repo "waymondo/frog-jump-buffer")
+  :bind
+  (("s-t" . frog-jump-buffer))
+  :config
+  (setq frog-jump-buffer-default-filter 'frog-jump-buffer-filter-same-project)
+  ;; (defun frog-jump-buffer-filter-persp-buffers (buffer)
+  ;;   (with-current-buffer buffer
+  ;;     (let ((persp-name (if (and (fboundp 'safe-persp-name) (fboundp 'get-current-persp))
+  ;;                           (safe-persp-name (get-current-persp))
+  ;;                         "default"))
+  ;;           )
+  ;;       )
+  ;;     (-any? #'derived-mode-p '(comint-mode magit-mode inf-ruby-mode rg-mode compilation-mode))))
+
+  ;; (setq frog-jump-buffer-filter-actions
+  ;;       '(("p" "[persp]" frog-jump-buffer-filter-persp-buffers)))
+
+  (defun frog-jump-buffer-same-project ()
+    (interactive)
+    (let ((frog-jump-buffer-current-filter-function #'frog-jump-buffer-filter-same-project))
+      (frog-jump-buffer)))
+  (setq frog-jump-buffer-use-all-the-icons-ivy t)
+  (dolist (regexp '("TAGS" "^\\*" "^\\*elpaca" "^\\*lsp" "^\\*calendar" "^\\*Google" "^\\*copilot" "^\\*dashboard" "^\\*direnv" "^\\*Compile-log" "-debug\\*$" "^\\:" "errors\\*$" "^\\*Backtrace" "-ls\\*$"
+                    "stderr\\*$" "^\\*Flymake" "^\\*vc" "^\\*Warnings" "^\\*eldoc" "\\^*Shell Command"))
+    (push regexp frog-jump-buffer-ignore-buffers)))
+#+END_SRC
 
 * Common emacs packages
 ** Autorevert
@@ -1692,14 +1771,18 @@ Bookmark for navigation inside file
     (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
-*** Dirvish. Dired batteries ;3
+*** HOLD Dirvish. Dired batteries ;3
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+Doesn't work on mac properly.
 Dirvish.
 #+BEGIN_SRC emacs-lisp
 (use-package dirvish
-  :init
-  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
-  :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "501f6c3660dfb90dce843db9d154e5328949e7d9")
+  :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
+  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "501f6c3660dfb90dce843db9d154e5328949e7d9")
   ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "973e526ac51f022fbc091843fb9a853b8d55da92")
+  :init
   (dirvish-override-dired-mode)
   :custom
   ;; Go back home? Just press `bh'
@@ -2294,6 +2377,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Backups
 #+BEGIN_SRC emacs-lisp 
 (use-package no-littering
+  :demand t
   :config
   (setq backup-directory-alist `(("." . "~/.emacs-saves")))
   (setq auto-save-file-name-transforms
@@ -2505,6 +2589,22 @@ Display buffer of quick note always at bottom
 (add-to-list 'display-buffer-alist '("^\\*quicknote\\*$" (display-buffer-below-selected) (window-height . 0.4)))
 #+END_SRC
 
+*** Switch to scratch buffer
+#+BEGIN_SRC emacs-lisp 
+(defun @switch-to-scratch ()
+  "Switch to scratch buffer"
+  (interactive)
+  (let* ((buffer-name "*quicknote*")
+         (buffer-exist (get-buffer buffer-name))
+         (buffer (get-buffer-create buffer-name)))
+    (with-current-buffer buffer
+      (pop-to-buffer buffer)
+      (org-mode)
+      (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
+        (persistent-scratch-restore))
+      (evil-insert-state))))
+#+END_SRC
+
 *** Persistent scratch
 Override function for autosaving
 #+BEGIN_SRC emacs-lisp 
@@ -2517,7 +2617,8 @@ Override function for autosaving
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
-#+BEGIN_SRC emacs-lisp  
+TODO: delete
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun @persistent-scratch-save (&optional file)
   "Save the current state of scratch buffers.
 When FILE is non-nil, the state is saved to FILE; when nil or when called
@@ -2531,13 +2632,14 @@ representing the time of the last `persistent-scratch-new-backup' call."
   (let* ((actual-file (or file persistent-scratch-save-file))
          (tmp-file (concat actual-file ".new"))
          (old-umask (default-file-modes))
-         (str (persistent-scratch--save-state-to-string)))
+         (saved-state (persistent-scratch--save-buffers-state)))
 
-    (unless (equal str "nil")
+    (message "saved-state: %s" (type-of (cdr saved-state)))
+    (when (cdr saved-state)
             (set-default-file-modes #o600)
             (unwind-protect
                 (let ((coding-system-for-write 'utf-8-unix))
-                  (write-region str nil tmp-file nil 0))
+                  (write-region (cdr saved-state) nil tmp-file nil 0))
               (set-default-file-modes old-umask))
             (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
             (rename-file tmp-file actual-file t)
@@ -2558,18 +2660,53 @@ representing the time of the last `persistent-scratch-new-backup' call."
           :keymaps 'override
           "SPC x" '@switch-to-scratch)
   :config
+  (persistent-scratch-autosave-mode)
   (setq persistent-scratch-autosave-interval 5)
   (persistent-scratch-setup-default)
 )
 #+END_SRC
 
 * Programming
-** Snippets
+** HOLD Snippets
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
 (use-package yasnippet
+  :bind (("s-y" . yas-expand))
+  :hook (prog-mode . yas-minor-mode)
   :config
-  (setq yas-snippet-dirs '("~/.doom.d/snippets"))
-  (yas-global-mode 1))
+  (setq yas-snippet-dirs '("~/.doom.d/snippets")))
+#+END_SRC
+** TODO Tempel
+#+BEGIN_SRC emacs-lisp
+(use-package tempel
+  :bind (("s-y" . tempel-complete) ;; Alternative tempel-expand
+         ("s-Y" . tempel-insert)
+         ("s-\\" . tempel-done))
+
+  :init
+  ;; Setup completion at point
+  (defun tempel-setup-capf ()
+    ;; Add the Tempel Capf to `completion-at-point-functions'.
+    ;; `tempel-expand' only triggers on exact matches. Alternatively use
+    ;; `tempel-complete' if you want to see all matches, but then you
+    ;; should also configure `tempel-trigger-prefix', such that Tempel
+    ;; does not trigger too often when you don't expect it. NOTE: We add
+    ;; `tempel-expand' *before* the main programming mode Capf, such
+    ;; that it will be tried first.
+    (setq-local completion-at-point-functions
+                (cons #'tempel-expand
+                      completion-at-point-functions)))
+
+  (add-hook 'prog-mode-hook 'tempel-setup-capf)
+  (add-hook 'text-mode-hook 'tempel-setup-capf)
+
+  ;; Optionally make the Tempel templates available to Abbrev,
+  ;; either locally or globally. `expand-abbrev' is bound to C-x '.
+  ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
+  ;; (global-tempel-abbrev-mode)
+)
 #+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp
@@ -2581,27 +2718,50 @@ representing the time of the last `persistent-scratch-new-backup' call."
 Function for preventing better jump breaks
 #+BEGIN_SRC emacs-lisp 
 (defun format-all-buffer--no-bufferjump ()
-    "format-all-buffer without jumps of cursor"
-    (interactive)
-    (let ((point (point)) (wstart (window-start)))
-      (call-interactively 'format-all-buffer)
-      (goto-char point)
-      (set-window-start (selected-window) wstart)))
+  "format-all-buffer without jumps of cursor"
+  (interactive)
+  (let ((point (point)) (wstart (window-start)))
+    (call-interactively 'format-all-buffer)
+    (goto-char point)
+    (set-window-start (selected-window) wstart)))
+
+(defun @format-all--buffer-or-region (origin-func &rest args)
+  (let ((point (point)) (wstart (window-start)))
+    (apply origin-func args)
+    (goto-char point)
+    (set-window-start (selected-window) wstart)))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
 (use-package format-all
   :defer t
-  ;; :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode) . format-all-mode)
-  :hook ((json-mode go-mode dart-mode) . format-all-mode)
-  ;; :config
-  ;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
-  ;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
-  ;; (add-to-list '+format-on-save-enabled-modes 'js2-mode t)
-)
+  ;; :hook ((json-mode go-mode dart-mode) . format-all-mode)
+  :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode web-mode scss-mode css-mode) . format-all-mode)
+  :config
+  (dolist (lang '("TypeScript" "TSX" "HTML" "CSS" "SCSS" "Vue"))
+    (add-to-list 'format-all-default-formatters (cons lang '(prettierd))))
+
+  (add-to-list 'format-all-default-formatters '("TypeScript" prettierd))
+  (add-to-list 'format-all-default-formatters '("HTML" prettierd))
+
+  ;; (setcdr (assoc "HTML" format-all-default-formatters) 'prettierd)
+  ;; (setcar (assoc "TypeScript" format-all-default-formatters) '("TypeScript" prettierd))
+  ;; (setcdr (assoc "TSX" format-all-default-formatters) 'prettierd)
+  ;; (setcdr (assoc "CSS" format-all-default-formatters) 'prettierd)
+  
+  (add-hook 'format-all-mode-hook 'format-all-ensure-formatter)
+  (advice-add 'format-all--buffer-or-region :around #'@format-all--buffer-or-region))
+;; :hook ((json-mode go-mode dart-mode) . format-all-mode)
+;; :config
+;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
+;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
+;; (add-to-list '+format-on-save-enabled-modes 'js2-mode t)
 #+END_SRC
 
-*** Prettier
+*** HOLD Prettier
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp 
 (use-package prettier
   :bind (:map evil-normal-state-map
@@ -2655,14 +2815,6 @@ Function for preventing better jump breaks
 #+END_SRC
 
 ** AST. Tree sitter.
-*** Tree sitterm automatic grammar installation
-#+BEGIN_SRC emacs-lisp 
-(use-package treesit-auto
-  :config
-  (setq treesit-auto-install 'prompt)
-  (global-treesit-auto-mode))
-#+END_SRC
-
 *** Tree sitter package
 #+BEGIN_SRC emacs-lisp
 (use-package tree-sitter-langs
@@ -2674,7 +2826,8 @@ Function for preventing better jump breaks
 This need for correct highlighting of incorrect spell-fu faces."
   (tree-sitter-hl-mode -1)
   (my-set-spellfu-faces)
-  (tree-sitter-hl-mode))
+  (tree-sitter-hl-mode)
+  (codemetrics-mode))
 
 (use-package tree-sitter
   :after (evil tree-sitter-langs)
@@ -2693,12 +2846,12 @@ This need for correct highlighting of incorrect spell-fu faces."
           ng2-html-mode) . init-tree-sitter-hl-mode)
   :config
   (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
-  (push '(web-mode . html) tree-sitter-major-mode-language-alist)
+  ;; (push '(web-mode . html) tree-sitter-major-mode-language-alist)
   (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
   (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
-  ;; (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
 
-  (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
+  ;; (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
 
   ;; TODO: remove, 
   (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
@@ -2715,9 +2868,29 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+END_SRC
 
 #+RESULTS:
+*** Tree sitter + evil
+#+BEGIN_SRC emacs-lisp
+(use-package evil-textobj-tree-sitter
+  :ensure t
+  :config
+  ;; bind `function.outer`(entire function block) to `f` for use in things like `vaf`, `yaf`
+  (define-key evil-outer-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.outer"))
+  ;; bind `function.inner`(function block without name and args) to `f` for use in things like `vif`, `yif`
+  (define-key evil-inner-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.inner"))
 
+  ;; You can also bind multiple items and we will match the first one we can find
+  (define-key evil-outer-text-objects-map "a" (evil-textobj-tree-sitter-get-textobj ("conditional.outer" "loop.outer"))))
+
+#+END_SRC
+
+** AST treesit
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 *** Treesit core
-
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit
@@ -2765,11 +2938,31 @@ This need for correct highlighting of incorrect spell-fu faces."
 	      (sit-for 0.75)))))
 #+END_SRC
 
+*** Tree sitterm automatic grammar installation
+#+BEGIN_SRC emacs-lisp 
+(use-package treesit-auto
+  :config
+  (setq treesit-auto-install 'prompt)
+  (global-treesit-auto-mode))
+#+END_SRC
+
+*** Tree sitter movement. Ts hopper
+#+BEGIN_SRC emacs-lisp 
+(use-package ts-hopper
+  :elpaca (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
+  :init
+  (ts-hopper-init)
+  :general (:states '(normal visual)
+                 :keymaps 'override
+                 "\'" 'ts-hopper-define-context
+                 "\\k" 'ts-hopper-mode
+                 "[" 'ts-hopper-hop-prev-context
+                 "]" 'ts-hopper-hop-next-context)
+  :config
+  (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
+#+END_SRC
 ** Autocomplete
-*** HOLD Company mode
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+*** Company mode
 **** Company package
 #+BEGIN_SRC emacs-lisp
 (use-package company
@@ -2804,7 +2997,10 @@ This need for correct highlighting of incorrect spell-fu faces."
   :hook (company-mode . company-box-mode))
 #+END_SRC
 
-*** Corfu
+*** HOLD Corfu
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 **** Corfu package
 #+BEGIN_SRC emacs-lisp
 (use-package corfu
@@ -2841,7 +3037,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
   (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
   (evil-make-overriding-map corfu-map)
-  (setq lsp-completion-provider :capf)
+  (setq lsp-completion-provider :none)
 
   (global-corfu-mode))
 #+END_SRC
@@ -2870,9 +3066,11 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 **** Corfu doc
 #+BEGIN_SRC emacs-lisp :results silent
-(use-package corfu-info
-  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-info.el"))
-  :after corfu)
+(use-package corfu-popupinfo
+  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :after corfu
+  :config
+  (setq corfu-popupinfo-delay '(0.5 . 0.5)))
 #+END_SRC
 **** Corfu save history
 
@@ -2887,7 +3085,6 @@ This need for correct highlighting of incorrect spell-fu faces."
 
   (corfu-history-mode))
 #+END_SRC
-
 
 **** Corfu popup doc
 #+BEGIN_SRC emacs-lisp :results silent
@@ -2946,7 +3143,6 @@ Use company backends for corfu
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-
  [[https://github.com/joaotavora/eglot/issues/257][Vue js configuration example]]
  Eglot is unused right now. Because it has lack of debugger functionality
 #+BEGIN_SRC emacs-lisp
@@ -2999,7 +3195,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (global-lsp-bridge-mode))
 #+END_SRC
 
-** Lsp
+** Lsp mode
 *** Lsp functions
 **** Uninstall server
 #+BEGIN_SRC emacs-lisp 
@@ -3014,9 +3210,9 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 #+END_SRC
 
 *** LSP-mode Core package
-
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
+  :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "7a50934cbbe0aec1a1a054e7d13fce804a1708c6")
   :after flycheck
   :hook
   ((clojure-mode
@@ -3103,7 +3299,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
     (flycheck-add-next-checker 'lsp '(warning . go-errcheck))
     (flycheck-add-next-checker 'lsp '(warning . go-staticcheck))
 
-    (add-hook 'before-save-hook #'lsp-format-buffer t t)
+    ;; (add-hook 'before-save-hook #'lsp-format-buffer t t)
     (add-hook 'before-save-hook #'lsp-organize-imports t t))
 
   (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
@@ -3280,6 +3476,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 #+END_SRC
 
 ** Debugger. Dap
+
 Function for deleting local terminals
 #+BEGIN_SRC emacs-lisp 
 (defun @dap-delete-local-terminal (&optional _)
@@ -3388,7 +3585,6 @@ Function for deleting local terminals
 :END:
 #+BEGIN_SRC emacs-lisp
 (use-package vundo
-  :defer 1
   :config
   ;; Take less on-screen space.
   (setq vundo-compact-display t)
@@ -3436,7 +3632,7 @@ TODO: check copilot + blamer
             "s-;" 'copilot-accept-completion-by-word
             "s-/" 'copilot-accept-completion-by-line)
   :custom
-  (copilot-idle-delay 0.2)
+  (copilot-idle-delay 0.3)
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
@@ -3498,7 +3694,7 @@ TODO: check copilot + blamer
 #+END_SRC
 
 Correct position after blamer flicker
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp :tanlge no
 (defun @electric-pair--verify-cursor-position (&optional char)
   "Verify cusor position after inserting CHAR bracket."
 
@@ -3910,8 +4106,8 @@ Improved styles for git changes
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
 (use-package typescript-mode
   :defer t  
-  :hook (typescript-mode . (lambda () (setq-local fill-column 120)
-                             (typescript-ts-mode)))
+  :hook (typescript-mode . (lambda () (setq-local fill-column 120)))
+                             ;; (typescript-ts-mode)))
   :custom
   (lsp-clients-typescript-server-args '("--stdio"))
   :config
@@ -3934,6 +4130,8 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package ng2-mode
   :after typescript-mode
+  ;; :hook
+  ;; (ng2-html-mode . web-mode)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -4067,7 +4265,7 @@ Function for open repl in the current buffer
   (add-hook 'python-mode-hook
             (lambda ()
               (require 'lsp-pyright)
-              (lsp-deferred)
+              ;; (lsp-deferred)
               (setq indent-tabs-mode nil)
               (setq tab-width 4))))
 #+END_SRC
@@ -4207,6 +4405,8 @@ I don't remember why I need this code. Currently commented.
           ("php"        . "/*")
           ("pug"        . "//")
           ("css"        . "/*")))
+  (setq web-mode-script-padding 0)
+  (setq web-mode-style-padding 0)
   (setq web-mode-code-indent-offset 2)
   (setq web-mode-css-indent-offset 2))
 #+END_SRC
@@ -4235,6 +4435,7 @@ I don't remember why I need this code. Currently commented.
     :elpaca nil
     :defer 10
     :config
+    (setq css-indent-offset 2)
     (defun revert-buffer-no-confirm ()
       "Revert buffer without confirmation."
       (interactive)
@@ -4604,12 +4805,14 @@ One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp
 (use-package org-roam
   :after org
+  :elpaca (org-roam :type git :host github :repo "org-roam/org-roam" :rev "938c602faa4a07917654df71e7db8bd178db567d")
   :bind (:map evil-normal-state-map
               ("SPC n r i" . org-roam-node-insert)
               ("SPC n r f" . org-roam-node-find))
   :init
   (setq org-roam-v2-ack t)
   :config
+
   ;; (org-roam-db-autosync-enable)
   (cl-defmethod org-roam-node-mtitle ((node org-roam-node))
     "Return customized title of roam node"
@@ -4670,7 +4873,7 @@ One of the best Zettelkasten implementation
 #+RESULTS:
 : t
 
-** REVIEW Roam publisher
+** Roam publisher
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp :tangle no
 (use-package web-roam
@@ -4974,7 +5177,6 @@ Didn't mange to start work
 ** Vertico
 #+BEGIN_SRC emacs-lisp
 (use-package vertico
-  :defer t
   :elpaca (:host github :repo "minad/vertico" :files ("vertico.el" "extensions/*.el"))
   :bind (:map evil-normal-state-map
               ("SPC ;" . vertico-repeat-last)
@@ -5279,7 +5481,7 @@ Delete project
 #+END_SRC
 
 
-TODO: delete
+* TODO: delete
 Preview
 #+BEGIN_SRC emacs-lisp  
 (defun +vertico/embark-preview ()
@@ -5325,12 +5527,6 @@ Preview
   (mini-frame-mode))
 #+END_SRC
 
-** Icons
-#+BEGIN_SRC emacs-lisp 
-(use-package all-the-icons-completion
-  :init
-  (all-the-icons-completion-mode))
-#+END_SRC
 ** Fuzzy search
 :PROPERTIES:
 :header-args: :tangle no
@@ -5352,13 +5548,11 @@ Preview
   :after vertico)
 #+END_SRC
 
-
 * Emacs for everything
 ** HOLD PDF
 :PROPERTIES:
 :header-args: :tangle no
 :END:
-
 #+BEGIN_SRC emacs-lisp
 (use-package pdf-view
   :ensure t
@@ -5380,7 +5574,6 @@ Preview
 (use-package org-pdftools
   :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
-
 
 ** Browser
 *** HOLD Browser history from emacs                             :potential:
