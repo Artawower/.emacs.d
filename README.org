@@ -2735,10 +2735,9 @@ Function for preventing better jump breaks
 #+BEGIN_SRC emacs-lisp
 (use-package format-all
   :defer t
-  ;; :hook ((json-mode go-mode dart-mode) . format-all-mode)
   :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode web-mode scss-mode css-mode) . format-all-mode)
   :config
-  (dolist (lang '("TypeScript" "TSX" "HTML" "CSS" "SCSS" "Vue"))
+  (dolist (lang '("TypeScript" "TSX" "HTML" "CSS" "SCSS" "Vue" "JavaScript"))
     (add-to-list 'format-all-default-formatters (cons lang '(prettierd))))
 
   (add-to-list 'format-all-default-formatters '("TypeScript" prettierd))
