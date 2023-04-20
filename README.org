@@ -756,7 +756,7 @@ Need to steal from doom emacs!
   "Find lsp definition when lsp exist and enabled, or find evil definition."
   (interactive)
   (cond ((bound-and-true-p lsp-bridge-mode) (lsp-bridge-find-def))
-        ((and (bound-and-true-p eglot) eglot) (eglot-find-typeDefinition))
+        ((and (bound-and-true-p eglot--managed-mode) eglot--managed-mode) (evil-goto-definition))
         ((and (bound-and-true-p lsp-mode) (bound-and-true-p lsp-ui-mode) lsp-ui-mode) (lsp-ui-peek-find-definitions))
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
@@ -2771,19 +2771,41 @@ Function for preventing better jump breaks
   (global-prettier-mode))
 #+END_SRC
 
-** Flychek. Error checker
-*** HOLD Flymake
+** HOLD Flymake
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+*** Flymake pacakge
+#+BEGIN_SRC emacs-lisp
+(use-package flymake
+  :after evil
+  :bind (:map evil-normal-state-map
+              ("SPC e l" . consult-flymake)
+              ("SPC f ]" . flymake-goto-next-error)
+              ("SPC f [" . flymake-goto-prev-error)))
+#+END_SRC
+
+*** Flymake sideline
+#+BEGIN_SRC emacs-lisp
+(use-package sideline-flymake
+  :after sideline
+  :hook (flymake-mode . sideline-mode)
+  :init
+  (setq sideline-flymake-display-mode 'point) ; 'point to show errors only on point
+  (setq sideline-backends-right '(sideline-flymake)))
+#+END_SRC
+*** HOLD Flymake posframe
 :PROPERTIES:
 :header-args: :tangle no
 :END:
 #+BEGIN_SRC emacs-lisp
-  (use-package flymake
-    :after evil
-    :bind (:map evil-normal-state-map
-           ("C-f ]" . flymake-goto-next-error)
-           ("C-f [" . flymake-goto-prev-error)))
+  (use-package flymake-diagnostic-at-point
+    :after flymake
+    :hook (flmake-mode . flymake-diagnostic-at-point-mode))
+
 #+END_SRC
-*** Flycheck
+** Flycheck
 #+BEGIN_SRC emacs-lisp
 (use-package flycheck
   :bind (:map evil-normal-state-map
@@ -2800,17 +2822,6 @@ Function for preventing better jump breaks
   (flycheck-add-mode 'javascript-eslint 'web-mode)
   (flycheck-add-mode 'javascript-eslint 'typescript-mode)
   (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
-#+END_SRC
-
-*** HOLD Flymake posframe
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+BEGIN_SRC emacs-lisp
-  (use-package flymake-diagnostic-at-point
-    :after flymake
-    :hook (flmake-mode . flymake-diagnostic-at-point-mode))
-
 #+END_SRC
 
 ** AST. Tree sitter.
@@ -3142,14 +3153,78 @@ Use company backends for corfu
 :PROPERTIES:
 :header-args: :tangle no
 :END:
+*** Eglot package
  [[https://github.com/joaotavora/eglot/issues/257][Vue js configuration example]]
  Eglot is unused right now. Because it has lack of debugger functionality
 #+BEGIN_SRC emacs-lisp
-  (use-package eglot
-    :defer t
-    :hook ((web-mode ng2-mode ts-mode go-mode) . eglot-ensure)
-    :config
-    (add-to-list 'eglot-server-programs '(ng2-mode . ("typescript-language-server" "--stdio"))))
+(use-package eglot
+  :defer t
+  :hook
+  ((web-mode ng2-mode typescript-mode go-mode python-mode yaml-mode ng2-ts-mode) . eglot-ensure)
+  (eglot--managed-mode . company-mode)
+  :general (:states '(normal visual)
+                    :keymaps 'override
+                    "SPC lr" 'eglot-find-declaration
+                    "gi" 'eglot-find-implementation
+                    "gt" 'eglot-find-typeDefinition
+                    "SPC la" 'eglot-code-actions
+                    "\\l" 'eglot-code-actions
+                    "SPC lw" 'eglot-reconnect
+                    "gd" '@find-definition
+                    "SPC cr" 'eglot-rename)
+  :config
+  (add-to-list 'eglot-server-programs '(ng2-mode . ("typescript-language-server" "--stdio")))
+  (add-to-list 'eglot-server-programs '(python-mode . ("pyright-langserver" "--stdio")))
+  (add-to-list 'eglot-server-programs
+               '(vue-mode . (eglot-volar "vue-language-server" "--stdio")))
+  (add-to-list 'eglot-server-programs
+               '(web-mode . (eglot-volar "vue-language-server" "--stdio")))
+
+  (add-to-list 'eglot-server-programs
+               '(ng2-html-mode "node"
+                               "/Users/darkawower/.npm-global/lib/node_modules/@angular/language-server"
+                               "--ngProbeLocations"
+                               "/Users/darkawower/.npm-global/lib/node_modules"
+                               "--tsProbeLocations"
+                               "/Users/darkawower/.npm-global/lib/node_modules"
+                               "--stdio"))
+  (defclass eglot-volar (eglot-lsp-server) ()
+    :documentation "A custom class for volar")
+
+  (cl-defmethod eglot-initialization-options ((server eglot-volar))
+    "Passes through required volar initialization options"
+    (let*
+        ((serverPath
+          (expand-file-name
+           "lib"
+           (shell-command-to-string "npm list --global --parseable typescript | head -n1 | tr -d \"\n\""))))
+      (list :typescript
+            (list :tsdk serverPath)
+            :languageFeatures
+            (list :completion
+                  (list :defaultTagNameCase "both"
+                        :defaultAttrNameCase "kebabCase"
+                        :getDocumentNameCasesRequest nil
+                        :getDocumentSelectionRequest nil)
+                  :diagnostics
+                  (list :getDocumentVersionRequest nil))
+            :documentFeatures
+            (list :documentFormatting
+                  (list :defaultPrintWidth 100
+                        :getDocumentPrintWidthRequest nil)
+                  :documentSymbol t
+                  :documentColor t)))))
+#+END_SRC
+*** Eglot grammarly
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp
+(use-package eglot-grammarly
+  :elpaca (:host github :repo "emacs-grammarly/eglot-grammarly")
+  :hook (org-mode . (lambda ()
+                      (require 'eglot-grammarly)
+                      (call-interactively #'eglot))))
 #+END_SRC
 
 ** HOLD LSP Bridge
@@ -3211,7 +3286,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 *** LSP-mode Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
-  :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "7a50934cbbe0aec1a1a054e7d13fce804a1708c6")
+  ;; :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "7a50934cbbe0aec1a1a054e7d13fce804a1708c6")
   :after flycheck
   :hook
   ((clojure-mode
@@ -3475,7 +3550,6 @@ By default ~compile-goto-error~ open new window. Its redundant.
 #+END_SRC
 
 ** Debugger. Dap
-
 Function for deleting local terminals
 #+BEGIN_SRC emacs-lisp 
 (defun @dap-delete-local-terminal (&optional _)
@@ -5039,7 +5113,6 @@ Debug for my own project
 #+END_SRC
 ** Grammarly lsp
 Didn't mange to start work
-
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-grammarly
   :hook
@@ -5466,6 +5539,7 @@ Delete project
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
   :config
+  (add-to-list 'display-buffer-alist '("^\\*Embark Export\\*$" (display-buffer-in-side-window) (window-height . 0.4)))
   <<embark-delete-project>>
   <<embark-content-copy-function>>)
 
