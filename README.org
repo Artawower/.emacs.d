@@ -486,69 +486,6 @@ Focus buffer by name
 
 #+RESULTS:
 : +select-window-by-name
-
-*** KILL Switch to buffer
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+BEGIN_SRC emacs-lisp 
-(defun @change-buffer (change-buffer)
-  "Call CHANGE-BUFFER until current buffer is not in `my-skippable-buffers'."
-  (let ((initial (current-buffer)))
-    (funcall change-buffer)
-    (let ((first-change (current-buffer)))
-      (catch 'loop
-        (while (string-prefix-p "*" (buffer-name))
-          (funcall change-buffer)
-          (when (eq (current-buffer) first-change)
-            (switch-to-buffer initial)
-            (throw 'loop t)))))))
-
-(defun @next-buffer ()
-  "Variant of `next-buffer' that skips `my-skippable-buffers'."
-  (interactive)
-  (@change-buffer 'next-buffer))
-
-(defun @previous-buffer ()
-  "Variant of `previous-buffer' that skips `my-skippable-buffers'."
-  (interactive)
-  (@change-buffer 'previous-buffer))
-#+END_SRC
-
-*** KILL Switch to buffer [2]
-#+BEGIN_SRC emacs-lisp :results silent
-(defvar @exclude-navigation-buffers-regexps '("^\\*" "^magit")
-  "List of regexps to exclude from navigation.")
-
-(defun @next-buffer ()
-  "Navigate to next visited buffer"
-  (interactive)
-  (@change-buffer 'next-buffer))
-
-(defun @previous-buffer ()
-  "Navigate to previous visited buffer"
-  (interactive)
-  (@change-buffer 'previous-buffer))
-
-(defun @skip-navigate-buffer-p (buffer-name)
-  "Check if BUFFER-NAME should be skipped"
-  (some (lambda (regexp)
-          (string-match-p regexp buffer-name))
-        @exclude-navigation-buffers-regexps))
-
-(defun @change-buffer (change-buffer-fn)
-"Call CHANGE-BUFFER-FN until current buffer is matched by regexp.
-CHANGE-BUFFER-FN can be `next-buffer' or `previous-buffer'"
-  (interactive)
-  (let ((bread-crumb (buffer-name)))
-    (funcall change-buffer-fn)
-    (while
-        (and
-          (not (string= bread-crumb (buffer-name)))
-          (@skip-navigate-buffer-p (buffer-name)))
-      (funcall change-buffer-fn))))
-#+END_SRC
-
 ** Terminal
 #+BEGIN_SRC emacs-lisp
 (defun my-remove-cr (&optional begin end)
@@ -1450,7 +1387,6 @@ Override function for auto-dark mode for applying function for nano theme changi
     "T" 'google-translate-query-translate
     "a" 'counsel-org-agenda-headlines
     "c" 'dired-create-empty-file
-    "p" 'format-all-buffer--no-bufferjump
     "s" 'publish-org-blog
     "g" 'codegpt
     ;; Evil
@@ -1636,6 +1572,7 @@ Bookmark for navigation inside file
   :hook
   (html-mode . evil-matchit-mode)
   (ng2-html-mode . evil-matchit-mode)
+  (web-mode . evil-matchit-mode)
   :init
   (evilmi-load-plugin-rules '(ng2-html-mode) '(html)))
 #+END_SRC
@@ -2586,7 +2523,12 @@ This function also stolen from doom emacs. It provide functionality for automati
 Display buffer of quick note always at bottom
 #+BEGIN_SRC emacs-lisp 
 (add-to-list 'display-buffer-alist '("^\\*scratch\\*$" (display-buffer-below-selected) (window-height . 0.4)))
-(add-to-list 'display-buffer-alist '("^\\*quicknote\\*$" (display-buffer-below-selected) (window-height . 0.4)))
+(add-to-list 'display-buffer-alist '("^\\*quicknote\\*$"
+                                     (display-buffer-in-side-window)
+                                     (inhibit-same-window . t)
+                                     (side . bottom)
+                                     (window-width . full)
+                                     (window-height . 0.3)))
 #+END_SRC
 
 *** Switch to scratch buffer
@@ -2594,15 +2536,19 @@ Display buffer of quick note always at bottom
 (defun @switch-to-scratch ()
   "Switch to scratch buffer"
   (interactive)
+  (persistent-scratch-autosave-mode -1)
   (let* ((buffer-name "*quicknote*")
          (buffer-exist (get-buffer buffer-name))
          (buffer (get-buffer-create buffer-name)))
+    
     (with-current-buffer buffer
+      (persistent-scratch-autosave-mode -1)
       (pop-to-buffer buffer)
-      (org-mode)
       (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
         (persistent-scratch-restore))
-      (evil-insert-state))))
+      (org-mode)
+      (evil-insert-state)
+      (persistent-scratch-autosave-mode))))
 #+END_SRC
 
 *** Persistent scratch
@@ -2610,48 +2556,16 @@ Override function for autosaving
 #+BEGIN_SRC emacs-lisp 
 (defun @save-scratch-buffer-p ()
   "Return non-nil if the current buffer is the scratch buffer."
-  (and (get-buffer "*quicknote*") (string= (buffer-name) "*quicknote*")))
+  (and
+   (get-buffer "*quicknote*")
+   (string= (buffer-name) "*quicknote*")
+   (with-current-buffer "*quicknote*"
+     (not (equal (buffer-string) "")))))
 
 (setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
-
-TODO: delete
-#+BEGIN_SRC emacs-lisp :tangle no
-(defun @persistent-scratch-save (&optional file)
-  "Save the current state of scratch buffers.
-When FILE is non-nil, the state is saved to FILE; when nil or when called
-interactively, the state is saved to `persistent-scratch-save-file'.
-What state exactly is saved is determined by `persistent-scratch-what-to-save'.
-
-When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
-`persistent-scratch-save-file' is stored in that directory, with a name
-representing the time of the last `persistent-scratch-new-backup' call."
-  (interactive)
-  (let* ((actual-file (or file persistent-scratch-save-file))
-         (tmp-file (concat actual-file ".new"))
-         (old-umask (default-file-modes))
-         (saved-state (persistent-scratch--save-buffers-state)))
-
-    (message "saved-state: %s" (type-of (cdr saved-state)))
-    (when (cdr saved-state)
-            (set-default-file-modes #o600)
-            (unwind-protect
-                (let ((coding-system-for-write 'utf-8-unix))
-                  (write-region (cdr saved-state) nil tmp-file nil 0))
-              (set-default-file-modes old-umask))
-            (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
-            (rename-file tmp-file actual-file t)
-            (when (called-interactively-p 'interactive)
-              (message "Wrote persistent-scratch file %s" actual-file))))
-  (unless file
-    (persistent-scratch--update-backup)
-    (persistent-scratch--cleanup-backups)))
-
-(advice-add 'persistent-scratch-save :override #'@persistent-scratch-save)
-#+END_SRC
-
 
 #+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
@@ -2706,7 +2620,21 @@ representing the time of the last `persistent-scratch-new-backup' call."
   ;; either locally or globally. `expand-abbrev' is bound to C-x '.
   ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
   ;; (global-tempel-abbrev-mode)
-)
+  :config
+  ;; FIX https://github.com/minad/tempel/issues/34#issuecomment-1035915789
+  (defun tempel--disable (&optional st)
+    "Disable last template."
+    (let* ((region-start (tempel--beginning))
+	         (region-end (tempel--end)))
+      (when-let (st (pop tempel--active))
+        (lsp-on-change region-start region-end (- region-end region-start))
+        (mapc #'delete-overlay (car st))
+        (unless tempel--active
+	        (setq minor-mode-overriding-map-alist
+		            (delq (assq-delete-all 'tempel--active minor-mode-overriding-map-alist)
+			                minor-mode-overriding-map-alist))))))
+
+  (setq tempel-path "~/pure-emacs/templates"))
 #+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp
@@ -2714,7 +2642,11 @@ representing the time of the last `persistent-scratch-new-backup' call."
 (setq-default tab-width 2)
 #+END_SRC
 ** Formatters
-*** Format all mode. Common formatter
+*** HOLD Format all mode. Common formatter
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
 Function for preventing better jump breaks
 #+BEGIN_SRC emacs-lisp 
 (defun format-all-buffer--no-bufferjump ()
@@ -2736,6 +2668,10 @@ Function for preventing better jump breaks
 (use-package format-all
   :defer t
   :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode web-mode scss-mode css-mode) . format-all-mode)
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "\\p" 'format-all-buffer--no-bufferjump)
   :config
   (dolist (lang '("TypeScript" "TSX" "HTML" "CSS" "SCSS" "Vue" "JavaScript"))
     (add-to-list 'format-all-default-formatters (cons lang '(prettierd))))
@@ -2769,6 +2705,19 @@ Function for preventing better jump breaks
   (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
   :init
   (global-prettier-mode))
+#+END_SRC
+*** apheleia
+Another all formtter. Based on prettier and black
+
+#+BEGIN_SRC emacs-lisp
+(use-package apheleia
+  :hook (prog-mode . apheleia-global-mode)
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "\\p" 'apheleia-format-buffer)
+  :config
+  (add-to-list 'apheleia-mode-alist '(emacs-lisp-mode . lisp-indent)))
 #+END_SRC
 
 ** HOLD Flymake
@@ -2815,6 +2764,9 @@ Function for preventing better jump breaks
   :init
   (global-flycheck-mode)
   :config
+  ;; Change flycheck errors on save
+  (setq flycheck-check-syntax-automatically '(mode-enabled save idle-change new-line))
+
   (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
   (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
   (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
@@ -2911,7 +2863,6 @@ This need for correct highlighting of incorrect spell-fu faces."
           python-ts-mode
           css-ts-mode) . init-tree-sitter-hl-mode)
   (go-ts-mode . (lambda () (setq-local tab-width 2)))
-  (go-ts-mode . format-all-mode)
   :init
   (setq treesit-language-source-alist
         '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
@@ -2992,7 +2943,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   :config
   (setq company-idle-delay 0.2)
   (setq company-quick-access-modifier 'super)
-
   (setq company-show-quick-access t)
   (setq company-minimum-prefix-length 1)
   (setq company-dabbrev-char-regexp "[A-z:-]")
@@ -3759,8 +3709,8 @@ TODO: check copilot + blamer
   (html-mode . sgml-electric-tag-pair-mode)
   (ng2-html-mode . sgml-electric-tag-pair-mode)
   :config
-  (setq electric-pair-preserve-balance nil
-        electric-pair-delete-adjacent-pairs nil
+  (setq electric-pair-preserve-balance t
+        electric-pair-delete-adjacent-pairs t
         electric-pair-skip-whitespace nil
         electric-pair-open-newline-between-pairs t)
   (electric-pair-mode))
@@ -3783,14 +3733,42 @@ Correct position after blamer flicker
 (advice-add 'electric-pair--insert :after #'@electric-pair--verify-cursor-position)
 #+END_SRC
 
-*** Autopair mode
+*** HOLD Autopair mode
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 NOTE: this package is used instead of electric pair mode
 cause its simple, and it works in all cases.
-#+BEGIN_SRC emacs-lisp :tangle no
+Deprecated
+#+BEGIN_SRC emacs-lisp
 (use-package autopair
   :defer 5
   :config
   (autopair-global-mode))
+#+END_SRC
+*** HOLD Smartparent
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp
+(use-package smartparens
+  :config
+  (require 'smartparens-config)
+  (smartparens-global-mode t)
+  (show-smartparens-global-mode t))
+#+END_SRC
+
+Autoindent between brackets
+#+BEGIN_SRC emacs-lisp
+(defun indent-between-pair (&rest _ignored)
+  (newline)
+  (indent-according-to-mode)
+  (forward-line -1)
+  (indent-according-to-mode))
+
+(sp-local-pair 'prog-mode "{" nil :post-handlers '((indent-between-pair "RET")))
+(sp-local-pair 'prog-mode "[" nil :post-handlers '((indent-between-pair "RET")))
+(sp-local-pair 'prog-mode "(" nil :post-handlers '((indent-between-pair "RET")))
 #+END_SRC
 ** Turbo log. Quick log inserting
 #+BEGIN_SRC emacs-lisp
@@ -3813,21 +3791,109 @@ cause its simple, and it works in all cases.
   (turbo-log-configure
    :modes (typescript-ts-mode tsx-ts-mode typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
-   :post-insert-hooks (prettier-prettify lsp)
+   :post-insert-hooks (apheleia-format-buffer lsp)
 ;; :msg-format-template "'🦄: %s'"
    :msg-format-template "'✎: %s'"))
 #+END_SRC
 
-#+RESULTS:
-: turbo-log-paste-as-logger-immediately
 
 *** Automatic rename html/xml tags
-#+BEGIN_SRC emacs-lisp
+Patch for correct flycheck run, see 
+https://github.com/jcs-elpa/auto-rename-tag/issues/9#issuecomment-630905999
+
+#+NAME: auto-rename-tag-patch
+#+BEGIN_SRC emacs-lisp :tangle no
+(defvar auto-rename-tag--after-change-active nil)
+
+(defun auto-rename-tag--before-change-functions (_begin _end)
+  "Do stuff before buffer is changed.
+BEGIN : beginning of the changes.
+END : end of the changes."
+  (unless auto-rename-tag--after-change-active
+
+    ;; Reset record.
+    (setq auto-rename-tag--record-prev-word "")
+    ;; Reset flag.
+    (setq auto-rename-tag--pre-command-actived nil)
+
+    (when (and (not undo-in-progress)
+               (auto-rename-tag--inside-tag-p)
+               (not (auto-rename-tag--self-tag-p)))
+      (save-excursion
+        ;; Set active flag.
+        (setq auto-rename-tag--pre-command-actived t)
+
+        (setq auto-rename-tag--record-prev-word (auto-rename-tag--get-tag-name-at-point))
+
+        (when (string= auto-rename-tag--record-prev-word "/")
+          (setq auto-rename-tag--record-prev-word ""))
+
+        ;; Ensure `auto-rename-tag--record-prev-word' is something other than nil.
+        (unless auto-rename-tag--record-prev-word
+          (setq auto-rename-tag--record-prev-word ""))))))
+
+(defun auto-rename-tag--after-change-function (_begin _end _length)
+  "Do stuff after buffer is changed.
+BEGIN : beginning of the changes.
+END : end of the changes.
+LENGTH : deletion length."
+  (when auto-rename-tag--pre-command-actived
+    (run-at-time 0 nil (lambda () 
+                         (save-excursion
+                           (let ((is-end-tag nil)
+                                 (current-word "") (pair-tag-word "")
+                                 (auto-rename-tag--after-change-active nil))
+                             ;; Goto the first character inside the tag.
+                             (auto-rename-tag--goto-the-start-of-tag-name)
+
+                             (setq is-end-tag (auto-rename-tag--is-closing-tag-p))
+
+                             (setq current-word (auto-rename-tag--get-tag-name-at-point))
+
+                             (unless (string= current-word auto-rename-tag--record-prev-word)
+                               ;; NOTE: Is closing tag.
+                               (when is-end-tag
+                                 (auto-rename-tag--resolve-nested 'backward)
+
+                                 ;; Get the tag name and ready to be compare.
+                                 (setq pair-tag-word (auto-rename-tag--get-tag-name-at-point))
+
+                                 ;; Ensure `pair-tag-word' is something other than nil.
+                                 (unless pair-tag-word (setq pair-tag-word ""))
+
+                                 (when (string= auto-rename-tag--record-prev-word pair-tag-word)
+                                   ;; Delete the pair word.
+                                   (unless (string= pair-tag-word "")
+                                     (auto-rename-tag--delete-tag-name))
+                                   ;; Insert new word.
+                                   (insert current-word)))
+
+                               ;; NOTE: Is opening tag.
+                               (unless is-end-tag
+                                 (auto-rename-tag--resolve-nested 'forward)
+
+                                 (setq is-end-tag (auto-rename-tag--is-closing-tag-p))
+
+                                 ;; Get the tag name and ready to be compare.
+                                 (setq pair-tag-word (auto-rename-tag--get-tag-name-at-point))
+
+                                 ;; Ensure `pair-tag-word' is something other than nil.
+                                 (unless pair-tag-word (setq pair-tag-word ""))
+
+                                 (when (string= auto-rename-tag--record-prev-word pair-tag-word)
+                                   ;; Delete the pair word.
+                                   (unless (string= pair-tag-word "")
+                                     (auto-rename-tag--delete-tag-name))
+                                   ;; Insert new word.
+                                   (insert current-word))))))))))
+#+END_SRC
+#+BEGIN_SRC emacs-lisp :noweb yes
 (use-package auto-rename-tag
   :defer t
   :hook ((html-mode ng2-html-mode-hook vue-mode web-mode) . auto-rename-tag-mode)
   :config
-  (auto-rename-tag-mode 1))
+  (auto-rename-tag-mode 1)
+  <<auto-rename-tag-patch>>)
 #+END_SRC
 ** Case converter
 Allow to transform PASCAL_CASE -> camelCase -> snake_case
@@ -3886,6 +3952,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
   :hook
   (magit-process-mode . compilation-minor-mode)
   :config
+  (setq magit-process-timestamp-format "%H:%M")
   (setq magit-display-buffer-function #'magit-display-buffer-fullcolumn-most-v1)
   (define-key transient-map        "q" 'transient-quit-one)
   (define-key transient-edit-map   "q" 'transient-quit-one)
@@ -4156,8 +4223,7 @@ Improved styles for git changes
 *** Main mode
 #+BEGIN_SRC emacs-lisp
 (use-package clojure-mode
-  :hook ((clojure-mode . format-all-mode)
-         (clojure-mode . paren-face-mode))
+  :hook ((clojure-mode . paren-face-mode))
   :defer t)
 
 #+END_SRC
@@ -4203,8 +4269,8 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package ng2-mode
   :after typescript-mode
-  ;; :hook
-  ;; (ng2-html-mode . web-mode)
+  :hook
+  (ng2-html-mode . web-mode)
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
@@ -4332,7 +4398,6 @@ Function for open repl in the current buffer
 #+BEGIN_SRC emacs-lisp
 (use-package python-mode
   :defer t
-  :hook (python-mode . format-all-mode)
   :config
   (setq python-indent-level 4)
   (add-hook 'python-mode-hook
