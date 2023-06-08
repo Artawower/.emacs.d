@@ -2587,6 +2587,37 @@ Display buffer of quick note always at bottom
       (persistent-scratch-autosave-mode))))
 #+END_SRC
 
+*** Persistent scratch old
+Override function for autosaving
+#+BEGIN_SRC emacs-lisp 
+(defun @save-scratch-buffer-p ()
+  "Return non-nil if the current buffer is the scratch buffer."
+  (and
+   (get-buffer "*quicknote*")
+   (string= (buffer-name) "*quicknote*")
+   (with-current-buffer "*quicknote*"
+     (not (equal (buffer-string) "")))))
+
+(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
+#+END_SRC
+
+Override autosave function. What is the sense save buffer whic doesn't exist??? 
+
+*** Persistent scratch (new)
+Override function for autosaving
+#+BEGIN_SRC emacs-lisp :tangle no
+(defun @save-scratch-buffer-p ()
+  "Return non-nil if the current buffer is the scratch buffer."
+  (and
+   (get-buffer "*quicknote*")
+   (string= (buffer-name) "*quicknote*")
+   (with-current-buffer "*quicknote*"
+     (not (equal (buffer-string) "")))))
+
+(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
+#+END_SRC
+
+Override autosave function. What is the sense save buffer whic doesn't exist??? 
 *** Persistent scratch
 Override function for autosaving
 #+BEGIN_SRC emacs-lisp 
@@ -2603,8 +2634,44 @@ Override function for autosaving
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
+#+BEGIN_SRC emacs-lisp
+(defun @persistent-scratch-save (&optional file)
+  "Save the current state of scratch buffers.
+When FILE is non-nil, the state is saved to FILE; when nil or when called
+interactively, the state is saved to `persistent-scratch-save-file'.
+What state exactly is saved is determined by `persistent-scratch-what-to-save'.
+
+When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
+`persistent-scratch-save-file' is stored in that directory, with a name
+representing the time of the last `persistent-scratch-new-backup' call."
+  (interactive)
+  (let* ((actual-file (or file persistent-scratch-save-file))
+         (tmp-file (concat actual-file ".new"))
+         (old-umask (default-file-modes))
+         (saved-state (persistent-scratch--save-buffers-state)))
+
+    (message "saved-state: %s" (type-of (cdr saved-state)))
+    (when (cdr saved-state)
+            (set-default-file-modes #o600)
+            (unwind-protect
+                (let ((coding-system-for-write 'utf-8-unix))
+                  (write-region (cdr saved-state) nil tmp-file nil 0))
+              (set-default-file-modes old-umask))
+            (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
+            (rename-file tmp-file actual-file t)
+            (when (called-interactively-p 'interactive)
+              (message "Wrote persistent-scratch file %s" actual-file))))
+  (unless file
+    (persistent-scratch--update-backup)
+    (persistent-scratch--cleanup-backups)))
+
+(advice-add 'persistent-scratch-save :override #'@persistent-scratch-save)
+#+END_SRC
+
+
 #+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
+ :elpaca (persistent-scratch :type git :host github :repo "Fanael/persistent-scratch" :rev "f9c1361ad69073af8133174f9e37b594df9be361")
  :general
  (:states '(normal visual)
           :keymaps 'override
