@@ -4367,9 +4367,11 @@ Improved styles for git changes
 ** Js
 *** Main mode
 #+BEGIN_SRC emacs-lisp
-  (use-package js2-mode
-    :defer t
-    :hook (js2-mode . js2-highlight-unused-variables-mode))
+(use-package js2-mode
+  :defer t
+  :hook (js2-mode . js2-highlight-unused-variables-mode)
+  :config
+  (setq js-indent-level 2))
 #+END_SRC
 *** NPM
 #+BEGIN_SRC emacs-lisp
