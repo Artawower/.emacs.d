@@ -661,6 +661,10 @@ Base function
   (interactive)
   (@insert--todo-by-current-git-branch "DEBUG"))
 
+(defun @insert-note-by-current-git-branch ()
+  "Insert note for current git branch."
+  (interactive)
+  (@insert--todo-by-current-git-branch "NOTE"))
 #+END_SRC
 
 #+RESULTS:
@@ -1331,6 +1335,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "ox" 'execute-extended-command
  "ti" '@insert-todo-by-current-git-branch
  "td" '@insert-debug-by-current-git-branch
+ "tn" '@insert-note-by-current-git-branch
 
  ;; ;; Presentation
  ;; ("SPC t b" . presentation-mode)
