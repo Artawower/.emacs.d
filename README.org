@@ -1,4 +1,4 @@
-#+PROPERTY: header-args :results silent
++PROPERTY: header-args :results silent
 #+STARTUP: content
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
@@ -704,6 +704,26 @@ For correct work you need to install sass-lint-auto-fix
 #+END_SRC
 ** TODO open finder here!
 Need to steal from doom emacs!
+** Always open message Messages in the vertical column
+#+BEGIN_SRC emacs-lisp
+(defun @open-messages ()
+  "Open *Messages* buffer."
+  (interactive)
+  (if (one-window-p)
+      (split-window-horizontally))
+  (pop-to-buffer "*Messages*"))
+
+(defun @open-clear-messages ()
+  "Open *Messages* buffer and clear it."
+  (interactive)
+  (pop-to-buffer "*Messages*")
+  (if (one-window-p)
+      (split-window-horizontally))
+  (read-only-mode -1)
+  (erase-buffer))
+#+END_SRC
+
+
 ** LSP
 *** Go to definition
 #+BEGIN_SRC emacs-lisp 
@@ -1320,11 +1340,8 @@ Override function for auto-dark mode for applying function for nano theme changi
  "tr" 'read-only-mode
  "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
  "hm" 'describe-mode
- "om" (lambda () (interactive) (pop-to-buffer "*Messages*"))
- "oM" (lambda () (interactive)
-        (pop-to-buffer "*Messages*")
-        (read-only-mode -1)
-        (erase-buffer))
+ "om" '@open-messages
+ "oM" '@open-clear-messages
  "mox" 'execute-extended-command
  "bI" 'ibuffer
  "vtt" 'my-toggle-transparency
@@ -1564,7 +1581,7 @@ Bookmark for navigation inside file
             "C-f" 'avy-goto-char)
   :custom
   (avy-single-candidate-jump t)
-  (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?g ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
+  (avy-keys '(?q ?w ?e ?r ?t ?y ?u ?i ?o ?p ?a ?s ?d ?f ?h ?j ?k ?l ?z ?x ?c ?v ?b ?n ?m)))
 #+END_SRC
 
 #+RESULTS:
@@ -1970,6 +1987,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package vterm-toggle
   :defer t
+  :commands (vterm-toggle-show)
   :general (:states '(normal visual)
                     :keymaps 'override
                     "SPC oh" (lambda () (interactive)
@@ -2578,110 +2596,76 @@ Display buffer of quick note always at bottom
          (buffer (get-buffer-create buffer-name)))
     
     (with-current-buffer buffer
-      (persistent-scratch-autosave-mode -1)
+      ;; (persistent-scratch-autosave-mode -1)
       (pop-to-buffer buffer)
-      (when (equal (buffer-substring-no-properties (point-min) (point-max)) "")
-        (persistent-scratch-restore))
-      (org-mode)
+      (when (equal (s-trim (buffer-substring-no-properties (point-min) (point-max))) "")
+        (message "Persistent scratch restored")
+        (persistent-scratch-setup-default))
+      ;; (persistent-scratch-restore))
+      ;; (persistent-scratch-restore)
+      (unless (eq major-mode 'org-mode)
+        (org-mode))
       (evil-insert-state)
-      (persistent-scratch-autosave-mode))))
+      ;; (persistent-scratch-autosave-mode)
+      )))
 #+END_SRC
 
-*** Persistent scratch old
-Override function for autosaving
-#+BEGIN_SRC emacs-lisp 
-(defun @save-scratch-buffer-p ()
-  "Return non-nil if the current buffer is the scratch buffer."
-  (and
-   (get-buffer "*quicknote*")
-   (string= (buffer-name) "*quicknote*")
-   (with-current-buffer "*quicknote*"
-     (not (equal (buffer-string) "")))))
-
-(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
-#+END_SRC
-
-Override autosave function. What is the sense save buffer whic doesn't exist??? 
-
-*** Persistent scratch (new)
-Override function for autosaving
-#+BEGIN_SRC emacs-lisp :tangle no
-(defun @save-scratch-buffer-p ()
-  "Return non-nil if the current buffer is the scratch buffer."
-  (and
-   (get-buffer "*quicknote*")
-   (string= (buffer-name) "*quicknote*")
-   (with-current-buffer "*quicknote*"
-     (not (equal (buffer-string) "")))))
-
-(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
-#+END_SRC
-
-Override autosave function. What is the sense save buffer whic doesn't exist??? 
 *** Persistent scratch
 Override function for autosaving
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
+(defvar @persistent-scratch-last-content nil)
+
 (defun @save-scratch-buffer-p ()
   "Return non-nil if the current buffer is the scratch buffer."
-  (and
-   (get-buffer "*quicknote*")
-   (string= (buffer-name) "*quicknote*")
-   (with-current-buffer "*quicknote*"
-     (not (equal (buffer-string) "")))))
+
+  ;; (when (string= (buffer-name) "*quicknote*")
+  ;;   (message "Scratch buffer content: %s" (with-current-buffer (get-buffer "*quicknote*")
+  ;;                                           (buffer-string))))
+  
+  (when-let* ((current-buffer-scratch-p (string= (buffer-name) "*quicknote*"))
+              (scratch-buffer (get-buffer "*quicknote*"))
+              (scratch-buffer-content (with-current-buffer scratch-buffer
+                                        (buffer-string)))
+              (scratch-buffer-content-not-empty (not (equal scratch-buffer-content ""))))
+    ;; (scratch-buffer-content-changed (not (equal scratch-buffer-content @persistent-scratch-last-content)))
+    ;; (scratch-string-not-nil (not (equal scratch-buffer-content "nil"))))
+
+    ;; (setq @persistent-scratch-last-content scratch-buffer-content)
+    ;; (message "buffer name %s, buffer content %s, content true? %s"
+    ;;          (get-buffer "*quicknote*")
+    ;;          (with-current-buffer "*quicknote*"
+    ;;            (buffer-string))
+    ;;          (with-current-buffer "*quicknote*"
+    ;;            (not (equal (buffer-string) ""))))
+    )
+  (string= (buffer-name) "*quicknote*")
+  ;; t)
+  )
 
 (setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
 
+#+RESULTS:
+: @save-scratch-buffer-p
+
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
-
-#+BEGIN_SRC emacs-lisp
-(defun @persistent-scratch-save (&optional file)
-  "Save the current state of scratch buffers.
-When FILE is non-nil, the state is saved to FILE; when nil or when called
-interactively, the state is saved to `persistent-scratch-save-file'.
-What state exactly is saved is determined by `persistent-scratch-what-to-save'.
-
-When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
-`persistent-scratch-save-file' is stored in that directory, with a name
-representing the time of the last `persistent-scratch-new-backup' call."
-  (interactive)
-  (let* ((actual-file (or file persistent-scratch-save-file))
-         (tmp-file (concat actual-file ".new"))
-         (old-umask (default-file-modes))
-         (saved-state (persistent-scratch--save-buffers-state)))
-
-    (message "saved-state: %s" (type-of (cdr saved-state)))
-    (when (cdr saved-state)
-            (set-default-file-modes #o600)
-            (unwind-protect
-                (let ((coding-system-for-write 'utf-8-unix))
-                  (write-region (cdr saved-state) nil tmp-file nil 0))
-              (set-default-file-modes old-umask))
-            (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
-            (rename-file tmp-file actual-file t)
-            (when (called-interactively-p 'interactive)
-              (message "Wrote persistent-scratch file %s" actual-file))))
-  (unless file
-    (persistent-scratch--update-backup)
-    (persistent-scratch--cleanup-backups)))
-
-(advice-add 'persistent-scratch-save :override #'@persistent-scratch-save)
-#+END_SRC
-
 
 #+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
- :elpaca (persistent-scratch :type git :host github :repo "Fanael/persistent-scratch" :rev "f9c1361ad69073af8133174f9e37b594df9be361")
+ :demand t
  :general
  (:states '(normal visual)
           :keymaps 'override
           "SPC x" '@switch-to-scratch)
   :config
+  (setq persistent-scratch-backup-directory "~/pure-emacs/backups")
   (persistent-scratch-autosave-mode)
   (setq persistent-scratch-autosave-interval 5)
-  (persistent-scratch-setup-default)
 )
 #+END_SRC
+
+Override autosave function. What is the sense save buffer whic doesn't exist??? 
+
 
 * Programming
 ** HOLD Snippets
@@ -2698,9 +2682,14 @@ representing the time of the last `persistent-scratch-new-backup' call."
 ** TODO Tempel
 #+BEGIN_SRC emacs-lisp
 (use-package tempel
-  :bind (("s-y" . tempel-complete) ;; Alternative tempel-expand
-         ("s-Y" . tempel-insert)
-         ("s-\\" . tempel-done))
+  :general
+  (:keymaps 'override
+            :states '(normal visual insert)
+            "s-\\" 'tempel-done)
+  (:keymaps 'override
+            :states '(insert)
+            "s-y" 'tempel-complete
+            "s-Y" 'tempel-insert)
 
   :init
   ;; Setup completion at point
@@ -2737,7 +2726,7 @@ representing the time of the last `persistent-scratch-new-backup' call."
 		            (delq (assq-delete-all 'tempel--active minor-mode-overriding-map-alist)
 			                minor-mode-overriding-map-alist))))))
 
-  (setq tempel-path "~/pure-emacs/templates"))
+  (setq tempel-path '("~/pure-emacs/templates/common" "~/pure-emacs/templates/readme" "~/pure-emacs/templates/org-mode")))
 #+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp
@@ -2799,18 +2788,15 @@ Function for preventing better jump breaks
 
 #+RESULTS:
 
-*** HOLD Prettier
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+*** Prettier
 #+BEGIN_SRC emacs-lisp 
 (use-package prettier
   :bind (:map evil-normal-state-map
               ("SPC fp" . prettier-prettify))
   :config
-  (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
-  :init
-  (global-prettier-mode))
+  (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts))))
+  ;; :init
+  ;; (global-prettier-mode))
 #+END_SRC
 *** apheleia
 Another all formtter. Based on prettier and black
@@ -3523,7 +3509,22 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
 *** Buffer position
 #+BEGIN_SRC emacs-lisp 
 (add-to-list 'display-buffer-alist '("^\\*compilation\\*$" . (display-buffer-at-bottom)))
+
+(defun @display-buffer-other-vertical (buffer &optional alist)
+  "Display BUFFER in another window. If only one window, split vertical before."
+(message "is one window? %s " (one-window-p))
+    (if (one-window-p)
+        (split-window-horizontally))
+  (display-buffer-use-some-window buffer alist))
+  
+
+ (add-to-list 'display-buffer-alist
+      '(("\\*Messages\\*"
+         (display-buffer-reuse-window  display-buffer-in-side-window @display-buffer-other-vertical display-buffer-use-some-window)
+         (side . right))))
+
 #+END_SRC
+
 
 *** Setup compilation errors
 #+BEGIN_SRC emacs-lisp
@@ -3687,6 +3688,7 @@ Function for deleting local terminals
 ** Codemetrics
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package codemetrics
+  :hook (typescript-mode . codemetrics-mode)
   :elpaca (:host github :repo "jcs-elpa/codemetrics")
   :defer t)
 #+END_SRC
@@ -4005,6 +4007,8 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 #+BEGIN_SRC emacs-lisp 
 (use-package magit
   :defer t
+  :commands
+  (magit-get-current-branch)
   :general
   (:keymaps 'magit-mode-map
             :states '(normal visual)
@@ -4611,7 +4615,7 @@ I don't remember why I need this code. Currently commented.
   :defer t
   :mode
   ("\\.vue\\'" . web-mode)
-  ("\\.tsx\\'" . typescript-tsx-mode)
+  ;; ("\\.tsx\\'" . typescript-tsx-mode)
   ("\\.jsx\\'" . web-mode)
   ("\\.astro\\'" . web-mode)
   :config
@@ -4663,9 +4667,11 @@ I don't remember why I need this code. Currently commented.
 
 ** Json mode
 #+BEGIN_SRC emacs-lisp
-  (use-package json-mode
-    :defer 5
-    :hook (json-mode . format-all-mode))
+(use-package json-mode
+  :defer 5
+  :hook (json-mode . format-all-mode)
+  :config
+  (setq js-indent-level 2))
 #+END_SRC
 ** Flutter
 *** Dart
@@ -4706,11 +4712,19 @@ I don't remember why I need this code. Currently commented.
 #+END_SRC
 
 *** Docker
+**** Dockerfile mode
 #+BEGIN_SRC emacs-lisp
 (use-package dockerfile-mode
   :defer t
   :config
   (add-hook 'compilation-filter-hook #'my-remove-cr -90))
+#+END_SRC
+**** Docker manager
+#+BEGIN_SRC emacs-lisp
+(use-package docker
+  :defer t
+  :ensure t
+  :bind ("C-c d" . docker))
 #+END_SRC
 
 *** Jenkins
@@ -5092,16 +5106,22 @@ One of the best Zettelkasten implementation
 #+RESULTS:
 : t
 
-** Roam publisher
+** Web roam. Roam publisher for second bran project
 My own package for publish roam files
-#+BEGIN_SRC emacs-lisp :tangle no
+#+BEGIN_SRC emacs-lisp
 (use-package web-roam
   :elpaca (:host github :repo "Artawower/web-roam.el")
   :general (:states '(normal visual)
                     :keymaps 'org-mode-map
-                    "SPC np" 'web-roam-publish-file))
+                    "SPC np" 'web-roam-publish-file
+                    "SPC nP" 'web-roam-publish-all)
+  :custom
+  (web-roam-debug-p t))
 
 #+END_SRC
+
+#+RESULTS:
+
 ** Org functions for pretty inserting
 #+BEGIN_SRC emacs-lisp
   (use-package org-insert
@@ -5940,9 +5960,6 @@ dependency
 
 
 
-#+BEGIN_SRC emacs-lisp :results silent
-(require 'tempel)
-#+END_SRC
 
 
 
