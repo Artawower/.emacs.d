@@ -1,0 +1,44 @@
+js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
+
+(l "console.log(" p ")")
+(console.date "console.log(`[${new Date().toString()}] " p "`)")
+(console.full "console.log(`"
+  (format "✎: [line %s][%s]: " (line-number-at-pos) (buffer-name)) 
+  p " ${" r "}"
+  "`)"
+)
+
+(console.full-object "console.log(`"
+  (format "✎: [%s]" (buffer-name)) 
+  "[${new Date().toString()}] "
+  p "`" " , " r ")"
+)
+
+(logger.info "logger.info(`"
+  (format "✎: [%s]" (buffer-name)) 
+  "[${new Date().toString()}] "
+  p " %o`" " , " r ")"
+)
+
+
+(console.full-line-object "console.log(`"
+  (format "✎: [line %s][%s]" (line-number-at-pos) (buffer-name)) 
+  "[${new Date().toString()}]: "
+  p "`" " , " r ")"
+)
+
+(console.log > "console.log('"
+  (format "[line %s]: " (line-number-at-pos)) "'" ", "
+  r
+  ")")
+
+(private-class-method "private " (p "name") "(" (p "arguments") "): " (p "type") " {" n> p n> "}")
+(private-readonly-dependency "private readonly " (p "field") ": " (p "type"))
+(private-readonly-variable "private readonly " (p "field") " = " (p "value"))
+(protected-readonly-dependency "protected readonly " (p "field") " = " (p "value"))
+(private-method-sharp "#" (p "name") "(" (p "arguments") "): " (p "type") "{" n> p n> "}")
+(public-method "public " (p "name") "(" (p "arguments") "): " (p "type") "{" n> p> n> "}")
+(public-readonly "public readonly " (p "field") ": " (p "type"))
+(public-static-readonly "public static readonly " (p "field") " = " (p "value"))
+
+

@@ -1,0 +1,21 @@
+org-mode
+
+(bash-script "#+BEGIN_SRC bash" n> p n "#+END_SRC")
+(bash-tangle "#+BEGIN_SRC bash :tangle " (p "file" file) n> p n "#+END_SRC")
+(b "#+BEGIN_SRC" n> p "#+END_SRC")
+(p "#+BEGIN_SRC python" n> p "#+END_SRC")
+(js "#+BEGIN_SRC js" n> p n "#+END_SRC")
+(ts "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
+(emacs-lisp "#+BEGIN_SRC emacs-lisp" n> p n "#+END_SRC")
+(h ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
+(:header-args: ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
+(example "#+BEGIN_EXAMPLE" n> p n "#+END_EXAMPLE")
+(quote "#+BEGIN_QUOTE" n> p n "#+END_QUOTE")
+
+(note ":PROPERTIES:" n ":ID: " (p "id" id) n ":END:" n n
+"#+TITLE: " (p "title") n
+"#+DESCRIPTION: " (p "description") n
+"#+FILETAGS: " (p "tags") n
+"#+ID: " (s id) n)
+
+(s "#+BEGIN_SRC scss" n> p n "#+END_SRC")

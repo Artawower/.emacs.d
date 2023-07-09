@@ -1,0 +1,21 @@
+org-mode
+
+(contribution-guide
+ ":PROPERTIES:" n
+ ":ID: " (p "repo id" repo-id) "-contribution" n
+ ":END:" n n
+
+ "#+TITLE: Contribution Guide" n n
+ "* Why?"
+ "Why are these rules so strict? Well, let me explain. Most of the time, I work on a project alone. " n 
+
+ "This means that I have to know every part of this project, I have to be well-versed. I prefer to work with really simple constructs and elaborate abstractions." n
+
+ "In my opinion, every part of the code should be as simple as possible. " n
+
+ "The rules below are only intended to simplify this process. Some of them are not new, you can find them in very old books, some of them look like crap, but for me it's important to have a clear project structure" n
+
+ "* Styleguides" n n
+ "- "
+ "- ~Switch case~ - Using switch case construction is not allowed. Use ~command~ principle instead" n n
+ )

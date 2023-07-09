@@ -2726,7 +2726,11 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 		            (delq (assq-delete-all 'tempel--active minor-mode-overriding-map-alist)
 			                minor-mode-overriding-map-alist))))))
 
-  (setq tempel-path '("~/pure-emacs/templates/common" "~/pure-emacs/templates/readme" "~/pure-emacs/templates/org-mode")))
+  (setq tempel-path
+        '("~/pure-emacs/templates/common"
+          "~/pure-emacs/templates/readme"
+          "~/pure-emacs/templates/org-mode"
+          "~/pure-emacs/templates/emacs-lisp")))
 #+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp

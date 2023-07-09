@@ -3,4 +3,6 @@
 !README.org
 !init.el
 !vendor/
+!templates/
+!templates/*
 !.gitignore
