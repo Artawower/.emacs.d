@@ -14,7 +14,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 ** TODO Modern package manager.
 *** Elpaca package.
 #+BEGIN_SRC emacs-lisp :results silent
-(defvar elpaca-installer-version 0.4)
+(defvar elpaca-installer-version 0.5)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
 (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
@@ -716,9 +716,9 @@ Need to steal from doom emacs!
 (defun @open-clear-messages ()
   "Open *Messages* buffer and clear it."
   (interactive)
-  (pop-to-buffer "*Messages*")
   (if (one-window-p)
       (split-window-horizontally))
+  (pop-to-buffer "*Messages*")
   (read-only-mode -1)
   (erase-buffer))
 #+END_SRC
@@ -2726,11 +2726,13 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 		            (delq (assq-delete-all 'tempel--active minor-mode-overriding-map-alist)
 			                minor-mode-overriding-map-alist))))))
 
+  ;; TODO: main need to get all from directory.
   (setq tempel-path
         '("~/pure-emacs/templates/common"
           "~/pure-emacs/templates/readme"
           "~/pure-emacs/templates/org-mode"
-          "~/pure-emacs/templates/emacs-lisp")))
+          "~/pure-emacs/templates/emacs-lisp"
+          "~/pure-emacs/templates/golang")))
 #+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp
@@ -4142,7 +4144,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
   :defer 5
-  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "feature/user-avatar-preview")
+  :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "enhancement/async-cmd")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))

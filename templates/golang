@@ -1,0 +1,16 @@
+go-mode
+
+(swagger-doc
+ "// " (p "method name") " godoc" n
+ "// @Summary      " (p "summary") n
+ "// @Description  " (p "description") n
+ "// @Tags         " (p "tags") n
+ "// @Accept       json" n
+ "// @Produce      json" n
+ "// @Param        id   path      string  true  \"" (p "param description") "\"" n
+ "// @Success      200  {object}  " (p "return type") n
+ "// @Failure      400  {object}  " (p "HttpError[any]") n
+ "// @Failure      404  {object}  " (p "HttpError[any]") n
+ "// @Failure      500  {object}  " (p "HttpError[any]") n
+ "// @Router       /" (p "route") "  [" (p "get") "]" n
+ )
