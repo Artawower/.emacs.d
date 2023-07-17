@@ -14,3 +14,6 @@ go-mode
  "// @Failure      500  {object}  " (p "HttpError[any]") n
  "// @Router       /" (p "route") "  [" (p "get") "]" n
  )
+
+(print-log.info
+ "log.Info().Msgf(\"[" (buffer-name) "] " p " : %s\", " p ")")

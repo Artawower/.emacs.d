@@ -1,4 +1,3 @@
-+PROPERTY: header-args :results silent
 #+STARTUP: content
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
@@ -291,7 +290,6 @@ Load private configs
 #+BEGIN_SRC emacs-lisp :results silent
 (setq inhibit-message nil)
 #+END_SRC
-
 
 * Libs (functions and macros)
 ** Doom libs (honestly spizjeno)
@@ -1686,8 +1684,10 @@ Bookmark for navigation inside file
   :hook (prog-mode . ts-movement-mode))
 #+END_SRC
 
-
-** Buffer hop. Smart jump between visited buffers.
+** HOLD Buffer hop. Smart jump between visited buffers.
+:PROPERTIES:
+:header-args: :tangle no
+:END: 
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package buffer-hop
   :elpaca (buffer-hop :type git :host github :repo "artawower/buffer-hop.el")
@@ -1730,6 +1730,11 @@ Bookmark for navigation inside file
   (dolist (regexp '("TAGS" "^\\*" "^\\*elpaca" "^\\*lsp" "^\\*calendar" "^\\*Google" "^\\*copilot" "^\\*dashboard" "^\\*direnv" "^\\*Compile-log" "-debug\\*$" "^\\:" "errors\\*$" "^\\*Backtrace" "-ls\\*$"
                     "stderr\\*$" "^\\*Flymake" "^\\*vc" "^\\*Warnings" "^\\*eldoc" "\\^*Shell Command"))
     (push regexp frog-jump-buffer-ignore-buffers)))
+#+END_SRC
+** Annotate
+#+BEGIN_SRC emacs-lisp
+(use-package annotate
+  :defer t)
 #+END_SRC
 
 * Common emacs packages
@@ -2645,12 +2650,20 @@ Override function for autosaving
 (setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
 
-#+RESULTS:
+#+BEGIN_SRC emacs-lisp
+(defun @preserve-persistent-scratch ()
+  "Preserve the persistent scratch buffer. Make backup."
+  (interactive)
+  (persistent-scratch-save)
+  (persistent-scratch-new-backup))
+#+END_SRC
+
+,#+RESULTS:
 : @save-scratch-buffer-p
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
-#+BEGIN_SRC emacs-lisp 
+,#+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
  :demand t
  :general
@@ -5041,10 +5054,9 @@ Dependency
 
 ** Org roam
 One of the best Zettelkasten implementation
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp 
 (use-package org-roam
-  :after org
-  :elpaca (org-roam :type git :host github :repo "org-roam/org-roam" :rev "938c602faa4a07917654df71e7db8bd178db567d")
+  :elpaca (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
   :bind (:map evil-normal-state-map
               ("SPC n r i" . org-roam-node-insert)
               ("SPC n r f" . org-roam-node-find))
@@ -5072,7 +5084,7 @@ One of the best Zettelkasten implementation
 
 #+RESULTS:
 ** Visual roam ui nodes
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package org-roam-ui
   :defer t
   :config
@@ -5117,12 +5129,16 @@ My own package for publish roam files
 #+BEGIN_SRC emacs-lisp
 (use-package web-roam
   :elpaca (:host github :repo "Artawower/web-roam.el")
-  :general (:states '(normal visual)
-                    :keymaps 'org-mode-map
-                    "SPC np" 'web-roam-publish-file
-                    "SPC nP" 'web-roam-publish-all)
+  :general
+  (:states '(normal visual)
+           :keymaps 'org-mode-map
+           "SPC np" 'web-roam-publish-file)
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC nP" 'web-roam-publish-all)
   :custom
-  (web-roam-debug-p t))
+  (web-roam-debug-p t)
+  (web-roam-execution-script "node /Users/darkawower/projects/pet/second-brain/second-brain-publisher/dist/index.js"))
 
 #+END_SRC
 
