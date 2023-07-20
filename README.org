@@ -4784,6 +4784,11 @@ I don't remember why I need this code. Currently commented.
   :defer t)
 #+END_SRC
 ** Markdown
+*** Face
+#+BEGIN_SRC emacs-lisp
+(custom-set-faces
+ `(markdown-table-face ((t (:inherit default :foreground ,+m-color-secondary)))))
+#+END_SRC
 *** Realtime preview
 #+BEGIN_SRC emacs-lisp
 (use-package grip-mode
@@ -4795,6 +4800,23 @@ I don't remember why I need this code. Currently commented.
   (let ((credential (auth-source-user-and-password "api.github.com")))
     (setq grip-github-user (car credential)
           grip-github-password (cadr credential))))
+#+END_SRC
+*** Xwidget preview
+#+BEGIN_SRC emacs-lisp
+(use-package markdown-xwidget
+  :after markdown-mode
+  :elppaca (markdown-xwidget
+             :type git
+             :host github
+             :repo "cfclrk/markdown-xwidget"
+             :files (:defaults "resources"))
+  :bind (:map markdown-mode-command-map
+              ("x" . markdown-xwidget-preview-mode))
+  :custom
+  (markdown-xwidget-command "pandoc")
+  (markdown-xwidget-github-theme "light")
+  (markdown-xwidget-mermaid-theme "default")
+  (markdown-xwidget-code-block-theme "default"))
 #+END_SRC
 
 * Org mode
