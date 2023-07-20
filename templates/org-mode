@@ -5,7 +5,7 @@ org-mode
 (b "#+BEGIN_SRC" n> p "#+END_SRC")
 (p "#+BEGIN_SRC python" n> p "#+END_SRC")
 (js "#+BEGIN_SRC js" n> p n "#+END_SRC")
-(ts "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
+(typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
 (emacs-lisp "#+BEGIN_SRC emacs-lisp" n> p n "#+END_SRC")
 (h ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
 (:header-args: ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
