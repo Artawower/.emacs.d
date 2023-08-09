@@ -685,6 +685,22 @@ TODO: check why it doesn;t work
     (call-interactively 'find-file)))
 #+END_SRC
 
+** Window
+#+BEGIN_SRC emacs-lisp
+(defun @window-split-toggle ()
+  "Toggle between horizontal and vertical split with two windows."
+  (interactive)
+  (if (> (length (window-list)) 2)
+      (error "Can't toggle with more than 2 windows!")
+    (let ((func (if (window-full-height-p)
+                    #'split-window-vertically
+                  #'split-window-horizontally)))
+      (delete-other-windows)
+      (funcall func)
+      (save-selected-window
+        (other-window 1)
+        (switch-to-buffer (other-buffer))))))
+#+END_SRC
 
 ** Sass autofix
 For correct work you need to install sass-lint-auto-fix
@@ -894,13 +910,22 @@ Very pretty titlebar for Mac os
 ;; (set-window-margins (selected-window) 1 1)
 ;; (fringe-mode '(32 . 0))
 #+END_SRC
-** Column indicator. display-fill-column-indicator
+** Column indicator. display-fill-column-indicator. 80 Line ;)
 #+BEGIN_SRC emacs-lisp 
 (use-package display-fill-column-indicator
   :defer t
   :elpaca nil
   :config
   (setq display-fill-column-indicator-column 80))
+#+END_SRC
+** HOLD Indent guide (bars)
+:PROPERTIES:
+:header-args: :tangle no
+:END: 
+#+BEGIN_SRC emacs-lisp
+(use-package indent-bars
+  :elpaca (indent-bars :type git :host github :repo "jdtsmith/indent-bars")
+  :hook (prog-mode . indent-bars-mode)) ;
 #+END_SRC
 
 * Theme
@@ -1362,6 +1387,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  ;; ;; Window
  "wr" 'evil-window-rotate-downwards
  "wv" 'evil-window-vsplit
+ "wt" '@window-split-toggle
  "ws" 'evil-window-split
  ;; ;; Buffers
  "." 'find-file
@@ -2601,18 +2627,15 @@ Display buffer of quick note always at bottom
          (buffer (get-buffer-create buffer-name)))
     
     (with-current-buffer buffer
-      ;; (persistent-scratch-autosave-mode -1)
       (pop-to-buffer buffer)
-      (when (equal (s-trim (buffer-substring-no-properties (point-min) (point-max))) "")
-        (message "Persistent scratch restored")
-        (persistent-scratch-setup-default))
-      ;; (persistent-scratch-restore))
-      ;; (persistent-scratch-restore)
+      (persistent-scratch-setup-default)
+      ;; (when (equal (s-trim (buffer-substring-no-properties (point-min) (point-max))) "")
+      ;;   (message "Persistent scratch restored")
+      ;;   (persistent-scratch-setup-default))
+      (goto-char (point-max))
       (unless (eq major-mode 'org-mode)
         (org-mode))
-      (evil-insert-state)
-      ;; (persistent-scratch-autosave-mode)
-      )))
+      (evil-insert-state))))
 #+END_SRC
 
 *** Persistent scratch
@@ -2658,12 +2681,12 @@ Override function for autosaving
   (persistent-scratch-new-backup))
 #+END_SRC
 
-,#+RESULTS:
+#+RESULTS:
 : @save-scratch-buffer-p
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
-,#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp 
 (use-package persistent-scratch
  :demand t
  :general
@@ -2676,6 +2699,8 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
   (setq persistent-scratch-autosave-interval 5)
 )
 #+END_SRC
+
+#+RESULTS:
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
@@ -2814,8 +2839,6 @@ Function for preventing better jump breaks
               ("SPC fp" . prettier-prettify))
   :config
   (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts))))
-  ;; :init
-  ;; (global-prettier-mode))
 #+END_SRC
 *** apheleia
 Another all formtter. Based on prettier and black
@@ -3773,7 +3796,7 @@ TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
   :defer 5
-  :elpaca (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el"))
+  :elpaca (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el" "copilot-balancer.el"))
   :general
   (:keymaps 'override
             "s-]" 'copilot-next-completion
@@ -4784,6 +4807,30 @@ I don't remember why I need this code. Currently commented.
   :defer t)
 #+END_SRC
 ** Markdown
+*** Function for generating table of content TOC
+#+BEGIN_SRC emacs-lisp
+(defun @markdown-toc ()
+  "Extract level 2 and 3 headings from the current Markdown buffer.
+   The generated and indented TOC will be inserted at point."
+  (interactive)
+  (let (toc-list markdown-toc)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "^\\(##+\\)\\s-+\\(.*\\)" nil t)
+        (let* ((level (length (match-string 1)))
+               (heading-text (match-string 2))
+               (heading-id (downcase (replace-regexp-in-string "[[:space:]]+" "-" heading-text))))
+          (push (cons level (cons heading-text heading-id)) toc-list))))
+    (setq toc-list (reverse toc-list))
+    (dolist (item toc-list)
+      (let* ((level (car item))
+             (heading-text (cadr item))
+             (heading-id (cddr item))
+             (indentation (make-string (* 2 (1- level)) ?\ ))
+             (line (format "- [%s](#%s)\n" heading-text heading-id)))
+        (setq markdown-toc (concat markdown-toc (concat indentation line)))))
+    (insert markdown-toc)))
+#+END_SRC
 *** Face
 #+BEGIN_SRC emacs-lisp
 (custom-set-faces
@@ -4805,7 +4852,7 @@ I don't remember why I need this code. Currently commented.
 #+BEGIN_SRC emacs-lisp
 (use-package markdown-xwidget
   :after markdown-mode
-  :elppaca (markdown-xwidget
+  :elpaca (markdown-xwidget
              :type git
              :host github
              :repo "cfclrk/markdown-xwidget"
@@ -5157,7 +5204,9 @@ My own package for publish roam files
            "SPC np" 'web-roam-publish-file)
   (:states '(normal visual)
            :keymaps 'override
-           "SPC nP" 'web-roam-publish-all)
+           "SPC nP" 'web-roam-publish-all
+           "SPC nL" 'web-roam-load
+           "SPC nS" 'web-roam-sync)
   :custom
   (web-roam-debug-p t)
   (web-roam-execution-script "node /Users/darkawower/projects/pet/second-brain/second-brain-publisher/dist/index.js"))
@@ -5976,11 +6025,14 @@ dependency
 #+BEGIN_SRC emacs-lisp 
 (use-package plantuml-mode
   :defer t
+  :init
+  (add-to-list 'auto-mode-alist '("\\.plantuml\\'" . plantuml-mode))
+  (add-to-list 'auto-mode-alist '("\\.pu\\'" . plantuml-mode))
+  (add-to-list 'auto-mode-alist '("\\.puml\\'" . plantuml-mode))
   :config
   (setq plantuml-indent-level 2)
   (setq plantuml-output-type "png")
-  (add-to-list 'auto-mode-alist '("\\.plantuml\\'" . plantuml-mode))
-  (setq plantuml-exec-mode 'jar)
+  (setq plantuml-exec-mode 'executable)
   (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
 #+END_SRC
 
