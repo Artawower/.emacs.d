@@ -618,11 +618,12 @@ If FORCE-P, delete without confirmation."
 ** Toggle transparency
 #+BEGIN_SRC emacs-lisp
 (setq my-transparency-disabled-p t)
-(defun my-toggle-transparency ()
+;; TODO: main rename to @
+(defun @toggle-transparency ()
   "Toggle transparency"
   (interactive)
   (let* ((not-transparent-p (and (boundp 'my-transparency-disabled-p) my-transparency-disabled-p))
-         (alpha (if not-transparent-p 100 95)))
+         (alpha (if not-transparent-p 100 85)))
     (setq my-transparency-disabled-p (not not-transparent-p))
     (message "%s" alpha)
     (progn
@@ -1367,7 +1368,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "oM" '@open-clear-messages
  "mox" 'execute-extended-command
  "bI" 'ibuffer
- "vtt" 'my-toggle-transparency
+ "vtt" '@toggle-transparency
  "fD" '@delete-this-file
  "+" 'narrow-to-region
  "-" 'widen
@@ -1815,15 +1816,12 @@ Treemacs projectile
     (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
-*** HOLD Dirvish. Dired batteries ;3
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+*** Dirvish. Dired batteries ;3
 Doesn't work on mac properly.
 Dirvish.
 #+BEGIN_SRC emacs-lisp
 (use-package dirvish
-  :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
+  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
   ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "501f6c3660dfb90dce843db9d154e5328949e7d9")
   ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "973e526ac51f022fbc091843fb9a853b8d55da92")
   :init
@@ -3840,7 +3838,7 @@ TODO: check copilot + blamer
 #+END_SRC
 
 Correct position after blamer flicker
-#+BEGIN_SRC emacs-lisp :tanlge no
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun @electric-pair--verify-cursor-position (&optional char)
   "Verify cusor position after inserting CHAR bracket."
 
@@ -5069,6 +5067,7 @@ Dependency
 
                            (push '("#+TITLE:" . "") prettify-symbols-alist)
                            (push '("#+DESCRIPTION:" . "") prettify-symbols-alist)
+                           (push '("#+LANG:" . "") prettify-symbols-alist)
                            (push '("#+ID:" . "") prettify-symbols-alist)
                            (push '("#+FILETAGS:" . "") prettify-symbols-alist)
                            (push '("#+STARTUP:" . "") prettify-symbols-alist)
