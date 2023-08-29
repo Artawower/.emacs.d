@@ -9,7 +9,7 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 )
 
 (console.full-object "console.log(`"
-  (format "✎: [%s]" (buffer-name)) 
+  (format "✎: [%s]" (or (turbo-log--get-context) (buffer-name)))
   "[${new Date().toString()}] "
   p "`" " , " r ")"
 )

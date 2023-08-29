@@ -2,7 +2,7 @@ org-mode
 
 (bash-script "#+BEGIN_SRC bash" n> p n "#+END_SRC")
 (bash-tangle "#+BEGIN_SRC bash :tangle " (p "file" file) n> p n "#+END_SRC")
-(b "#+BEGIN_SRC" n> p "#+END_SRC")
+(src "#+BEGIN_SRC" n> p "#+END_SRC")
 (p "#+BEGIN_SRC python" n> p "#+END_SRC")
 (js "#+BEGIN_SRC js" n> p n "#+END_SRC")
 (typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")

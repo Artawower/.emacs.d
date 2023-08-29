@@ -1163,7 +1163,7 @@ Argument APPEARANCE should be light or dark."
 :END:
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package catppuccin-theme
-  :elpaca (dirvish :fetcher github :repo "catppuccin/emacs" :ref "2201c2468b699e9145921d0faf089b97a0f222c8")
+  :elpaca (catppuccin-theme :fetcher github :repo "catppuccin/emacs" :ref "2201c2468b699e9145921d0faf089b97a0f222c8")
   :config
   (setq catppuccin-flavor 'latte)
   (set-face-attribute 'highlight nil :background "#dce0e8"))
@@ -1821,40 +1821,24 @@ Doesn't work on mac properly.
 Dirvish.
 #+BEGIN_SRC emacs-lisp
 (use-package dirvish
-  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "3c483e70b91f048167fd1480cb6da483edf87b1b")
-  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "501f6c3660dfb90dce843db9d154e5328949e7d9")
-  ;; :elpaca (dirvish :fetcher github :repo "alexluigit/dirvish" :ref "973e526ac51f022fbc091843fb9a853b8d55da92")
   :init
   (dirvish-override-dired-mode)
   :custom
-  ;; Go back home? Just press `bh'
-  (dirvish-bookmark-entries
+  (dirvish-quick-access-entries ; It's a custom option, `setq' won't work
    '(("h" "~/"                          "Home")
      ("d" "~/Downloads/"                "Downloads")))
-  ;; (dirvish-header-line-format '(:left (path) :right (free-space)))
-  (dirvish-mode-line-format ; it's ok to place string inside
-   '(:left (sort file-time " " file-size symlink) :right (omit yank index)))
-  ;; Don't worry, Dirvish is still performant even you enable all these attributes
-  (dirvish-attributes '(all-the-icons file-size collapse subtree-state vc-state git-msg))
-  ;; Maybe the icons are too big to your eyes
-  (dirvish-all-the-icons-height 0.8)
-  ;; In case you want the details at startup like `dired'
-  ;; (dirvish-hide-details nil)
   :config
-  ;; (dirvish-peek-mode)
-  (setq dired-kill-when-opening-new-dired-buffer t)
-  (setq dirvish-reuse-session t)
-  ;; Dired options are respected except a few exceptions, see *In relation to Dired* section above
-  (setq dired-dwim-target t)
+  ;; (dirvish-peek-mode) ; Preview files in minibuffer
+  ;; (dirvish-side-follow-mode) ; similar to `treemacs-follow-mode'
+  (remove-hook 'dired-mode-hook 'treemacs-icons-dired-mode)
+  (remove-hook 'dired-after-readin-hook 'treemacs-icons-dired--display)
+  (setq dirvish-mode-line-format
+        '(:left (sort symlink) :right (omit yank index)))
+  (setq dirvish-attributes
+        '(file-time collapse subtree-state vc-state git-msg))
   (setq delete-by-moving-to-trash t)
-  (setq dirvish-default-layout '(1 0.3 0.7))
-  ;; Enable mouse drag-and-drop files to other applications
-  (setq dired-mouse-drag-files t)                   ; added in Emacs 29
-  (setq mouse-drag-and-drop-region-cross-program t) ; added in Emacs 29
   (setq dired-listing-switches
-        "-l --almost-all --human-readable --time-style=long-iso --group-directories-first --no-group")
-  (setq dirvish-attributes '(vc-state subtree-state collapse git-msg file-size))
-  (advice-add #'+dired/quit-all :after (lambda () (interactive) (dirvish-kill (dirvish-prop :dv))))
+        "-l --almost-all --human-readable --group-directories-first --no-group")
   :bind
   ;; Bind `dirvish|dirvish-side|dirvish-dwim' as you see fit
   (("C-c f" . dirvish)
@@ -2619,35 +2603,37 @@ Display buffer of quick note always at bottom
 (defun @switch-to-scratch ()
   "Switch to scratch buffer"
   (interactive)
-  (persistent-scratch-autosave-mode -1)
+  ;; (persistent-scratch-autosave-mode -1)
   (let* ((buffer-name "*quicknote*")
-         (buffer-exist (get-buffer buffer-name))
-         (buffer (get-buffer-create buffer-name)))
+         (buffer (get-buffer buffer-name)))
+
+    (unless buffer
+      (persistent-scratch-setup-default)
+      (setq buffer (get-buffer-create buffer-name))
+      (persistent-scratch-restore))
     
+    (message "current buffer: %s" buffer)
     (with-current-buffer buffer
       (pop-to-buffer buffer)
-      (persistent-scratch-setup-default)
       ;; (when (equal (s-trim (buffer-substring-no-properties (point-min) (point-max))) "")
       ;;   (message "Persistent scratch restored")
       ;;   (persistent-scratch-setup-default))
-      (goto-char (point-max))
+      ;; (goto-char (point-max))
       (unless (eq major-mode 'org-mode)
         (org-mode))
       (evil-insert-state))))
 #+END_SRC
+
+#+RESULTS:
+: @switch-to-scratch
 
 *** Persistent scratch
 Override function for autosaving
 #+BEGIN_SRC emacs-lisp
 (defvar @persistent-scratch-last-content nil)
 
-(defun @save-scratch-buffer-p ()
-  "Return non-nil if the current buffer is the scratch buffer."
-
-  ;; (when (string= (buffer-name) "*quicknote*")
-  ;;   (message "Scratch buffer content: %s" (with-current-buffer (get-buffer "*quicknote*")
-  ;;                                           (buffer-string))))
-  
+(defun @persistent-scratech-savable-p ()
+  "Return non-nil if the current buffer is savable."
   (when-let* ((current-buffer-scratch-p (string= (buffer-name) "*quicknote*"))
               (scratch-buffer (get-buffer "*quicknote*"))
               (scratch-buffer-content (with-current-buffer scratch-buffer
@@ -2663,13 +2649,51 @@ Override function for autosaving
     ;;            (buffer-string))
     ;;          (with-current-buffer "*quicknote*"
     ;;            (not (equal (buffer-string) ""))))
-    )
-  (string= (buffer-name) "*quicknote*")
-  ;; t)
-  )
+    t))
+
+(defun @save-scratch-buffer-p ()
+  "Return non-nil if the current buffer is the scratch buffer."
+
+  (let ((persistent-scrach-savable-p (@persistent-scratech-savable-p)))
+    (message "Persistent scratch savable? %s" persistent-scrach-savable-p)
+    persistent-scrach-savable-p))
+
+(defun persistent-scratch-save (&optional file)
+  "Save the current state of scratch buffers.
+When FILE is non-nil, the state is saved to FILE; when nil or when called
+interactively, the state is saved to `persistent-scratch-save-file'.
+What state exactly is saved is determined by `persistent-scratch-what-to-save'.
+
+When FILE is nil and `persistent-scratch-backup-directory' is non-nil, a copy of
+`persistent-scratch-save-file' is stored in that directory, with a name
+representing the time of the last `persistent-scratch-new-backup' call."
+  (interactive)
+  (let* ((actual-file (or file persistent-scratch-save-file))
+         (tmp-file (concat actual-file ".new"))
+         (saved-state (persistent-scratch--save-buffers-state)))
+    (when (car saved-state)
+      (let ((old-umask (default-file-modes)))
+        (set-default-file-modes #o600)
+        (unwind-protect
+            (let ((coding-system-for-write 'utf-8-unix))
+              (write-region (cdr saved-state) nil tmp-file nil 0))
+          (set-default-file-modes old-umask)))
+      (run-hook-with-args 'persistent-scratch-before-save-commit-functions tmp-file)
+      (rename-file tmp-file actual-file t)
+      (dolist (buffer (car saved-state))
+        (with-current-buffer buffer
+          (set-buffer-modified-p nil)))
+      (when (called-interactively-p 'interactive)
+        (message "Wrote persistent-scratch file %s" actual-file)))
+    (unless file
+      (persistent-scratch--update-backup)
+      (persistent-scratch--cleanup-backups))))
 
 (setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
+
+#+RESULTS:
+: @save-scratch-buffer-p
 
 #+BEGIN_SRC emacs-lisp
 (defun @preserve-persistent-scratch ()
