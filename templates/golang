@@ -15,5 +15,5 @@ go-mode
  "// @Router       /" (p "route") "  [" (p "get") "]" n
  )
 
-(print-log.info
- "log.Info().Msgf(\"[" (buffer-name) "] " p " : %s\", " p ")")
+(log.info
+ "log.Info().Msgf(\"[" (or (turbo-log--get-context) (buffer-name)) "] " p " : %v\", " p ")")
