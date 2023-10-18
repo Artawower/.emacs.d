@@ -24,25 +24,25 @@ org-mode
  "#+html: </div>" n n n
 
 
- "* 🌱 Introduction" n
+ "* Introduction" n
 
  (p "description") n
 
- "* 🍻 Connected links" n
+ "* Connected links" n
 
  (p "connected links") n
 
- "* ⚙️ Install" n
+ "*  Install" n
 
  (p "how to install") n
 
- "* 👨‍🍳 Usage" n
+ "* Usage" n
 
  (p "how to use") n
 
  "* 🍩 Contribute guide" n
  "Any contribution is very much appreciated! Please read the [[./CONTRIBUTE.org][style guide]] before contributing to avoid misunderstandings!" n
- "Also, the project exists solely on donations. I would appreciate it if you would join my patreon." n
+ "I would also appreciate it if you would consider becoming my [[https://www.patreon.com/artawower][patron]]" n
 
  (p "contribute") n
 

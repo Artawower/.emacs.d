@@ -1207,7 +1207,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 ** Fonts
 *** Default font
 #+BEGIN_SRC emacs-lisp
-(set-frame-font "JetBrainsMono Nerd Font 15" nil t)
+(set-frame-font "JetBrainsMono Nerd Font 14" nil t)
 ;; (set-frame-font "Monaco Font 15" nil t)
 #+END_SRC
 
@@ -1394,6 +1394,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "." 'find-file
  "hv" 'describe-variable
  "hf" 'describe-function
+ "hc" 'describe-char
  "hF" 'describe-face
  "tl" 'global-display-line-numbers-mode
  "bn" 'evil-buffer-new
@@ -2655,9 +2656,27 @@ Override function for autosaving
   "Return non-nil if the current buffer is the scratch buffer."
 
   (let ((persistent-scrach-savable-p (@persistent-scratech-savable-p)))
-    (message "Persistent scratch savable? %s" persistent-scrach-savable-p)
     persistent-scrach-savable-p))
 
+(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
+#+END_SRC
+
+#+RESULTS:
+: @save-scratch-buffer-p
+
+#+BEGIN_SRC emacs-lisp
+(defun @preserve-persistent-scratch ()
+  "Preserve the persistent scratch buffer. Make backup."
+  (interactive)
+  (persistent-scratch-save)
+  (persistent-scratch-new-backup))
+#+END_SRC
+
+#+RESULTS:
+: @save-scratch-buffer-p
+
+#+NAME: persistent-scratch-save
+#+BEGIN_SRC emacs-lisp :tangle no
 (defun persistent-scratch-save (&optional file)
   "Save the current state of scratch buffers.
 When FILE is non-nil, the state is saved to FILE; when nil or when called
@@ -2688,27 +2707,11 @@ representing the time of the last `persistent-scratch-new-backup' call."
     (unless file
       (persistent-scratch--update-backup)
       (persistent-scratch--cleanup-backups))))
-
-(setq persistent-scratch-scratch-buffer-p-function #'@save-scratch-buffer-p)
 #+END_SRC
-
-#+RESULTS:
-: @save-scratch-buffer-p
-
-#+BEGIN_SRC emacs-lisp
-(defun @preserve-persistent-scratch ()
-  "Preserve the persistent scratch buffer. Make backup."
-  (interactive)
-  (persistent-scratch-save)
-  (persistent-scratch-new-backup))
-#+END_SRC
-
-#+RESULTS:
-: @save-scratch-buffer-p
 
 Override autosave function. What is the sense save buffer whic doesn't exist??? 
 
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp :noweb yes
 (use-package persistent-scratch
  :demand t
  :general
@@ -2716,6 +2719,7 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
           :keymaps 'override
           "SPC x" '@switch-to-scratch)
   :config
+  <<persistent-scratch-save>>
   (setq persistent-scratch-backup-directory "~/pure-emacs/backups")
   (persistent-scratch-autosave-mode)
   (setq persistent-scratch-autosave-interval 5)
@@ -3012,7 +3016,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 :END:
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
 #+BEGIN_SRC emacs-lisp 
-(use-package treesit
+(use-package treesit                    ;
   :elpaca nil
   :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
   :hook ((typescript-ts-base-mode
@@ -3078,6 +3082,17 @@ This need for correct highlighting of incorrect spell-fu faces."
                  "]" 'ts-hopper-hop-next-context)
   :config
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
+#+END_SRC
+*** Vue treesiter
+#+BEGIN_SRC emacs-lisp
+(use-package vue-ts-mode
+  :elpaca (vue-ts-mode :host github :repo "8uff3r/vue-ts-mode")
+  :config
+  (setq treesit-language-source-alist
+        '((vue "https://github.com/ikatyang/tree-sitter-vue")
+          (css "https://github.com/tree-sitter/tree-sitter-css")
+          (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
+  (mapc #'treesit-install-language-grammar '(vue css typescript)))
 #+END_SRC
 ** Autocomplete
 *** Company mode
@@ -3451,6 +3466,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (lsp-completion-default-behaviour :insert)
   (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
   (lsp-disabled-clients '(html-ls))
+  (setq lsp-pyright-venv-path (concat (getenv "HOME") "/.virtualenvs"))
   ;; (lsp-completion-provider :none)
   ;; (lsp-completion-provider :capf)
   ;; Disable bottom help info
@@ -3458,7 +3474,7 @@ https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
   (lsp-signature-auto-activate nil)
   (lsp-enable-snippet nil)
   ;; (lsp-use-plists t)
-  (lsp-enable-file-watchers nil)
+  (lsp-enable-file-watchers t)
   (lsp-file-watch-threshold 5000)
   :config
   (setq lsp-javascript-display-return-type-hints t)
@@ -3819,6 +3835,9 @@ TODO: check copilot + blamer
 (use-package copilot
   :defer 5
   :elpaca (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el" "copilot-balancer.el"))
+  :hook
+  (prog-mode . copilot-mode)
+  (text-mode . copilot-mode)
   :general
   (:keymaps 'override
             "s-]" 'copilot-next-completion
@@ -3833,7 +3852,7 @@ TODO: check copilot + blamer
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
   (copilot-diagnose)
-  (global-copilot-mode)
+  ;; (global-copilot-mode)
   (add-hook 'evil-insert-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p t)
                                             (blamer--clear-overlay)))
@@ -3920,6 +3939,7 @@ Autoindent between brackets
 (use-package turbo-log
   :defer t
   :elpaca (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
+  :commands (turbo-log--get-context)
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
          ("C-s-h" . turbo-log-comment-all-logs)
@@ -3937,7 +3957,7 @@ Autoindent between brackets
    :modes (typescript-ts-mode tsx-ts-mode typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
    :post-insert-hooks (apheleia-format-buffer lsp)
-;; :msg-format-template "'🦄: %s'"
+   ;; :msg-format-template "'🦄: %s'"
    :msg-format-template "'✎: %s'"))
 #+END_SRC
 
@@ -4579,7 +4599,9 @@ Function for open repl in the current buffer
   :defer t
   :hook (python-mode . pipenv-mode)
   :config
-  (setenv "WORKON_HOME" (concat (getenv "HOME") "/.local/share/virtualenvs"))
+  (setenv "WORKON_HOME" (concat (getenv "HOME") "/.virtualenvs"))
+  
+
   (add-hook 'pyvenv-post-activate-hooks #'lsp-restart-workspace)
   ;; This hook will copy venv from pyvenv to lsp pyright
   (add-hook 'pyvenv-post-activate-hooks (lambda ()
@@ -4673,13 +4695,14 @@ I don't remember why I need this code. Currently commented.
              :help "Complete symbol before point"]))
         map))
 #+END_SRC
-** WEB development
+** WEB mode development
 #+BEGIN_SRC emacs-lisp
 (use-package web-mode
   :defer t
   :mode
   ("\\.vue\\'" . web-mode)
   ;; ("\\.tsx\\'" . typescript-tsx-mode)
+  ("\\.tsx\\'" . web-mode)
   ("\\.jsx\\'" . web-mode)
   ("\\.astro\\'" . web-mode)
   :config
@@ -4727,6 +4750,14 @@ I don't remember why I need this code. Currently commented.
       "Revert buffer without confirmation."
       (interactive)
       (revert-buffer :ignore-auto :noconfirm)))
+#+END_SRC
+** Tailwind css
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-tailwindcss
+  :init
+  (setq lsp-tailwindcss-add-on-mode t)
+  :config
+  (add-hook 'before-save-hook 'lsp-tailwindcss-rustywind-before-save))
 #+END_SRC
 
 ** Json mode
@@ -4924,6 +4955,10 @@ Dependency
 
 (elpaca-wait)
 #+END_SRC
+*** Golang
+#+BEGIN_SRC emacs-lisp
+(use-package ob-go :after org)
+#+END_SRC
 
 ** Org package
 #+BEGIN_SRC emacs-lisp
@@ -5038,7 +5073,8 @@ Dependency
      ;; (typescript . t)
      (js . t)
      (python . t)
-     (restclient . t)))
+     (restclient . t)
+     (shell . t)))
 
   (defun org-babel-execute:typescript (body params)
     (let ((org-babel-js-cmd "npx ts-node < "))
@@ -5219,20 +5255,20 @@ One of the best Zettelkasten implementation
 ** Web roam. Roam publisher for second bran project
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp
-(use-package web-roam
-  :elpaca (:host github :repo "Artawower/web-roam.el")
+(use-package orgnote
+  :elpaca (:host github :repo "Artawower/orgnote.el")
   :general
   (:states '(normal visual)
            :keymaps 'org-mode-map
-           "SPC np" 'web-roam-publish-file)
+           "SPC np" 'orgnote-publish-file)
   (:states '(normal visual)
            :keymaps 'override
-           "SPC nP" 'web-roam-publish-all
-           "SPC nL" 'web-roam-load
-           "SPC nS" 'web-roam-sync)
+           "SPC nP" 'orgnote-publish-all
+           "SPC nL" 'orgnote-load
+           "SPC nS" 'orgnote-sync)
   :custom
-  (web-roam-debug-p t)
-  (web-roam-execution-script "node /Users/darkawower/projects/pet/second-brain/second-brain-publisher/dist/index.js"))
+  (orgnote-debug-p t)
+  (orgnote-execution-script "node /Users/darkawower/projects/pet/orgnote/orgnote-cli/dist/index.js"))
 
 #+END_SRC
 
@@ -5494,11 +5530,14 @@ Didn't mange to start work
     :elpaca nil
     :general
     (:states 'normal
-             "SPC pa" 'projectile-add-known-project)
+             "SPC pa" 'projectile-add-known-project
+             "SPC ki" '@kill-invisible-buffers)
     :config
     <<projectile-persp-hook>>
     (projectile-mode +1))
 #+END_SRC
+
+
 *** Projectil persp hook
 #+NAME: projectile-persp-hook
 #+BEGIN_SRC emacs-lisp  :tangle no
@@ -5514,6 +5553,20 @@ Didn't mange to start work
 
 (add-hook 'projectile-find-file-hook
           #'@set-perps-workspace-name-by-switched-project)
+#+END_SRC
+
+*** Projectile. Remove invisible buffers
+#+BEGIN_SRC emacs-lisp
+(defun @kill-invisible-buffers ()
+  "Kill all buffers that are invisible in the current project."
+  (interactive)
+  (dolist (buf  (project-buffers (project-current)))
+    ;; when buffer name doesn't start with a *
+    (when (and (not (string-prefix-p "*" (buffer-name buf)))
+               ;; and buffer is not visible
+               (not (get-buffer-window buf 'visible)))
+      ;; kill buffer
+      (kill-buffer buf))))
 #+END_SRC
 
 ** Helpful

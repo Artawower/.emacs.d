@@ -3,34 +3,35 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 (l "console.log(" p ")")
 (console.date "console.log(`[${new Date().toString()}] " p "`)")
 (console.full "console.log(`"
-  (format "✎: [line %s][%s]: " (line-number-at-pos) (buffer-name)) 
-  p " ${" r "}"
-  "`)"
-)
+              (format "✎: [line %s][%s]: " (line-number-at-pos) (buffer-name)) 
+              p " ${" r "}"
+              "`)"
+              )
 
 (console.full-object "console.log(`"
-  (format "✎: [%s]" (or (turbo-log--get-context) (buffer-name)))
-  "[${new Date().toString()}] "
-  p "`" " , " r ")"
-)
+                     (format "✎: [%s]" (or (turbo-log--get-context) (buffer-name)))
+                     "[${new Date().toString()}] "
+                     p "`" " , " r ")"
+                     )
 
 (logger.info "logger.info(`"
-  (format "✎: [%s]" (buffer-name)) 
-  "[${new Date().toString()}] "
-  p " %o`" " , " r ")"
-)
+             (format "✎: [%s]" (buffer-name)) 
+             "[${new Date().toString()}] "
+             p " %o`" " , " r ")"
+             )
 
 
 (console.full-line-object "console.log(`"
-  (format "✎: [line %s][%s]" (line-number-at-pos) (buffer-name)) 
-  "[${new Date().toString()}]: "
-  p "`" " , " r ")"
-)
+                          (format "✎: [line %s][%s]" (line-number-at-pos) (buffer-name)) 
+                          "[${new Date().toString()}]: "
+                          p "`" " , " r ")"
+                          )
 
 (console.log > "console.log('"
-  (format "[line %s]: " (line-number-at-pos)) "'" ", "
-  r
-  ")")
+             (format "[line %s]: " (line-number-at-pos)) "'" ", "
+             r
+             ")")
+
 
 (crab > "// TODO: (\\/) @_@ (\\/)")
 
@@ -44,3 +45,35 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 (public-static-readonly "public static readonly " (p "field") " = " (p "value"))
 
 
+
+fundamental-mode prog-mode text-mode
+(prettier "{
+  \"trailingComma\": \"es5\",
+  \"tabWidth\": 2,
+  \"semi\": true,
+  \"singleQuote\": true,
+  \"lineWidth\": 80
+}
+")
+
+
+python-mode
+
+(print "print(\""
+       (format "✎: [%s] " (or (turbo-log--get-context) (buffer-name)))
+       p "\" " p ")"
+       
+       )
+
+web-mode
+(template "<template>"
+          n> p n
+          "</template>"
+          n n
+          "<script lang=\"ts\" setup>"
+          n> p n
+          "</script>")
+
+(script "<script lang=\"ts\" setup>"
+        n> p n
+        "</script>")
