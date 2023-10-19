@@ -2050,7 +2050,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Folding (origami)
 #+BEGIN_SRC emacs-lisp 
 (use-package origami
-  :hook ((org-mode dart-mode yaml-mode) . origami-mode)
+  :hook ((org-mode dart-mode yaml-mode python-mode) . origami-mode)
   :after evil)
 #+END_SRC
 ** Folding (tree-sitter based) ts-fold
