@@ -910,7 +910,13 @@ Doesn't work for mac os unfortunately ;c
   (add-hook 'auto-dark-dark-mode-hook #'@set-catppucin-theme)
   (add-hook 'auto-dark-light-mode-hook #'@set-catppucin-theme)
   (@set-catppucin-theme)
-  (set-face-attribute 'highlight nil :background "#dce0e8"))
+  (set-face-attribute 'highlight nil :background "#dce0e8")
+
+  ;; https://github.com/catppuccin/emacs/issues/55
+  (add-hook 'yaml-mode-hook
+            (lambda ()
+              (face-remap-add-relative 'font-lock-variable-name-face
+                                       (list :foreground (catppuccin-get-color 'blue))))))
 #+END_SRC
 
 *** Deps
