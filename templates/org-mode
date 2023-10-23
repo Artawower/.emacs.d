@@ -2,9 +2,12 @@ org-mode
 
 (bash-script "#+BEGIN_SRC bash" n> p n "#+END_SRC")
 (bash-tangle "#+BEGIN_SRC bash :tangle " (p "file" file) n> p n "#+END_SRC")
+(export-latex "#+BEGIN_EXPORT latex" n> p n "#+END_EXPORT")
 (src "#+BEGIN_SRC" n> p "#+END_SRC")
 (python "#+BEGIN_SRC python" n> p n "#+END_SRC")
+(res-python "#+BEGIN_SRC python :results output" n> p n "#+END_SRC")
 (js "#+BEGIN_SRC js" n> p n "#+END_SRC")
+(sql "#+BEGIN_SRC sql" n> p n "#+END_SRC")
 (json "#+BEGIN_SRC json" n> p n "#+END_SRC")
 (go "#+BEGIN_SRC go" n> p n "#+END_SRC")
 (typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
@@ -13,6 +16,7 @@ org-mode
 (:header-args: ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
 (example "#+BEGIN_EXAMPLE" n> p n "#+END_EXAMPLE")
 (quote "#+BEGIN_QUOTE" n> p n "#+END_QUOTE")
+(begin-latex "\\begin{aligned}" n p n "\\end{aligned}")
 
 (note ":PROPERTIES:" n ":ID: " (p "id" id) n ":END:" n n
 "#+TITLE: " (p "title") n
