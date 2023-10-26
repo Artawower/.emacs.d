@@ -4499,6 +4499,18 @@ Debug for my own project
   (setq org-ai-openai-api-token open-ai-key)
   (advice-add 'keyboard-quit :before #'org-ai-keyboard-quit))
 #+END_SRC
+** Org Download
+#+BEGIN_SRC emacs-lisp
+(use-package org-download
+  :defer 2
+  :hook (dired-mode-hook . org-download-enable)
+  :elpaca (org-download :type git :host github :repo "abo-abo/org-download")
+  :config
+  (setq org-download-method 'directory)
+  (setq org-download-link-format "[[./%s]]\n")
+  (setq org-download-heading-lvl nil))
+
+#+END_SRC
 
 * Spell checker
 # :PROPERTIES:
