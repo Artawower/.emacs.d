@@ -936,6 +936,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 *** Default font
 #+BEGIN_SRC emacs-lisp
 (set-frame-font "JetBrainsMono Nerd Font 14" nil t)
+;; (set-frame-font "Menlo 14" nil t)
 ;; (set-frame-font "Monaco Font 15" nil t)
 #+END_SRC
 
@@ -1497,7 +1498,7 @@ Treemacs projectile
 #+END_SRC
 
 *** Dirvish. Dired batteries ;3
-Doesn't work on mac properly.
+Doesn't work on mac properly. Very laggy unfortunately
 Dirvish.
 #+BEGIN_SRC emacs-lisp
 (use-package dirvish
@@ -1510,15 +1511,17 @@ Dirvish.
   :config
   ;; (dirvish-peek-mode) ; Preview files in minibuffer
   ;; (dirvish-side-follow-mode) ; similar to `treemacs-follow-mode'
-  (remove-hook 'dired-mode-hook 'treemacs-icons-dired-mode)
-  (remove-hook 'dired-after-readin-hook 'treemacs-icons-dired--display)
-  (setq dirvish-mode-line-format
-        '(:left (sort symlink) :right (omit yank index)))
+  ;; (remove-hook 'dired-mode-hook 'treemacs-icons-dired-mode)
+  ;; (remove-hook 'dired-after-readin-hook 'treemacs-icons-dired--display)
+  ;; (setq dirvish-mode-line-format
+  ;;       '(:left (sort symlink) :right (omit yank index)))
   (setq dirvish-attributes
-        '(file-time collapse subtree-state vc-state git-msg))
+        '(file-time collapse subtree-state))
+  ;; (setq dirvish-attributes
+  ;;       '(file-time collapse subtree-state vc-state git-msg))
   (setq delete-by-moving-to-trash t)
-  (setq dired-listing-switches
-        "-l --almost-all --human-readable --group-directories-first --no-group")
+  ;; (setq dired-listing-switches
+  ;;       "-l --almost-all --human-readable --group-directories-first --no-group")
   :bind
   ;; Bind `dirvish|dirvish-side|dirvish-dwim' as you see fit
   (("C-c f" . dirvish)
@@ -2395,7 +2398,7 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 
 
 * Programming
-** Tempel
+** Tempel (Snippets)
 #+BEGIN_SRC emacs-lisp
 (use-package tempel
   :general
@@ -2450,6 +2453,15 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
           "~/pure-emacs/templates/emacs-lisp"
           "~/pure-emacs/templates/golang")))
 #+END_SRC
+** LSP Snippets
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-snippet-tempel
+  :elpaca (lsp-snippet-tempel :type git
+                              :host github
+                              :repo "svaante/lsp-snippet")
+  :config
+  (lsp-snippet-tempel-lsp-mode-init))
+#+END_SRC
 ** Default Tabs/spaces
 #+BEGIN_SRC emacs-lisp
 (setq-default indent-tabs-mode nil)
@@ -2490,6 +2502,7 @@ Another all formtter. Based on prettier and black
   :config
   ;; Change flycheck errors on save
   (setq flycheck-check-syntax-automatically '(mode-enabled save idle-change new-line))
+  (setq flycheck-idle-change-delay 2)
 
   (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
   (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
@@ -3054,6 +3067,15 @@ Function for deleting local terminals
    '(dap-ui-verified-breakpoint-face ((t (:underline "green")))))
   (require 'dap-go)
   (require 'dap-node))
+#+END_SRC
+** Debugger DAPE
+Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
+#+BEGIN_SRC emacs-lisp
+(use-package dape
+  :defer t
+  :elpaca (dape :type git :host github :repo "svaante/dape")
+  :config
+  (setq dape-inline-variables t))
 #+END_SRC
 
 ** Brackets
@@ -4118,6 +4140,12 @@ Dependency
 #+BEGIN_SRC emacs-lisp
 (use-package ob-go :after org)
 #+END_SRC
+*** SQL
+#+BEGIN_SRC emacs-lisp
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((sql . t)))
+#+END_SRC
 
 ** Org package
 #+BEGIN_SRC emacs-lisp
@@ -4153,6 +4181,10 @@ Dependency
   :config
   (setq org-confirm-babel-evaluate nil)
   (setq org-src-preserve-indentation t)
+  (setq org-latex-create-formula-image-program 'dvisvgm)
+  (setq org-format-latex-options (plist-put org-format-latex-options :scale 2.0))
+  ;; https://www.reddit.com/r/orgmode/comments/jwf7ya/python_org_code_blocks_and_indentation/
+	(setq org-adapt-indentation nil)
   (add-hook 'org-mode-hook
             (lambda () (imenu-add-to-menubar "Imenu")))
   (setq org-imenu-depth 8)
@@ -4351,7 +4383,7 @@ One of the best Zettelkasten implementation
   (setq org-roam-v2-ack t)
   :config
 
-  ;; (org-roam-db-autosync-enable)
+  (org-roam-db-autosync-enable)
   (cl-defmethod org-roam-node-mtitle ((node org-roam-node))
     "Return customized title of roam node"
     (let* ((tags (org-roam-node-tags node))
@@ -4411,7 +4443,7 @@ One of the best Zettelkasten implementation
 #+RESULTS:
 : t
 
-** Web roam. Roam publisher for second bran project
+** Orgnote. Roam publisher for second bran project
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp
 (use-package orgnote
@@ -4424,6 +4456,7 @@ My own package for publish roam files
            :keymaps 'override
            "SPC nP" 'orgnote-publish-all
            "SPC nL" 'orgnote-load
+           "SPC nF" 'orgnote-force-sync
            "SPC nS" 'orgnote-sync)
   :custom
   (orgnote-debug-p t)
@@ -4477,7 +4510,7 @@ My own package for publish roam files
 
 ** IDEA Latex preview
 Debug for my own project
-#+BEGIN_SRC emacs-lisp :results silent
+#+BEGIN_SRC emacs-lisp :results silent :tangle no
 (use-package org-latex-impatient
   :defer t
   :hook (org-mode . org-latex-impatient-mode)
@@ -5011,6 +5044,14 @@ Delete project
 
 *** Embark package
 #+BEGIN_SRC emacs-lisp  :noweb yes
+(defun +vertico/embark-preview ()
+  "Previews candidate in vertico buffer, unless it's a consult command"
+  (interactive)
+  (unless (bound-and-true-p consult--preview-function)
+    (save-selected-window
+      (let ((embark-quit-after-action nil))
+        (embark-dwim)))))
+
 (use-package embark
   :custom
   (embark-indicators '(embark-minimal-indicator embark-highlight-indicator embark-isearch-highlight-indicator))

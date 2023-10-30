@@ -21,8 +21,7 @@ org-mode
 (note ":PROPERTIES:" n ":ID: " (p "id" id) n ":END:" n n
 "#+TITLE: " (p "title") n
 "#+DESCRIPTION: " (p "description") n
-"#+FILETAGS: " (p "tags") n
-"#+ID: " (s id) n)
+"#+FILETAGS: " (p "tags") n)
 
 (scss "#+BEGIN_SRC scss" n> p n "#+END_SRC")
 (yaml "#+BEGIN_SRC yaml" n> p n "#+END_SRC")
