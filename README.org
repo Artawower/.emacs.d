@@ -13,13 +13,13 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 ** TODO Modern package manager.
 *** Elpaca package.
 #+BEGIN_SRC emacs-lisp :results silent
-(defvar elpaca-installer-version 0.5)
+(defvar elpaca-installer-version 0.6)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
 (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
 (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
                               :ref nil
-                              :files (:defaults (:exclude "extensions"))
+                              :files (:defaults "elpaca-test.el" (:exclude "extensions"))
                               :build (:not elpaca--activate-package)))
 (let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
        (build (expand-file-name "elpaca/" elpaca-builds-directory))
@@ -40,7 +40,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
                                        "--eval" "(byte-recompile-directory \".\" 0 'force)")))
                  ((require 'elpaca))
                  ((elpaca-generate-autoloads "elpaca" repo)))
-            (kill-buffer buffer)
+            (progn (message "%s" (buffer-string)) (kill-buffer buffer))
           (error "%s" (with-current-buffer buffer (buffer-string))))
       ((error) (warn "%s" err) (delete-directory repo 'recursive))))
   (unless (require 'elpaca-autoloads nil t)
@@ -549,6 +549,14 @@ If FORCE-P, delete without confirmation."
 #+RESULTS:
 : my-forge-browse-buffer-file
 
+** Highlight selection
+#+BEGIN_SRC emacs-lisp
+(use-package selection-highlight-mode
+  :elpaca (selection-highlight-mode :type git
+                                      :host github
+                                      :repo "balloneij/selection-highlight-mode")
+  :config (selection-highlight-mode))
+#+END_SRC
 ** Toggle transparency
 #+BEGIN_SRC emacs-lisp
 (setq my-transparency-disabled-p t)
@@ -936,6 +944,7 @@ https://github.com/emacs-dashboard/emacs-dashboard/issues/421
 *** Default font
 #+BEGIN_SRC emacs-lisp
 (set-frame-font "JetBrainsMono Nerd Font 14" nil t)
+;; (set-frame-font "Monaspace Neon 14" nil t)
 ;; (set-frame-font "Menlo 14" nil t)
 ;; (set-frame-font "Monaco Font 15" nil t)
 #+END_SRC
@@ -2719,7 +2728,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 *** LSP-mode Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
-  ;; :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "7a50934cbbe0aec1a1a054e7d13fce804a1708c6")
+  :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
   :after flycheck
   :hook
   ((clojure-mode
@@ -2980,7 +2989,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
   :general
   (:states '(normal visual)
            :keymaps 'override
-           "SPC cc" 'compile
+           "SPC cc" 'projectile-compile-project
            "SPC cC" 'recompile
            "SPC cv" (lambda ()
                       (interactive)
@@ -2990,6 +2999,8 @@ By default ~compile-goto-error~ open new window. Its redundant.
   <<display-compilation-buffer>>
   (@setup-compilation-errors))
 #+END_SRC
+
+#+RESULTS:
 
 ** Collaborations
 #+BEGIN_SRC emacs-lisp
@@ -3422,6 +3433,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
                 ("SPC g ]" . git-gutter:next-hunk)
                 ("SPC g r" . git-gutter:revert-hunk))
     :config
+    (setq git-gutter:update-interval 2)
     (set-face-foreground 'git-gutter:modified +m-color-main) ;; background color
     (set-face-foreground 'git-gutter:added +m-color-green)
     (set-face-foreground 'git-gutter:deleted +m-color-secondary)
