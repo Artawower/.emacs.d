@@ -805,7 +805,13 @@ Very pretty titlebar for Mac os
 (pixel-scroll-mode)
 #+END_SRC
 ** Fringes
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp
+(use-package spacious-padding
+:config
+(spacious-padding-mode))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp :tangle noe
 (defun @correct-my-fringe (&optional ignore)
   "Set fringes for current active window."
   (interactive)
@@ -817,6 +823,7 @@ Very pretty titlebar for Mac os
 (add-hook 'buffer-list-update-hook #'@correct-my-fringe)
 (setq-default left-margin-width 2 right-margin-width 2)
 #+END_SRC
+
 ** Column indicator. display-fill-column-indicator. 80 Line ;)
 #+BEGIN_SRC emacs-lisp 
 (use-package display-fill-column-indicator
