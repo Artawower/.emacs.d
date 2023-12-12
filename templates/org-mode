@@ -10,6 +10,7 @@ org-mode
 (sql "#+BEGIN_SRC sql" n> p n "#+END_SRC")
 (json "#+BEGIN_SRC json" n> p n "#+END_SRC")
 (go "#+BEGIN_SRC go" n> p n "#+END_SRC")
+(docker "#+BEGIN_SRC docker" n> p n "#+END_SRC")
 (typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
 (emacs-lisp "#+BEGIN_SRC emacs-lisp" n> p n "#+END_SRC")
 (h ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
