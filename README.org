@@ -161,7 +161,7 @@ unreadable. Returns the names of envvars that were changed."
 (customize-set-variable 'package-archives
                         `(,@package-archives
                           ("melpa" . "http://melpa.org/packages/")
-                          ;; ("melpa" . "http://melpa.milkbox.net/packages/")
+                          ("melpa" . "http://melpa.milkbox.net/packages/")
                           ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                           ("melpa-stable" . "http://stable.melpa.org/packages/")
                           ("org" . "https://orgmode.org/elpa/")
@@ -2302,8 +2302,9 @@ Display buffer of quick note always at bottom
       ;;   (message "Persistent scratch restored")
       ;;   (persistent-scratch-setup-default))
       ;; (goto-char (point-max))
-      (unless (eq major-mode 'org-mode)
-        (org-mode))
+      ;; (unless (eq major-mode 'org-mode)
+      ;;   (org-mode))
+      (org-mode)
       (evil-insert-state))))
 #+END_SRC
 
@@ -2517,8 +2518,8 @@ Another all formtter. Based on prettier and black
   (global-flycheck-mode)
   :config
   ;; Change flycheck errors on save
-  (setq flycheck-check-syntax-automatically '(mode-enabled save idle-change new-line))
-  (setq flycheck-idle-change-delay 2)
+  (setq flycheck-check-syntax-automatically '(save idle-change new-line mode-enabled))
+  (setq flycheck-idle-change-delay 0.2)
 
   (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
   (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
@@ -2677,38 +2678,114 @@ This need for correct highlighting of incorrect spell-fu faces."
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
 ** Autocomplete
-*** Company mode
-**** Company package
+*** HOLD Corfu
+**** Corfu package
 #+BEGIN_SRC emacs-lisp
-(use-package company
-  :defer t
-  :after lsp
-  :hook (emacs-lisp-mode . company-mode)
-  :bind (:map evil-insert-state-map
-              ("C-'" . company-yasnippet)
-              ("C-x C-o" . company-complete)
-              :map company-active-map
-              ("C-w" . backward-kill-word)
-              ("<escape>" . (lambda () (interactive)
-                              (company-cancel)
-                              (evil-normal-state))))
-  :init
-  (setq lsp-completion-provider :capf)
+(use-package corfu
+  ;; Optional customizations
+  :defer 2
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  (corfu-commit-predicate t)   ;; Do not commit selected candidates on next input
+  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
+  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
+  (corfu-auto-delay 0.1)
+  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
+  (corfu-preselect-first t)
+  (corfu-auto-prefix 2)
+  (corfu-separator ?\s) 
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :general
+
+  (:keymaps 'corfu-map
+            "TAB" 'corfu-next
+            [tab] 'corfu-next
+            "C-j" 'corfu-next
+            "C-k" 'corfu-previous
+            "S-TAB" 'corfu-previous
+            "<return>" 'corfu-insert
+            "C-<return>" 'corfu-insert-seporator
+            [backtab] 'corfu-previous)
+  (:keymaps 'override
+            :map evil-insert-state-map
+            "C-x C-o" 'completion-at-point
+            "C-SPC" 'completion-at-point)
   :config
-  (setq company-idle-delay 0.2)
-  (setq company-quick-access-modifier 'super)
-  (setq company-show-quick-access t)
-  (setq company-minimum-prefix-length 1)
-  (setq company-dabbrev-char-regexp "[A-z:-]")
-  (custom-set-variables
-   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
-   '(company-quick-access-modifier 'super))
-  (global-company-mode))
+  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (evil-make-overriding-map corfu-map)
+  (setq lsp-completion-provider :none)
+
+  (global-corfu-mode))
 #+END_SRC
-**** Company box
-#+BEGIN_SRC emacs-lisp 
-(use-package company-box
-  :hook (company-mode . company-box-mode))
+
+**** Disalbe company mode
+#+BEGIN_SRC emacs-lisp :tangle no
+(global-company-mode -1)
+(company-mode -1)
+(add-hook 'prog-mode-hook (lambda () (company-mode -1)))
+#+END_SRC
+
+
+#+RESULTS:
+: completion-at-point
+**** Corfu quick
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-quick
+  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
+  :bind (:map corfu-map
+              ("<tab>" . corfu-quick-insert))
+  :after corfu
+  :custom
+  (corfu-quick1 "123456789")
+  (corfu-quick2 "123456789"))
+#+END_SRC
+
+**** Corfu doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :after corfu
+  :config
+  (setq corfu-popupinfo-delay '(0.5 . 0.5)))
+#+END_SRC
+**** Corfu save history
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-history
+  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
+  :after corfu
+  :config
+  (with-eval-after-load 'safehist
+    (cl-pushnew 'corfu-history savehist-additional-variables))
+   (setq corfu-sort-override-function 'corfu-history--sort)
+
+  (corfu-history-mode))
+#+END_SRC
+
+**** Corfu popup doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :bind (:map corfu-map
+              ("C-m" . corfu-popupinfo-documentation))
+  :custom
+  (corfu-echo-delay nil)
+  :after corfu
+  :config
+  (corfu-popupinfo-mode))
+#+END_SRC
+
+**** Pretty icon
+#+BEGIN_SRC emacs-lisp
+  (use-package kind-icon
+    :after corfu
+    :custom
+    (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+    :config
+    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
 #+END_SRC
 
 ** Paren checker
@@ -2719,6 +2796,32 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+END_SRC
 
 ** Lsp mode
+*** LSP sonarlint
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-sonarlint
+  :elpaca (:files ("*.el" "languages" "languages/*/*.el" "server" "server/*"))
+  :demand t
+  :config
+  (setq lsp-sonarlint-server-path (expand-file-name "sonarlint-language-server.jar" (concat user-emacs-directory "/elpaca/builds/lsp-sonarlint/server")))
+  (add-to-list 'lsp-sonarlint-modes-enabled 'ng2-ts-mode)
+  (add-to-list 'lsp-sonarlint-modes-enabled 'ng2-html-mode)
+  (add-to-list 'lsp-sonarlint-modes-enabled 'ng2-mode)
+  (require 'lsp-sonarlint-go)
+  (setq lsp-sonarlint-go-enabled t)
+
+  (require 'lsp-sonarlint-html)
+  (setq lsp-sonarlint-html-enabled t)
+
+  (require 'lsp-sonarlint-javascript)
+  (setq lsp-sonarlint-javascript-enabled t)
+
+  (require 'lsp-sonarlint-typescript)
+  (setq lsp-sonarlint-typescript-enabled t)
+  (setq lsp-sonarlint-ng2-ts-enabled t))
+
+(elpaca-wait)
+#+END_SRC
+
 *** Lsp functions
 **** Uninstall server
 #+BEGIN_SRC emacs-lisp 
@@ -2736,7 +2839,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
   :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
-  :after flycheck
+  :after (flycheck lsp-sonarlint)
   :hook
   ((clojure-mode
     scss-mode
@@ -2828,8 +2931,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
   (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
 
-  (setq lsp-idle-delay 0.5
-        lsp-enable-symbol-highlighting t
+  (setq lsp-enable-symbol-highlighting t
         lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
         lsp-pyls-plugins-flake8-enabled nil)
   (set-face-foreground 'lsp-face-highlight-read +m-color-secondary)
@@ -2859,7 +2961,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   :defer t
   :hook (yaml-mode . yaml-pro-mode))
 #+END_SRC
-
 *** LSP UI
 #+BEGIN_SRC emacs-lisp 
 (use-package lsp-ui
@@ -2870,7 +2971,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   :config
   (setq lsp-ui-sideline-diagnostic-max-line-length 100
         lsp-ui-sideline-diagnostic-max-lines 8
-        lsp-ui-doc-delay 2
+        lsp-ui-doc-delay 1
         lsp-ui-doc-position 'top
         lsp-ui-doc-show-with-mouse nil
         lsp-ui-doc-border +m-color-main))
@@ -3649,7 +3750,7 @@ Improved styles for git changes
 
 
 ** Angular
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package ng2-mode
   :after typescript-mode
   :hook
@@ -3679,8 +3780,9 @@ Improved styles for git changes
 #+END_SRC
 *** NPM
 #+BEGIN_SRC emacs-lisp
-  (use-package npm
-    :defer t)
+(use-package npm
+  :elpaca (npm :repo "Artawower/npm.el" :host github)
+  :defer t)
 #+END_SRC
 *** REPL
 **** NodeJs repl functions
@@ -4394,7 +4496,7 @@ Dependency
 One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp 
 (use-package org-roam
-  :elpaca (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
+  ;; :elpaca (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
   :bind (:map evil-normal-state-map
               ("SPC n r i" . org-roam-node-insert)
               ("SPC n r f" . org-roam-node-find))
@@ -4785,6 +4887,11 @@ Didn't mange to start work
   :defer t)
 #+END_SRC
 
+** Pomodoro
+#+BEGIN_SRC emacs-lisp
+(use-package org-pomodoro
+  :defer t)
+#+END_SRC
 
 * Completion
 ** Vertico
@@ -4908,6 +5015,7 @@ Didn't mange to start work
 **
 
 ** Consult
+*** Consult. Main package
 Function for search in buffer depends or visual or normal line
 #+BEGIN_SRC emacs-lisp 
 (defun @consult-line-or-region ()
@@ -5008,6 +5116,12 @@ Function for search in buffer depends or visual or normal line
   ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
   )
 #+END_SRC
+*** Consult flycheck
+#+BEGIN_SRC emacs-lisp
+(use-package consult-flycheck
+  :after consult)
+#+END_SRC
+
 ** Projectile
 #+BEGIN_SRC emacs-lisp 
 (use-package consult-projectile
@@ -5237,4 +5351,12 @@ dependency
   (setq plantuml-output-type "png")
   (setq plantuml-exec-mode 'executable)
   (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
+#+END_SRC
+** Telega.el
+#+BEGIN_SRC emacs-lisp
+(use-package telega
+  :commands (telega)
+  :custom
+  (telega-use-docker nil)
+  :defer t)
 #+END_SRC
