@@ -3862,14 +3862,15 @@ Function for open repl in the current buffer
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp 
-  (use-package python
-    :defer t
-    :general
-    (:states '(normal visual)
-      :keymaps 'override
-      "SPC r p" '@open-ipython-repl-here)
-    :config
-   (setq python-shell-interpreter "ipython"))
+(use-package python
+  :defer t
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC r p" '@open-ipython-repl-here)
+  :config
+  (setq python-shell-interpreter "ipython"
+        python-shell-interpreter-args "--simple-prompt -i"))
 #+END_SRC
 
 *** Mode
