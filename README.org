@@ -184,6 +184,8 @@ unreadable. Returns the names of envvars that were changed."
 #+BEGIN_SRC emacs-lisp
 ;; Change backup folders
 (setq backup-directory-alist '(("." . "/Users/darkawower/tmp/emacs-backups")))
+(setq lock-file-name-transforms
+      '(("\\`/.*/\\([^/]+\\)\\'" "/var/tmp/\\1" t)))
 #+END_SRC
 *** Alias for yes/no
 #+BEGIN_SRC emacs-lisp
@@ -228,6 +230,14 @@ Load private configs
 *** Truncate lines
 #+BEGIN_SRC emacs-lisp 
 (set-default 'truncate-lines t)
+#+END_SRC
+** No window mode
+#+BEGIN_SRC emacs-lisp
+(defun @reset-nw-background ()
+  (unless (display-graphic-p (selected-frame))
+    (set-face-background 'default "unspecified-bg" (selected-frame))))
+
+(add-hook 'window-setup-hook '@reset-nw-background)
 #+END_SRC
 
 * Libs (functions and macros)
@@ -842,6 +852,8 @@ Very pretty titlebar for Mac os
   (defadvice load-theme (after run-after-load-theme-hook activate)
     "Run `after-load-theme-hook'."
     (run-hooks 'after-load-theme-hook))
+
+(add-hook 'after-load-theme-hook #'@reset-nw-background)
 #+END_SRC
 *** Automatic reset theme
 #+BEGIN_SRC emacs-lisp 
@@ -1060,6 +1072,9 @@ Override function for auto-dark mode for applying function for nano theme changi
  "C-x C-o" 'company-complete
  "s-k" (lambda () (interactive) (end-of-line) (kill-whole-line)))
 #+END_SRC
+
+#+RESULTS: general-global-mode-map
+
 *** Evil. Isert mode.
 #+NAME: general-evil-insert-mode-map
 #+BEGIN_SRC emacs-lisp :exports none :tangle no
@@ -1115,6 +1130,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  "tl" 'global-display-line-numbers-mode
  "bn" 'evil-buffer-new
  "vl" 'visual-line-mode
+ "C-d" 'pixel-scroll-down
  "ht" 'load-theme)
 #+END_SRC
 *** Evil normal/visual state map
@@ -1124,6 +1140,8 @@ Override function for auto-dark mode for applying function for nano theme changi
  :states '(normal visual)
  :keymaps 'override
  "C-u" 'evil-scroll-up
+ "C-e" 'pixel-scroll-up
+ "C-y" 'pixel-scroll-down
  "s-Y" 'xah-copy-to-register-1
  "s-r" (lambda () (interactive) (set-mark-command nil) (evil-avy-goto-char))
  "s-P" 'xah-paste-from-register-1)
@@ -1730,7 +1748,38 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
   (setq vterm-toggle-scope 'project)
   <<vterm-open-bottom-config>>)
 #+END_SRC
+*** Detached. Background commands
+#+BEGIN_SRC emacs-lisp
+(defun @projectile-detached-shell-command ()
+  "Execute detached shell command at the project root."
+  (interactive)
+  
+  (projectile-with-default-dir (projectile-acquire-root)
+    (call-interactively #'detached-shell-command)))
 
+(use-package detached
+  :init
+  (detached-init)
+  :general 
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC dj" '@projectile-detached-shell-command
+           "SPC dv" 'detached-list-sessions)
+  (:keymaps 'detached-list-mode-map
+           "x" 'detached-list-kill-session)
+  :bind (;; Replace `async-shell-command' with `detached-shell-command'
+         ([remap async-shell-command] . detached-shell-command)
+         ;; Replace `compile' with `detached-compile'
+         ([remap compile] . detached-compile)
+         ([remap recompile] . detached-compile-recompile)
+         ;; Replace built in completion of sessions with `consult'
+         ([remap detached-open-session] . detached-consult-session))
+  :custom ((detached-show-output-on-attach t)
+           (detached-terminal-data-command system-type)))
+#+END_SRC
+
+#+RESULTS:
+ 
 ** Secret mode
 Something like screensaver
 #+BEGIN_SRC emacs-lisp
@@ -1910,8 +1959,17 @@ new project directory.")
 **** Persp mode keybindings general
 #+NAME: persp-mode-map-general
 #+BEGIN_SRC emacs-lisp  :tangle no
-(:keymaps 'override
+(:keymaps 'global
 :states '(normal visual insert)
+          "C-1" '+workspace/switch-to-0
+          "C-2" '+workspace/switch-to-1
+          "C-3" '+workspace/switch-to-2
+          "C-4" '+workspace/switch-to-3
+          "C-5" '+workspace/switch-to-4
+          "C-6" '+workspace/switch-to-5
+          "C-7" '+workspace/switch-to-6
+          "C-8" '+workspace/switch-to-7
+          "C-9" '+workspace/switch-to-8
           "s-1" '+workspace/switch-to-0
           "s-2" '+workspace/switch-to-1
           "s-3" '+workspace/switch-to-2
@@ -1935,13 +1993,16 @@ new project directory.")
           "SPC pl" 'persp-load-state-from-file
           "SPC pd" '+workspace/delete
           "SPC <tab>d" '+workspace/delete
+          "SPC TAB d" '+workspace/delete
           "SPC pr" '+workspace/rename
           "SPC pj" 'persp-switch
           "SPC pn" '+workspace/quick-new
           "SPC <tab>n" '+workspace/quick-new
+          "SPC TAB n" '+workspace/quick-new
           "SPC po" '+workspace/other
           "SPC b O" '@persp-kill-other-buffers
           "SPC <tab> <tab>" '+workspace/display
+          "SPC TAB TAB" '+workspace/display
           "SPC b i" (lambda (arg)
                       (interactive "P")
                       (with-persp-buffer-list () (ibuffer arg))))
@@ -2470,6 +2531,12 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
           "~/pure-emacs/templates/emacs-lisp"
           "~/pure-emacs/templates/golang")))
 #+END_SRC
+** Tempel collection
+#+BEGIN_SRC emacs-lisp
+(use-package tempel-collection
+  :ensure t
+  :after tempel)
+#+END_SRC
 ** LSP Snippets
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-snippet-tempel
@@ -2905,7 +2972,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-enable-snippet nil)
   ;; (lsp-use-plists t)
   (lsp-enable-file-watchers t)
-  (lsp-file-watch-threshold 5000)
+  (lsp-file-watch-threshold 8000)
   :config
   (setq lsp-javascript-display-return-type-hints t)
   (setq lsp-json-schemas
@@ -3002,6 +3069,31 @@ This need for correct highlighting of incorrect spell-fu faces."
             (overlay-put ov 'category 'lsp-dart-flutter-widget-guide)
             (overlay-put ov 'display (propertize string
                                                  'face 'custom-comment-tag)))))))
+#+END_SRC
+*** Lsp optimisation
+See [[https://github.com/blahgeek/emacs-lsp-booster][detail]]
+#+BEGIN_SRC emacs-lisp
+(define-advice json-parse-buffer (:around (old-fn &rest args) lsp-booster-parse-bytecode)
+  "Try to parse bytecode instead of json."
+  (or
+   (when (equal (following-char) ?#)
+     (let ((bytecode (read (current-buffer))))
+       (when (byte-code-function-p bytecode)
+         (funcall bytecode))))
+   (apply old-fn args)))
+
+(define-advice lsp-resolve-final-command (:around (old-fn cmd &optional test?) add-lsp-server-booster)
+  "Prepend emacs-lsp-booster command to lsp CMD."
+  (let ((orig-result (funcall old-fn cmd test?)))
+    (if (and (not test?)                             ;; for check lsp-server-present?
+             (not (file-remote-p default-directory)) ;; see lsp-resolve-final-command, it would add extra shell wrapper
+             lsp-use-plists
+             (not (functionp 'json-rpc-connection))  ;; native json-rpc
+             (executable-find "emacs-lsp-booster"))
+        (progn
+          (message "Using emacs-lsp-booster for %s!" orig-result)
+          (cons "emacs-lsp-booster" orig-result))
+      orig-result)))
 #+END_SRC
 ** Compilation
 *** Functions
@@ -3116,83 +3208,26 @@ By default ~compile-goto-error~ open new window. Its redundant.
   :defer t)
 #+END_SRC
 
-** Debugger. Dap
-Function for deleting local terminals
-#+BEGIN_SRC emacs-lisp 
-(defun @dap-delete-local-terminal (&optional _)
-  "Delete local terminal."
-  (interactive (list (dap--cur-active-session-or-die)))
-  (save-window-excursion
-    (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
-           (filtered-buffers (seq-filter (lambda (buffer)
-                                           (string-match-p "\\*DEBUG" buffer))
-                                         buffer-list))
-           (buffer-modified-p nil))
-      (mapc #'kill-buffer filtered-buffers))))
-#+END_SRC
-
-
-#+NAME: overrided-vterm-showing
-#+BEGIN_SRC emacs-lisp  :tangle no
-(defun dap-internal-terminal-vterm (command title debug-session)
-  (with-current-buffer (dap--make-terminal-buffer title debug-session)
-    (require 'vterm)
-    (let ((vterm-shell command)
-          (vterm-kill-buffer-on-exit nil))
-      (vterm-mode))))
-#+END_SRC
-
-
-
-#+BEGIN_SRC emacs-lisp  :noweb yes
-(use-package dap-mode
-  :demand
-  :bind (:map evil-normal-state-map
-              ("SPC d n" . dap-next)
-              ("SPC d i" . dap-step-in)
-              ("SPC d o" . dap-step-out)
-              ("SPC d c" . dap-continue)
-              ("SPC d Q" . dap-disconnect)
-              ("SPC d q" . dap-disconnect)
-              ("SPC d d" . dap-debug)
-              ("SPC d r" . dap-debug-recent)
-              ("SPC d l" . dap-ui-locals)
-              ("SPC d b" . dap-ui-breakpoints)
-              ("SPC d p" . dap-breakpoint-toggle)
-              ("SPC d g" . dap-ui-breakpoints-browse)
-              ("SPC d s" . dap-ui-sessions)
-              ("SPC d e" . dap-debug-last)
-              ("SPC d w" . dap-ui-show-many-windows)
-              ("SPC d x" . dap-breakpoint-delete-all)
-              ("SPC d W" . dap-ui-hide-many-windows)
-              ("SPC d e" . dap-debug-edit-template))
-  :config
-  <<overrided-vterm-showing>>
-  (advice-add 'dap-disconnect :before #'@dap-delete-local-terminal)
-  ;; (advice-remove 'dap-disconnect #'@dap-delete-local-terminal)
-
-  (with-eval-after-load 'dap-ui
-    (setq-default dap-ui-buffer-configurations
-                  `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
-                    (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
-                    (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
-                    (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
-                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30))))))
-    ;; (setq dap-ui-locals-expand-depth 3))
-  (setq dap-auto-configure-features '(locals tooltip))
-  (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
-  (custom-set-faces
-   '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
-   '(dap-ui-verified-breakpoint-face ((t (:underline "green")))))
-  (require 'dap-go)
-  (require 'dap-node))
-#+END_SRC
 ** Debugger DAPE
 Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
 #+BEGIN_SRC emacs-lisp
 (use-package dape
   :defer t
   :elpaca (dape :type git :host github :repo "svaante/dape")
+  :bind (:map evil-normal-state-map
+              ("SPC d d" . dape)
+              ("SPC d n" . dape-next)
+              ("SPC d i" . dape-step-in)
+              ("SPC d o" . dape-step-out)
+              ("SPC d b" . dape-breakpoint-toggle)
+              ("SPC d c" . dape-continue)
+              ("SPC d q" . dape-disconnect-quit)
+              ("SPC d r" . dape-restart)
+              ("SPC d k" . dape-kill)
+              ("SPC d X" . dape-remove-breakpoint-at-point)
+              ("SPC d s" . dape-select-stack)
+              ("SPC d t" . dape-select-thread)
+              ("SPC d x" . dape-breakpoint-remove-all))
   :config
   (setq dape-inline-variables t))
 #+END_SRC
@@ -4268,6 +4303,10 @@ Dependency
  'org-babel-load-languages
  '((sql . t)))
 #+END_SRC
+*** Rust
+#+BEGIN_SRC emacs-lisp
+(use-package ob-rust :after org)
+#+END_SRC
 
 ** Org package
 #+BEGIN_SRC emacs-lisp
@@ -4276,6 +4315,7 @@ Dependency
   :mode (("\\.org$" . org-mode))
   :hook
   (org-mode . org-indent-mode)
+  (org-mode . (lambda () (setq corfu-mode -1)))
   :elpaca nil
   :general
   (:states '(normal visual)
@@ -4498,9 +4538,12 @@ One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp 
 (use-package org-roam
   ;; :elpaca (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
-  :bind (:map evil-normal-state-map
-              ("SPC n r i" . org-roam-node-insert)
-              ("SPC n r f" . org-roam-node-find))
+  :bind
+  (:map evil-normal-state-map
+        ("SPC n r i" . org-roam-node-insert)
+        ("SPC n r f" . org-roam-node-find))
+  (:map evil-visual-state-map
+        ("SPC n r i" . org-roam-node-insert))
   :init
   (setq org-roam-v2-ack t)
   :config
@@ -5228,6 +5271,29 @@ Delete project
 #+END_SRC
 
 * Emacs for everything
+** Tramp
+#+BEGIN_SRC emacs-lisp
+(use-package tramp
+  :elpaca nil
+  :config
+  (setenv "SHELL" "/bin/bash")
+  (setq remote-file-name-inhibit-cache nil)
+  (setq vc-ignore-dir-regexp
+        (format "%s\\|%s"
+                vc-ignore-dir-regexp
+                tramp-file-name-regexp))
+  (setq tramp-verbose 1)
+  (add-to-list 'tramp-connection-properties
+               (list (regexp-quote "/sshx:user@host:")
+                     "remote-shell" "/usr/bin/bash"))
+  (add-to-list 'tramp-connection-properties
+               (list ".*" "locale" "LC_ALL=C")))
+#+END_SRC
+
+#+RESULTS:
+| .*      | locale               | LC_ALL=C |
+| /sshfs: | direct-async-process | t        |
+
 ** Pdf tools
 #+BEGIN_SRC emacs-lisp 
 (use-package pdf-tools

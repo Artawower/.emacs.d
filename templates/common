@@ -27,6 +27,12 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
                           p "`" " , " r ")"
                           )
 
+(console.pretty-stringify "console.log(`"
+                     (format "✎: [%s]" (or (turbo-log--get-context) (buffer-name)))
+                     "[${new Date().toString()}] "
+                     (r "val" val) "`" " , JSON.stringify(" (r "val" val) ", null, 2))")
+
+
 (console.log > "console.log('"
              (format "[line %s]: " (line-number-at-pos)) "'" ", "
              r

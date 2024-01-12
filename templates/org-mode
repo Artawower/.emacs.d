@@ -9,8 +9,10 @@ org-mode
 (js "#+BEGIN_SRC js" n> p n "#+END_SRC")
 (sql "#+BEGIN_SRC sql" n> p n "#+END_SRC")
 (json "#+BEGIN_SRC json" n> p n "#+END_SRC")
+(html "#+BEGIN_SRC html" n> p n "#+END_SRC")
 (go "#+BEGIN_SRC go" n> p n "#+END_SRC")
 (docker "#+BEGIN_SRC docker" n> p n "#+END_SRC")
+(rust "#+BEGIN_SRC rust :result output" n> p n "#+END_SRC")
 (typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
 (emacs-lisp "#+BEGIN_SRC emacs-lisp" n> p n "#+END_SRC")
 (h ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
@@ -22,7 +24,8 @@ org-mode
 (note ":PROPERTIES:" n ":ID: " (p "id" id) n ":END:" n n
 "#+TITLE: " (p "title") n
 "#+DESCRIPTION: " (p "description") n
-"#+FILETAGS: " (p "tags") n)
+"#+FILETAGS: " (p "tags") n
+"#+STARTUP: " (p "content" startup) n)
 
 (scss "#+BEGIN_SRC scss" n> p n "#+END_SRC")
 (yaml "#+BEGIN_SRC yaml" n> p n "#+END_SRC")
