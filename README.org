@@ -83,7 +83,21 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
     "r" 'elpaca-ui-mark-rebuild)
 )
 #+END_SRC
+*** Elpaca fixese
+#+BEGIN_SRC emacs-lisp
+(use-package closql :elpaca (closql :depth nil) :defer t)
+#+END_SRC
 
+#+BEGIN_SRC emacs-lisp
+;; (use-package seq
+;; :defer t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+ (use-package jsonrpc
+  :elpaca (jsonrpc :depth nil)
+  :defer t)
+#+END_SRC
 ** Env
 https://www.reddit.com/r/emacs/comments/f8xwau/hack_replace_execpathfromshell/
 #+BEGIN_SRC emacs-lisp
@@ -791,6 +805,7 @@ Very pretty titlebar for Mac os
 ** Highlight keywords
 #+BEGIN_SRC emacs-lisp
 (use-package hl-todo
+  :elpaca (hl-todo :depth nil)
   :defer 2
   :config
   (setq hl-todo-keyword-faces
@@ -873,7 +888,6 @@ Doesn't work for mac os unfortunately ;c
   (set-frame-parameter (selected-frame) 'alpha '(100 . 100))
   (add-to-list 'default-frame-alist '(alpha . (100 . 100))))
 #+END_SRC
-
 
 ** Doom emacs themes
 *** Theme
@@ -3073,27 +3087,27 @@ This need for correct highlighting of incorrect spell-fu faces."
 *** Lsp optimisation
 See [[https://github.com/blahgeek/emacs-lsp-booster][detail]]
 #+BEGIN_SRC emacs-lisp
-(define-advice json-parse-buffer (:around (old-fn &rest args) lsp-booster-parse-bytecode)
-  "Try to parse bytecode instead of json."
-  (or
-   (when (equal (following-char) ?#)
-     (let ((bytecode (read (current-buffer))))
-       (when (byte-code-function-p bytecode)
-         (funcall bytecode))))
-   (apply old-fn args)))
+;; (define-advice json-parse-buffer (:around (old-fn &rest args) lsp-booster-parse-bytecode)
+;;   "Try to parse bytecode instead of json."
+;;   (or
+;;    (when (equal (following-char) ?#)
+;;      (let ((bytecode (read (current-buffer))))
+;;        (when (byte-code-function-p bytecode)
+;;          (funcall bytecode))))
+;;    (apply old-fn args)))
 
-(define-advice lsp-resolve-final-command (:around (old-fn cmd &optional test?) add-lsp-server-booster)
-  "Prepend emacs-lsp-booster command to lsp CMD."
-  (let ((orig-result (funcall old-fn cmd test?)))
-    (if (and (not test?)                             ;; for check lsp-server-present?
-             (not (file-remote-p default-directory)) ;; see lsp-resolve-final-command, it would add extra shell wrapper
-             lsp-use-plists
-             (not (functionp 'json-rpc-connection))  ;; native json-rpc
-             (executable-find "emacs-lsp-booster"))
-        (progn
-          (message "Using emacs-lsp-booster for %s!" orig-result)
-          (cons "emacs-lsp-booster" orig-result))
-      orig-result)))
+;; (define-advice lsp-resolve-final-command (:around (old-fn cmd &optional test?) add-lsp-server-booster)
+;;   "Prepend emacs-lsp-booster command to lsp CMD."
+;;   (let ((orig-result (funcall old-fn cmd test?)))
+;;     (if (and (not test?)                             ;; for check lsp-server-present?
+;;              (not (file-remote-p default-directory)) ;; see lsp-resolve-final-command, it would add extra shell wrapper
+;;              lsp-use-plists
+;;              (not (functionp 'json-rpc-connection))  ;; native json-rpc
+;;              (executable-find "emacs-lsp-booster"))
+;;         (progn
+;;           (message "Using emacs-lsp-booster for %s!" orig-result)
+;;           (cons "emacs-lsp-booster" orig-result))
+;;       orig-result)))
 #+END_SRC
 ** Compilation
 *** Functions
@@ -3598,7 +3612,8 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
   :defer 5
-  :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "enhancement/async-cmd")
+  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "enhancement/async-cmd")
+  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "fix/async-call")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -4633,12 +4648,17 @@ My own package for publish roam files
 
 ** Org functions for pretty inserting
 #+BEGIN_SRC emacs-lisp
-  (use-package org-insert
-    :after org
-    :bind (:map org-mode-map
-                ("<C-return>" . +org/insert-item-below)
-                ("<C-S-return>" . +org/insert-item-above))
-    :elpaca (org-insert :type git :host github :repo "hlissner/doom-emacs" :files ("modules/lang/org/autoload/org.el")))
+(use-package org-insert
+  :after org
+  :bind (:map org-mode-map
+              ("<C-return>" . +org/insert-item-below)
+              ("<C-S-return>" . +org/insert-item-above))
+  :elpaca (org-insert
+           :type git
+           :host github
+           :repo "hlissner/doom-emacs"
+           :files ("modules/lang/org/autoload/org.el")
+           :main "modules/lang/org/autoload/org.el"))
 #+END_SRC
 
 #+RESULTS:
@@ -5309,81 +5329,6 @@ Delete project
   :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
 
-** HOLD GPT AI alternative
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
-#+BEGIN_SRC emacs-lisp 
-(use-package emacs-gpt
-  :elpaca (:package "emacs-gpt" :host nil :type git
-             :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
-  ;; :load-path "~/pure-emacs"
-  ;; :ensure nil)
-#+END_SRC
-
-** Another GPT alternative
-Dependencies
-#+BEGIN_SRC emacs-lisp 
-(use-package openai
-  :elpaca (:host github :repo "emacs-openai/openai"))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp 
-(use-package codegpt 
-  :elpaca (:type git :host github :repo "emacs-openai/codegpt")
-  :config
-  (add-to-list 'codegpt-action-alist '("JSDoc" . "Write JSDoc for this method"))
-  (defun codegpt--internal (instruction start end)
-    "Do INSTRUCTION with partial code.
-
-The partial code is defined in with the region, and the START nad END are
-boundaries of that region in buffer."
-    (let ((text (string-trim (buffer-substring start end)))
-          (original-window (selected-window)))
-      (codegpt--ask-in-buffer instruction
-        (insert text "\n\n")
-        (openai-completion
-         (buffer-string)
-         (lambda (data)
-           (openai--with-buffer codegpt-buffer-name
-             (openai--pop-to-buffer codegpt-buffer-name)
-             (let* ((choices (openai-completion--data-choices data))
-                    (result (openai-completion--get-choice choices))
-                    (original-point (point)))
-               (insert "\n" (string-trim result) "\n")
-               (fill-paragraph original-point (point))
-               (end-of-buffer)))
-           (unless codegpt-focus-p
-             (select-window original-window))))
-        (unless codegpt-focus-p
-          (select-window original-window))))))
-#+END_SRC
-** HOLD GPT AI
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-dependency
-#+BEGIN_SRC emacs-lisp 
-(use-package epc
-  :defer t)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp 
-(use-package chatgpt
-  :elpaca (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
-  :ensure t
-  :general
-  (:keymaps 'override
-            "s-d" 'chatgpt-query)
-  :init
-  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/")
-  :config
-   (require 'epc)
-  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
-#+END_SRC
 ** Pocket
 #+BEGIN_SRC emacs-lisp 
 (use-package pocket-reader
@@ -5405,6 +5350,42 @@ dependency
   :defer t)
 #+END_SRC
 
+** GPTel 
+#+BEGIN_SRC emacs-lisp
+(use-package gptel
+  :config
+  ;; (setq gptel-api-key gpt-key)
+  ;; Make gpt4all the default
+  ;; (setq-default
+  ;;  gptel-backend
+  ;;  (gptel-make-openai                    ;Not a typo, same API as OpenAI
+  ;;   "llama-cpp"                          ;Any name
+  ;;   :stream t                            ;Stream responses
+  ;;   :protocol "http"
+  ;;   :host "localhost:8080"               ;Llama.cpp server location, typically localhost:8080 for Llamafile
+  ;;   :key nil                             ;No key needed
+  ;;   :models '("test")))
+  ;; (setq-default gptel-model "test")
+  (setq-default gptel-backend
+                (gptel-make-ollama
+                 "Ollama"                       
+                 :host "localhost:11434"         
+                 :models '("codellama:latest")      
+                 :stream t))
+  (setq-default gptel-model "codellama")
+  ;; (setq-default
+  ;;  gptel-backend
+  ;;  (gptel-make-gpt4all
+  ;;   "GPT4All"                             ;Any name of your choosing
+  ;;   :protocol "http"                       
+  ;;   :host "localhost:4891"                       ;Where it's running
+  ;;   :models '("mistral-7b-openorca.Q4_0.gguf"))) ;Available models
+
+
+  ;; Don't limit token count:
+  (setq-default gptel-max-tokens 800)
+  )
+#+END_SRC
 ** PlantUML
 #+BEGIN_SRC emacs-lisp 
 (use-package plantuml-mode
