@@ -6,3 +6,4 @@
 !templates/
 !templates/*
 !.gitignore
+!vendor/*
