@@ -1,0 +1,1299 @@
+:PROPERTIES:
+:ID: unused-packages
+:END:
+
+#+TITLE: Intereseting, but unused packages
+#+FILETAGS: :emacs:config:unused:
+#+ID: unused-packages
+
+
+* UI
+** Olivetti
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package olivetti
+  :hook
+  (prog-mode . olivetti-mode)
+  (ng2-html-mode . olivetti-mode)
+  :custom
+  (olivetti-recall-visual-line-mode-entry-state t)
+  (olivetti-body-width 150)
+  :config
+  (visual-line-mode -1))
+#+END_SRC
+** TODO Golden ratio
+So buggy right now
+#+BEGIN_SRC emacs-lisp
+(use-package golden-ratio
+  :custom
+  ;; (golden-ratio-max-width 100)
+  (golden-ratio-adjust-factor .85)
+  ;; (golden-ratio-wide-adjust-factor .7)
+  :config
+  (define-advice select-window (:after (window &optional no-record) golden-ratio-resize-window)
+    (golden-ratio)
+    nil)
+  (golden-ratio-mode 1))
+#+END_SRC
+
+** Modeline
+:PROPERTIES:
+:header-args:  :tangle config.el
+:END:
+#+BEGIN_SRC emacs-lisp
+(setq header-line-format mode-line-format)
+(setq-default mode-line-format nil)
+(setq-default header-line-format mode-line-format)
+#+END_SRC
+
+** Indent guide (bars)
+#+BEGIN_SRC emacs-lisp
+(use-package indent-bars
+  :elpaca (indent-bars :type git :host github :repo "jdtsmith/indent-bars")
+  :hook (prog-mode . indent-bars-mode)) ;
+#+END_SRC
+
+** Nano
+Nano is pretty good theme. But has ton of bugs ;(
+*** Small patch for define face
+#+BEGIN_SRC emacs-lisp
+(defface bookmark-menu-heading
+  '((t :foreground "#7a88cf"
+       :background unspecified))
+  "Face for patching nano")
+#+END_SRC
+
+*** Nano pack
+#+BEGIN_SRC emacs-lisp
+    (straight-use-package
+     '(nano-emacs :type git :host github :repo "rougier/nano-emacs"))
+
+    (use-package nano-theme-light)
+
+    (use-package nano-theme-dark
+      :config
+      (scroll-bar-mode -1))
+
+    (use-package nano-faces
+      :config
+      (nano-faces))
+
+    (use-package nano-colors
+      :after nano-faces)
+
+    (use-package nano-theme
+      :after nano-theme-dark
+      :config
+      (nano-theme)
+      (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146))
+
+    (use-package nano-modeline
+      :after nano-theme
+      :config
+      (setq nano-font-size 15)
+      (setq nano-font-family-monospaced "JetBrainsMono Nerd Font 14")
+      (nano-modeline-default-mode)
+      (scroll-bar-mode -1))
+
+
+    (use-package nano-splash
+      :after nano-theme)
+
+    (use-package nano-help
+      :after nano-theme)
+
+    (use-package nano-layout :config (scroll-bar-mode -1))
+
+    ;; (use-package nano-command
+    ;;    :config
+    ;;    (nano-command-mode))
+
+
+#+END_SRC
+
+**** Modeline patch
+Patch for modeline for support mode-line-misc-info
+
+#+BEGIN_SRC emacs-lisp 
+(defun nano-modeline-default-mode ()
+  (let ((buffer-name (format-mode-line "%b"))
+        (mode-name   (nano-mode-name))
+        (branch      (vc-branch))
+        (position    (format-mode-line "%l:%c")))
+    (nano-modeline-compose (nano-modeline-status)
+                           buffer-name
+                           (concat "(" mode-name
+                                   (when branch (concat ", " (propertize branch 'face 'italic)))
+                                   ")"
+                                   (when (and (boundp 'wakatime-current-session) wakatime-current-session)
+                                     (propertize
+                                      (format " [%s] " wakatime-current-session)
+                                      'face `(:foreground ,+m-color-secondary :weight bold :slant italic)))
+                                   )
+                           position)))
+#+END_SRC
+*** Nano theme switcher
+#+NAME: nano-theme-switcher
+#+BEGIN_SRC emacs-lisp  :tangle no
+(defun auto-dark--ns-set-theme (appearance)
+    "Set light/dark theme using emacs-plus ns-system-appearance.
+Argument APPEARANCE should be light or dark."
+    ;; (mapc #'disable-theme custom-enabled-themes)
+    (pcase appearance
+      ('dark
+       (nano-change-theme-dark)
+       (run-hooks 'auto-dark-dark-mode-hook))
+      ('light
+       (nano-change-theme-light)
+       (run-hooks 'auto-dark-light-mode-hook))))
+  (add-hook 'auto-dark-mode-hook #'nano-change-theme-dark)
+  (add-hook 'auto-light-mode-hook #'nano-change-theme-light)
+#+END_SRC
+
+*** Switch nano theme patch
+#+BEGIN_SRC emacs-lisp
+(defvar nano-theme-light-var t)
+(defun nano-change-theme-dark ()
+  (interactive)
+  (nano-theme-set-dark)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
+  (@setup-org-mode-faces))
+
+(defun nano-change-theme-light ()
+  (interactive)
+  (nano-theme-set-light)
+  (nano-faces)
+  (nano-theme)
+  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font 14" :italic nil :height 146)
+  (@setup-org-mode-faces))
+
+(defun nano-change-theme ()
+  (interactive)
+  (if nano-theme-light-var (nano-change-theme-dark) (nano-change-theme-light))
+  (setq nano-theme-light-var (not nano-theme-light-var)))
+#+END_SRC
+
+** Lambda modeline
+#+BEGIN_SRC emacs-lisp 
+(use-package lambda-line
+  :ensure t
+  :elpaca (:type git :host github :repo "lambda-emacs/lambda-line")
+  :custom
+  (lambda-line-icon-time t) ;; requires ClockFace font (see below)
+  (lambda-line-clockface-update-fontset "ClockFaceRect") ;; set clock icon
+  (lambda-line-position 'top) ;; Set position of status-line 
+  (lambda-line-abbrev t) ;; abbreviate major modes
+  (lambda-line-hspace "  ")  ;; add some cushion
+  (lambda-line-prefix t) ;; use a prefix symbol
+  (lambda-line-prefix-padding nil) ;; no extra space for prefix 
+  (lambda-line-status-invert nil)  ;; no invert colors
+  (lambda-line-gui-ro-symbol  " ⨂") ;; symbols
+  (lambda-line-gui-mod-symbol " ⬤") 
+  (lambda-line-gui-rw-symbol  " ◯") 
+  (lambda-line-space-top +.50)  ;; padding on top and bottom of line
+  (lambda-line-space-bottom -.50)
+  (lambda-line-symbol-position 0.1) ;; adjust the vertical placement of symbol
+  :config
+  ;; activate lambda-line 
+  (lambda-line-mode) 
+  ;; set divider line in footer
+  (when (eq lambda-line-position 'top)
+    (setq-default mode-line-format (list "%_"))
+    (setq mode-line-format (list "%_"))))
+#+END_SRC
+** Splash screen
+#+BEGIN_SRC emacs-lisp 
+(use-package splash-screen
+  :elpaca (:host github :repo "rougier/emacs-splash"))
+#+END_SRC
+
+** Catppuccinit Fork (old pretty colors!)
+#+BEGIN_SRC emacs-lisp 
+(use-package catppuccin-theme
+  :ensure t
+  :elpaca (catppuccin :type git :host github :repo "artawower/emacs" :branch "old"))
+#+END_SRC
+
+* Common packages
+** Workspace
+*** Preserve everything?
+Doesn't work now
+#+BEGIN_SRC emacs-lisp 
+(use-package eyebrowse-restore
+  :ensure t
+  :elpaca (:host github
+             :repo "FrostyX/eyebrowse-restore"
+             :branch "main")
+  :config
+  (eyebrowse-restore-mode))
+#+END_SRC
+** Terminal. Eshell
+*** Syntax highlight
+#+BEGIN_SRC emacs-lisp
+(use-package eshell-syntax-highlighting
+  :after eshell-mode
+  :config
+  ;; Enable in all Eshell buffers.
+  (eshell-syntax-highlighting-global-mode +1))
+#+END_SRC
+*** Eshell
+#+BEGIN_SRC emacs-lisp
+(use-package eshell-prompt-extras
+  :after eshell
+  :config
+  (autoload 'epe-theme-lambda "eshell-prompt-extras")
+  (setq eshell-highlight-prompt nil
+        eshell-prompt-function 'epe-theme-lambda)
+  (require 'virtualenvwrapper)
+  (venv-initialize-eshell)
+  (autoload 'epe-theme-lambda "eshell-prompt-extras")
+  (setq eshell-highlight-prompt nil
+        eshell-prompt-function 'epe-theme-lambda))
+#+END_SRC
+*** Dependency
+#+BEGIN_SRC emacs-lisp
+(use-package virtualenvwrapper
+  :defer t)
+#+END_SRC
+*** Autosuggest
+#+BEGIN_SRC emacs-lisp
+(use-package capf-autosuggest
+  :hook (eshell-mode . capf-autosuggest-mode)
+  :general
+  (:keymaps 'eshell-mode-map
+            "C-l" 'capf-autosuggest-accept)
+  (:keymaps 'eshell-cmpl-mode-map
+            "C-l" 'capf-autosuggest-accept)
+  (:keymaps 'capf-autosuggest-active-mode-map
+            "C-l" 'capf-autosuggest-accept))
+#+END_SRC
+
+* Programming
+** YaSnippets
+#+BEGIN_SRC emacs-lisp
+(use-package yasnippet
+  :bind (("s-y" . yas-expand))
+  :hook (prog-mode . yas-minor-mode)
+  :config
+  (setq yas-snippet-dirs '("~/.doom.d/snippets")))
+#+END_SRC
+
+** Debugger. Dap
+Function for deleting local terminals
+#+BEGIN_SRC emacs-lisp 
+(defun @dap-delete-local-terminal (&optional _)
+  "Delete local terminal."
+  (interactive (list (dap--cur-active-session-or-die)))
+  (save-window-excursion
+    (let* ((buffer-list (mapcar #'buffer-name (buffer-list)))
+           (filtered-buffers (seq-filter (lambda (buffer)
+                                           (string-match-p "\\*DEBUG" buffer))
+                                         buffer-list))
+           (buffer-modified-p nil))
+      (mapc #'kill-buffer filtered-buffers))))
+#+END_SRC
+
+
+#+NAME: overrided-vterm-showing
+#+BEGIN_SRC emacs-lisp  :tangle no
+(defun dap-internal-terminal-vterm (command title debug-session)
+  (with-current-buffer (dap--make-terminal-buffer title debug-session)
+    (require 'vterm)
+    (let ((vterm-shell command)
+          (vterm-kill-buffer-on-exit nil))
+      (vterm-mode))))
+#+END_SRC
+
+
+
+#+BEGIN_SRC emacs-lisp  :noweb yes
+(use-package dap-mode
+  :demand
+  :bind (:map evil-normal-state-map
+              ("SPC d n" . dap-next)
+              ("SPC d i" . dap-step-in)
+              ("SPC d o" . dap-step-out)
+              ("SPC d c" . dap-continue)
+              ("SPC d Q" . dap-disconnect)
+              ("SPC d q" . dap-disconnect)
+              ("SPC d d" . dap-debug)
+              ("SPC d r" . dap-debug-recent)
+              ("SPC d l" . dap-ui-locals)
+              ("SPC d b" . dap-ui-breakpoints)
+              ("SPC d p" . dap-breakpoint-toggle)
+              ("SPC d g" . dap-ui-breakpoints-browse)
+              ("SPC d s" . dap-ui-sessions)
+              ("SPC d e" . dap-debug-last)
+              ("SPC d w" . dap-ui-show-many-windows)
+              ("SPC d x" . dap-breakpoint-delete-all)
+              ("SPC d W" . dap-ui-hide-many-windows)
+              ("SPC d e" . dap-debug-edit-template))
+  :config
+  <<overrided-vterm-showing>>
+  (advice-add 'dap-disconnect :before #'@dap-delete-local-terminal)
+  ;; (advice-remove 'dap-disconnect #'@dap-delete-local-terminal)
+
+  (with-eval-after-load 'dap-ui
+    (setq-default dap-ui-buffer-configurations
+                  `((,dap-ui--breakpoints-buffer     . ((side . left)   (slot . 2) (window-width  . ,treemacs-width)))
+                    (,dap-ui--expressions-buffer     . ((side . left)   (slot . 3) (window-width  . 0.30)))
+                    (,dap-ui--locals-buffer          . ((side . right)  (slot . 1) (window-width  . 0.4)))
+                    (,dap-ui--sessions-buffer        . ((side . right)  (slot . 2) (window-width  . 0.30)))
+                    (,dap-ui--repl-buffer            . ((side . bottom) (slot . 1) (window-height . 0.30))))))
+    ;; (setq dap-ui-locals-expand-depth 3))
+  (setq dap-auto-configure-features '(locals tooltip))
+  (advice-add 'dap-disconnect :after '@dap-delete-local-terminal)
+  (custom-set-faces
+   '(dap-ui-pending-breakpoint-face ((t (:underline "dim gray"))))
+   '(dap-ui-verified-breakpoint-face ((t (:underline "green")))))
+  (require 'dap-go)
+  (require 'dap-node))
+#+END_SRC
+* Formatters
+*** Format all mode. Common formatter
+Sometimes i have jump to start of the file
+Function for preventing better jump breaks
+#+BEGIN_SRC emacs-lisp 
+(defun format-all-buffer--no-bufferjump ()
+  "format-all-buffer without jumps of cursor"
+  (interactive)
+  (let ((point (point)) (wstart (window-start)))
+    (call-interactively 'format-all-buffer)
+    (goto-char point)
+    (set-window-start (selected-window) wstart)))
+
+(defun @format-all--buffer-or-region (origin-func &rest args)
+  (let ((point (point)) (wstart (window-start)))
+    (apply origin-func args)
+    (goto-char point)
+    (set-window-start (selected-window) wstart)))
+#+END_SRC
+
+
+#+BEGIN_SRC emacs-lisp
+(use-package format-all
+  :defer t
+  :hook ((js2-mode typescript-mode ng2-html-mode ng2-ts-mode go-mode web-mode scss-mode css-mode) . format-all-mode)
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "\\p" 'format-all-buffer--no-bufferjump)
+  :config
+  (dolist (lang '("TypeScript" "TSX" "HTML" "CSS" "SCSS" "Vue" "JavaScript"))
+    (add-to-list 'format-all-default-formatters (cons lang '(prettierd))))
+
+  (add-to-list 'format-all-default-formatters '("TypeScript" prettierd))
+  (add-to-list 'format-all-default-formatters '("HTML" prettierd))
+
+  ;; (setcdr (assoc "HTML" format-all-default-formatters) 'prettierd)
+  ;; (setcar (assoc "TypeScript" format-all-default-formatters) '("TypeScript" prettierd))
+  ;; (setcdr (assoc "TSX" format-all-default-formatters) 'prettierd)
+  ;; (setcdr (assoc "CSS" format-all-default-formatters) 'prettierd)
+  
+  (add-hook 'format-all-mode-hook 'format-all-ensure-formatter)
+  (advice-add 'format-all--buffer-or-region :around #'@format-all--buffer-or-region))
+;; :hook ((json-mode go-mode dart-mode) . format-all-mode)
+;; :config
+;; (add-to-list '+format-on-save-enabled-modes 'typescript-mode t)
+;; (add-to-list '+format-on-save-enabled-modes 'ng2-mode t)
+;; (add-to-list '+format-on-save-enabled-modes 'js2-mode t)
+#+END_SRC
+
+#+RESULTS:
+
+** Autocomplete
+**** Company package
+#+BEGIN_SRC emacs-lisp
+(use-package company
+  :defer t
+  :after lsp
+  :hook (emacs-lisp-mode . company-mode)
+  :bind (:map evil-insert-state-map
+              ("C-'" . company-yasnippet)
+              ("C-x C-o" . company-complete)
+              :map company-active-map
+              ("C-w" . backward-kill-word)
+              ("<escape>" . (lambda () (interactive)
+                              (company-cancel)
+                              (evil-normal-state))))
+  :init
+  (setq lsp-completion-provider :capf)
+  :config
+  (setq company-idle-delay 0.2)
+  (setq company-quick-access-modifier 'super)
+  (setq company-show-quick-access t)
+  (setq company-minimum-prefix-length 1)
+  (setq company-dabbrev-char-regexp "[A-z:-]")
+  (custom-set-variables
+   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
+   '(company-quick-access-modifier 'super))
+  (global-company-mode))
+#+END_SRC
+**** Company box
+#+BEGIN_SRC emacs-lisp 
+(use-package company-box
+  :hook (company-mode . company-box-mode))
+#+END_SRC
+
+
+*** Company mode
+**** Company package
+#+BEGIN_SRC emacs-lisp
+(use-package company
+  :defer t
+  :after lsp
+  :hook (emacs-lisp-mode . company-mode)
+  :bind (:map evil-insert-state-map
+              ("C-'" . company-yasnippet)
+              ("C-x C-o" . company-complete)
+              :map company-active-map
+              ("C-w" . backward-kill-word)
+              ("<escape>" . (lambda () (interactive)
+                              (company-cancel)
+                              (evil-normal-state))))
+  :init
+  (setq lsp-completion-provider :capf)
+  :config
+  (setq company-idle-delay 0.2)
+  (setq company-quick-access-modifier 'super)
+  (setq company-show-quick-access t)
+  (setq company-minimum-prefix-length 1)
+  (setq company-dabbrev-char-regexp "[A-z:-]")
+  (custom-set-variables
+   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
+   '(company-quick-access-modifier 'super))
+  (global-company-mode))
+#+END_SRC
+**** Company box
+#+BEGIN_SRC emacs-lisp 
+(use-package company-box
+  :hook (company-mode . company-box-mode))
+#+END_SRC
+
+*** HOLD Corfu
+**** Corfu package
+#+BEGIN_SRC emacs-lisp
+(use-package corfu
+  ;; Optional customizations
+  :defer 2
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  (corfu-commit-predicate t)   ;; Do not commit selected candidates on next input
+  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
+  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
+  (corfu-auto-delay 0.1)
+  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
+  (corfu-preselect-first t)
+  (corfu-auto-prefix 2)
+  (corfu-separator ?\s) 
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :general
+
+  (:keymaps 'corfu-map
+            "TAB" 'corfu-next
+            [tab] 'corfu-next
+            "C-j" 'corfu-next
+            "C-k" 'corfu-previous
+            "S-TAB" 'corfu-previous
+            "<return>" 'corfu-insert
+            "C-<return>" 'corfu-insert-seporator
+            [backtab] 'corfu-previous)
+  (:keymaps 'override
+            :map evil-insert-state-map
+            "C-x C-o" 'completion-at-point
+            "C-SPC" 'completion-at-point)
+  :config
+  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (evil-make-overriding-map corfu-map)
+  (setq lsp-completion-provider :none)
+
+  (global-corfu-mode))
+#+END_SRC
+
+**** Disalbe company mode
+#+BEGIN_SRC emacs-lisp :tangle no
+(global-company-mode -1)
+(company-mode -1)
+(add-hook 'prog-mode-hook (lambda () (company-mode -1)))
+#+END_SRC
+
+
+#+RESULTS:
+: completion-at-point
+**** Corfu quick
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-quick
+  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
+  :bind (:map corfu-map
+              ("<tab>" . corfu-quick-insert))
+  :after corfu
+  :custom
+  (corfu-quick1 "123456789")
+  (corfu-quick2 "123456789"))
+#+END_SRC
+
+**** Corfu doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :after corfu
+  :config
+  (setq corfu-popupinfo-delay '(0.5 . 0.5)))
+#+END_SRC
+**** Corfu save history
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-history
+  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
+  :after corfu
+  :config
+  (with-eval-after-load 'safehist
+    (cl-pushnew 'corfu-history savehist-additional-variables))
+   (setq corfu-sort-override-function 'corfu-history--sort)
+
+  (corfu-history-mode))
+#+END_SRC
+
+**** Corfu popup doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :bind (:map corfu-map
+              ("C-m" . corfu-popupinfo-documentation))
+  :custom
+  (corfu-echo-delay nil)
+  :after corfu
+  :config
+  (corfu-popupinfo-mode))
+#+END_SRC
+
+**** Pretty icon
+#+BEGIN_SRC emacs-lisp
+  (use-package kind-icon
+    :after corfu
+    :custom
+    (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+    :config
+    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+#+END_SRC
+
+** Lsp (Eglot)
+*** Eglot package
+ [[https://github.com/joaotavora/eglot/issues/257][Vue js configuration example]]
+ Eglot is unused right now. Because it has lack of debugger functionality
+#+BEGIN_SRC emacs-lisp
+(use-package eglot
+  :defer t
+  :hook
+  ((web-mode ng2-mode typescript-mode go-mode python-mode yaml-mode ng2-ts-mode) . eglot-ensure)
+  (eglot--managed-mode . company-mode)
+  :general (:states '(normal visual)
+                    :keymaps 'override
+                    "SPC lr" 'eglot-find-declaration
+                    "gi" 'eglot-find-implementation
+                    "gt" 'eglot-find-typeDefinition
+                    "SPC la" 'eglot-code-actions
+                    "\\l" 'eglot-code-actions
+                    "SPC lw" 'eglot-reconnect
+                    "gd" '@find-definition
+                    "SPC cr" 'eglot-rename)
+  :config
+  (add-to-list 'eglot-server-programs '(ng2-mode . ("typescript-language-server" "--stdio")))
+  (add-to-list 'eglot-server-programs '(python-mode . ("pyright-langserver" "--stdio")))
+  (add-to-list 'eglot-server-programs
+               '(vue-mode . (eglot-volar "vue-language-server" "--stdio")))
+  (add-to-list 'eglot-server-programs
+               '(web-mode . (eglot-volar "vue-language-server" "--stdio")))
+
+  (add-to-list 'eglot-server-programs
+               '(ng2-html-mode "node"
+                               "/Users/darkawower/.npm-global/lib/node_modules/@angular/language-server"
+                               "--ngProbeLocations"
+                               "/Users/darkawower/.npm-global/lib/node_modules"
+                               "--tsProbeLocations"
+                               "/Users/darkawower/.npm-global/lib/node_modules"
+                               "--stdio"))
+  (defclass eglot-volar (eglot-lsp-server) ()
+    :documentation "A custom class for volar")
+
+  (cl-defmethod eglot-initialization-options ((server eglot-volar))
+    "Passes through required volar initialization options"
+    (let*
+        ((serverPath
+          (expand-file-name
+           "lib"
+           (shell-command-to-string "npm list --global --parseable typescript | head -n1 | tr -d \"\n\""))))
+      (list :typescript
+            (list :tsdk serverPath)
+            :languageFeatures
+            (list :completion
+                  (list :defaultTagNameCase "both"
+                        :defaultAttrNameCase "kebabCase"
+                        :getDocumentNameCasesRequest nil
+                        :getDocumentSelectionRequest nil)
+                  :diagnostics
+                  (list :getDocumentVersionRequest nil))
+            :documentFeatures
+            (list :documentFormatting
+                  (list :defaultPrintWidth 100
+                        :getDocumentPrintWidthRequest nil)
+                  :documentSymbol t
+                  :documentColor t)))))
+#+END_SRC
+*** Eglot grammarly
+#+BEGIN_SRC emacs-lisp
+(use-package eglot-grammarly
+  :elpaca (:host github :repo "emacs-grammarly/eglot-grammarly")
+  :hook (org-mode . (lambda ()
+                      (require 'eglot-grammarly)
+                      (call-interactively #'eglot))))
+#+END_SRC
+** LSP Bridge
+Perspective alternative for lsp-mode. Right now on the pause cause doesn't support angular.
+https://github.com/manateelazycat/lsp-bridge/issues/500
+Also GDB is not working with apple silicon
+https://inbox.sourceware.org/gdb/3185c3b8-8a91-4beb-a5d5-9db6afb93713@Spark/
+#+BEGIN_SRC emacs-lisp 
+(use-package lsp-bridge
+  :after yasnippet
+  :elpaca (:host github :repo "manateelazycat/lsp-bridge" :files ("acm" "core" "langserver" "multiserver" "test" "*.py" "*.el"))
+  :general
+  (:keymaps 'override
+            :states '(normal visual)
+            "gd" '@find-definition
+            "SPC cr" 'lsp-bridge-rename
+            "\\h" 'lsp-bridge-popup-documentation
+            "\\l" 'lsp-bridge-code-action
+            "SPC f]" 'lsp-bridge-diagnostic-jump-next
+            "SPC f[" 'lsp-bridge-diagnostic-jump-prev
+            "SPC lr" 'lsp-bridge-find-references)
+  (:keymaps 'override
+            :states 'insert
+            "C-x C-o" 'lsp-bridge-popup-complete-menu
+            "C-SPC" 'lsp-bridge-popup-complete-menu)
+  (:keymaps 'acm-mode-map
+            "C-j" 'acm-select-next
+            "C-k" 'acm-select-prev)
+  :custom
+  (acm-enable-tabnine nil)
+  (acm-enable-quick-access t)
+  (lsp-bridge-enable-debug nil)
+  (acm-quick-access-modifier 'super)
+  :config
+  (keymap-set acm-mode-map "C-j" 'acm-select-next)
+  (keymap-set acm-mode-map "C-k" 'acm-select-prev)
+  (keymap-set acm-mode-map "<backtab>" 'acm-select-prev)
+  (keymap-set acm-mode-map "<tab>"       'acm-select-next)
+  (global-lsp-bridge-mode))
+#+END_SRC
+
+** HOLD Vundo
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp
+(use-package vundo
+  :config
+  ;; Take less on-screen space.
+  (setq vundo-compact-display t)
+
+  ;; Better contrasting highlight.
+  (custom-set-faces
+   '(vundo-node ((t (:foreground "#808080"))))
+   '(vundo-stem ((t (:foreground "#808080"))))
+   '(vundo-highlight ((t (:foreground "#FFFF00")))))
+
+  ;; Use `HJKL` VIM-like motion, also Home/End to jump around.
+  (define-key vundo-mode-map (kbd "l") #'vundo-forward)
+  (define-key vundo-mode-map (kbd "<right>") #'vundo-forward)
+  (define-key vundo-mode-map (kbd "h") #'vundo-backward)
+  (define-key vundo-mode-map (kbd "<left>") #'vundo-backward)
+  (define-key vundo-mode-map (kbd "j") #'vundo-next)
+  (define-key vundo-mode-map (kbd "<down>") #'vundo-next)
+  (define-key vundo-mode-map (kbd "k") #'vundo-previous)
+  (define-key vundo-mode-map (kbd "<up>") #'vundo-previous)
+  (define-key vundo-mode-map (kbd "<home>") #'vundo-stem-root)
+  (define-key vundo-mode-map (kbd "<end>") #'vundo-stem-end)
+  (define-key vundo-mode-map (kbd "q") #'vundo-quit)
+  (define-key vundo-mode-map (kbd "C-g") #'vundo-quit)
+  (define-key vundo-mode-map (kbd "RET") #'vundo-confirm))
+  #+END_SRC
+
+** Autopairs
+*** HOLD Autopair mode
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+NOTE: this package is used instead of electric pair mode
+cause its simple, and it works in all cases.
+Deprecated
+#+BEGIN_SRC emacs-lisp
+(use-package autopair
+  :defer 5
+  :config
+  (autopair-global-mode))
+#+END_SRC
+*** HOLD Smartparent
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp
+(use-package smartparens
+  :config
+  (require 'smartparens-config)
+  (smartparens-global-mode t)
+  (show-smartparens-global-mode t))
+#+END_SRC
+
+Autoindent between brackets
+#+BEGIN_SRC emacs-lisp
+(defun indent-between-pair (&rest _ignored)
+  (newline)
+  (indent-according-to-mode)
+  (forward-line -1)
+  (indent-according-to-mode))
+
+(sp-local-pair 'prog-mode "{" nil :post-handlers '((indent-between-pair "RET")))
+(sp-local-pair 'prog-mode "[" nil :post-handlers '((indent-between-pair "RET")))
+(sp-local-pair 'prog-mode "(" nil :post-handlers '((indent-between-pair "RET")))
+#+END_SRC
+
+* Git
+** Magit
+** TODO Pretty graph
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+Very pretty, But not so usefull without hooks ;c
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package magit-pretty-graph
+  :elpaca (:host github :repo "georgek/magit-pretty-graph"))
+
+#+END_SRC
+
+** Gists
+Unused, cause support of key navigation is not so good? check
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp
+(use-package gist                       ;
+  :defer t
+  :bind (:map gist-list-menu-mode-map
+         ("j" . next-line)
+         ("k" . previous-line)
+         ("c" . gist-fork)
+         ("x" . gist-kill-current)
+         ("f" . avy-goto-word-1)
+         ("v" . evil-visual-char)
+         :map evil-normal-state-map
+         ("SPC g l g" . gist-list)))
+#+END_SRC
+
+* Languages
+** Emacs lisp
+*** Lispy 
+#+BEGIN_SRC emacs-lisp 
+(use-package lispy
+  :ensure t
+  :hook (emacs-lisp-mode-hook . lispy-mode))
+#+END_SRC
+*** Lisp + evil (evil-cleverparens)
+#+BEGIN_SRC emacs-lisp
+(use-package evil-cleverparens
+  :ensure t
+  :defer t
+  :hook (emacs-lisp-mode . evil-cleverparens-mode))
+#+END_SRC
+
+* Spellcheckers
+** HOLD Grammarly
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp 
+(use-package grammarly
+  :defer t
+  :bind ("C-c g" . @check-region-via-grammarly)
+  :config
+  (defun test-on-message (data)
+    "On message callback with DATA."
+    (message "[DATA] %s" data))
+
+  ;; Set callback for receiving data.
+  (add-to-list 'grammarly-on-message-function-list 'test-on-message)
+
+  (defun @check-region-via-grammarly (beg end)
+    (interactive "r")
+    (grammarly-check-text (buffer-substring-no-properties beg end)))
+  (setq grammarly-auto-activate t))
+#+END_SRC
+
+* Completion
+** Vertico posframe                                               
+*** HOLD Posframe
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp
+        (use-package vertico-posframe
+          :ensure t
+          :config
+          (setq vertico-posframe-parameters
+              '((left-fringe . 8)
+                (right-fringe . 8)))
+          (vertico-posframe-mode 1))
+#+END_SRC
+
+*** Mini frame
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp 
+(use-package mini-frame
+  :defer 2
+  :custom
+  (mini-frame-color-shift-step 10)
+  :config
+  (custom-set-variables
+   '(mini-frame-show-parameters
+     '((top . 0.7)
+       (width . 0.7)
+       (left . 0.5))))
+  (mini-frame-mode))
+#+END_SRC
+
+** Fuzzy search
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp 
+(use-package hotfuzz
+  :after vertico
+  :config
+  (add-to-list 'completion-styles 'hotfuzz))
+#+END_SRC
+
+
+
+* Emacs for everything
+** HOLD PDF
+#+BEGIN_SRC emacs-lisp
+(use-package pdf-view
+  :ensure t
+  :defer t
+  :hook (pdf-view-mode . pdf-view-themed-minor-mode))
+#+END_SRC
+
+
+** Browser
+*** Browser history from emacs                             :potential:
+Figure out how to open url from history. Look usefull
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp 
+(use-package browse-hist
+  :ensure t
+  :general
+  (:keymaps '(normal visual)
+            :modes 'override
+            "SPC bh" 'browser-hist-search)
+  :custom
+  (browser-hist-default-browser 'brave)
+  :elpaca (browse-hist :type git :host github :repo "agzam/browser-hist.el"))
+#+END_SRC
+
+** AST. Tree sitter.
+Old tree sitter for <28 version
+*** Tree sitter package
+#+BEGIN_SRC emacs-lisp
+(use-package tree-sitter-langs
+  :after spell-fu)
+
+(defun init-tree-sitter-hl-mode ()
+  "Function for init tree-sitter-hl-mode in correct order.
+
+This need for correct highlighting of incorrect spell-fu faces."
+  (tree-sitter-hl-mode -1)
+  (my-set-spellfu-faces)
+  (tree-sitter-hl-mode)
+  (codemetrics-mode))
+
+(use-package tree-sitter
+  :after (evil tree-sitter-langs)
+  :hook ((go-mode
+          typescript-mode
+          css-mode
+          typescript-tsx-mode
+          html-mode
+          scss-mode
+          ng2-mode
+          ng2-html-mode
+          js-mode
+          python-mode
+          rust-mode
+          ng2-ts-mode
+          ng2-html-mode) . init-tree-sitter-hl-mode)
+  :config
+  (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
+  ;; (push '(web-mode . html) tree-sitter-major-mode-language-alist)
+  (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
+  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
+
+  ;; (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
+
+  ;; TODO: remove, 
+  (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
+  (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
+  (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
+  (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
+  (push '(html-ts-mode . ng2-html) tree-sitter-major-mode-language-alist)
+
+  (tree-sitter-require 'tsx)
+  (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
+
+(use-package tree-edit
+  :defer t)
+#+END_SRC
+
+*** Vue treesiter
+#+BEGIN_SRC emacs-lisp
+(use-package vue-ts-mode
+  :elpaca (vue-ts-mode :host github :repo "8uff3r/vue-ts-mode")
+  :config
+  (setq treesit-language-source-alist
+        '((vue "https://github.com/ikatyang/tree-sitter-vue")
+          (css "https://github.com/tree-sitter/tree-sitter-css")
+          (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")))
+  (mapc #'treesit-install-language-grammar '(vue css typescript)))
+#+END_SRC
+
+** Lsp mode
+*** Lsp functions
+**** Uninstall server
+#+BEGIN_SRC emacs-lisp 
+(defun @lsp/uninstall-server (dir)
+  "Delete a LSP server from `lsp-server-install-dir'."
+  (interactive
+   (list (read-directory-name "Uninstall LSP server: " lsp-server-install-dir nil t)))
+  (unless (file-directory-p dir)
+    (user-error "Couldn't find %S directory" dir))
+  (delete-directory dir 'recursive)
+  (message "Uninstalled %S" (file-name-nondirectory dir)))
+#+END_SRC
+
+*** LSP-mode Core package
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-mode
+  ;; :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
+  :after flycheck
+  :hook
+  ((clojure-mode
+    scss-mode
+    go-mode
+    css-mode
+    js-mode
+    typescript-mode
+    vue-mode
+    web-mode
+    html-mode
+    ng2-ts-mode
+    python-mode
+    dart-mode
+    typescript-tsx-mode
+
+    ;; Treesit
+    html-ts-mode
+    typescript-ts-mode
+    go-ts-mode
+    js-ts-mode
+    bash-ts-mode
+    tsx-ts-mode) . lsp-deferred)
+  (web-mode . lsp-deferred)
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
+  :general (:states '(normal visual)
+                    :keymaps 'override
+                    "SPC fn" 'flycheck-next-error
+                    "gi" 'p-goto-implementation
+                    "SPC la" 'lsp-execute-code-action
+                    "SPC im" 'lsp-ui-imenu
+                    "SPC lr" 'lsp-find-references
+                    "SPC lw" 'lsp-workspace-restart
+                    "SPC rl" 'lsp
+                    "gd" '@find-definition
+                    "SPC la" 'lsp-execute-code-action
+                    "SPC cr" 'lsp-rename)
+  :init
+  (setq lsp-headerline-breadcrumb-enable nil)
+  ;; Configuration for corfu
+  ;; https://github.com/minad/corfu/wiki#configuring-corfu-for-lsp-mode
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(flex))) ;; Configure flex
+  :custom
+  (lsp-headerline-breadcrumb-enable nil)
+  (lsp-idle-delay 0.3)
+  (lsp-completion-provider :capf)
+  (lsp-enable-on-type-formatting nil)
+  (lsp-eldoc-render-all nil)
+  (lsp-prefer-flymake nil)
+  (lsp-modeline-diagnostics-scope :workspace)
+  ;; (lsp-clients-typescript-server-args '("--stdio" "--tsserver-log-file" "/dev/stderr"))
+  (lsp-clients-typescript-server-args '("--stdio"))
+  (lsp-completion-default-behaviour :insert)
+  (lsp-yaml-schemas '((kubernetes . ["/auth-reader.yaml", "/deployment.yaml"])))
+  (lsp-disabled-clients '(html-ls))
+  (setq lsp-pyright-venv-path (concat (getenv "HOME") "/.virtualenvs"))
+  ;; (lsp-completion-provider :none)
+  ;; (lsp-completion-provider :capf)
+  ;; Disable bottom help info
+  (lsp-signature-render-documentation nil)
+  (lsp-signature-auto-activate nil)
+  (lsp-enable-snippet nil)
+  ;; (lsp-use-plists t)
+  (lsp-enable-file-watchers t)
+  (lsp-file-watch-threshold 5000)
+  :config
+  (setq lsp-javascript-display-return-type-hints t)
+  (setq lsp-json-schemas
+        `[
+          (:fileMatch ["ng-openapi-gen.json"] :url "https://raw.githubusercontent.com/cyclosproject/ng-openapi-gen/master/ng-openapi-gen-schema.json")
+          (:fileMatch ["package.json"] :url "http://json-schema.org/draft-07/schema")
+          ])
+  (set-face-attribute 'lsp-face-highlight-read nil :foreground "#61AFEF" :bold t :underline nil)
+  ;; Flycheck patch checkers
+  (require 'flycheck)
+  (require 'lsp-diagnostics)
+  (lsp-diagnostics-flycheck-enable)
+  (mapc #'lsp-flycheck-add-mode '(typescript-mode js-mode css-mode vue-html-mode))
+  ;; Golang
+  (defun lsp-go-install-save-hooks ()
+    (flycheck-add-next-checker 'lsp '(warning . go-gofmt) 'append)
+    (flycheck-add-next-checker 'lsp '(warning . go-golint))
+    (flycheck-add-next-checker 'lsp '(warning . go-errcheck))
+    (flycheck-add-next-checker 'lsp '(warning . go-staticcheck))
+
+    ;; (add-hook 'before-save-hook #'lsp-format-buffer t t)
+    (add-hook 'before-save-hook #'lsp-organize-imports t t))
+
+  (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+
+  (setq lsp-idle-delay 0.5
+        lsp-enable-symbol-highlighting t
+        lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
+        lsp-pyls-plugins-flake8-enabled nil)
+  (set-face-foreground 'lsp-face-highlight-read +m-color-secondary)
+  (set-face-foreground 'lsp-face-highlight-textual +m-color-secondary)
+
+
+  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
+  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
+  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
+  (set-face-attribute 'lsp-face-highlight-textual nil :background "#c0caf5")
+  ;; Install corfu completion for lsp
+  ;; (defun corfu-lsp-setup ()
+  ;; (setq-local completion-styles '(orderless basic)
+  ;;             completion-category-defaults nil))
+  ;; (add-hook 'lsp-mode-hook #'corfu-lsp-setup)
+  (@setup-compilation-errors)
+  (setq lsp-disabled-clients '(html-ls))
+  (setq lsp-eldoc-hook nil))
+#+END_SRC
+
+#+RESULTS:
+
+*** LSP UI
+#+BEGIN_SRC emacs-lisp 
+(use-package lsp-ui
+  :hook (lsp-mode . lsp-ui-mode)
+  :bind (:map lsp-ui-peek-mode-map
+              ("C-j" . lsp-ui-peek--select-next)
+              ("C-k" . lsp-ui-peek--select-prev))
+  :config
+  (setq lsp-ui-sideline-diagnostic-max-line-length 100
+        lsp-ui-sideline-diagnostic-max-lines 8
+        lsp-ui-doc-delay 2
+        lsp-ui-doc-position 'top
+        lsp-ui-doc-show-with-mouse nil
+        lsp-ui-doc-border +m-color-main))
+#+END_SRC
+
+*** Flutter (dart)
+#+BEGIN_SRC emacs-lisp
+  (use-package lsp-dart
+    :defer t
+    :hook (dart-mode . (lambda () (interactive)
+                         (add-hook 'after-save-hook
+                                   (lambda ()
+                                     ;; (flutter-run-or-hot-reload)
+                                     (flutter-hot-restart)
+                                     )
+                                   t t)))
+    :custom
+    (lsp-dart-dap-flutter-hot-reload-on-save t)
+    :config
+    (defun lsp-dart-flutter-widget-guide--add-overlay-to (buffer line col string)
+      "Add to BUFFER at LINE and COL a STRING overlay."
+      (save-excursion
+        (goto-char (point-min))
+        (forward-line line)
+        (move-to-column col)
+        (when (string= lsp-dart-flutter-widget-guide-space (string (following-char)))
+          (let ((ov (make-overlay (point) (1+ (point)) buffer)))
+            (overlay-put ov 'category 'lsp-dart-flutter-widget-guide)
+            (overlay-put ov 'display (propertize string
+                                                 'face 'custom-comment-tag)))))))
+#+END_SRC
+
+* Spell checker
+** Grammarly lsp
+Didn't mange to start work
+#+BEGIN_SRC emacs-lisp
+(use-package lsp-grammarly
+  :hook
+  (text-mode . (lambda ()
+                 (require 'lsp-grammarly)
+                 (lsp-deferred))))
+#+END_SRC
+
+** Lsp ltex. Grammarly lsp server
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package lsp-ltex
+  :ensure t)
+  ;; :hook
+  ;; (text-mode . (lambda ()
+  ;;                (require 'lsp-ltex)
+  ;;                (lsp-deferred)))  ; or lsp-deferred
+  ;; (org-mode . (lambda ()
+  ;;                (require 'lsp-ltex)
+  ;;                (lsp-deferred)))
+  ;; :init
+  ;; (setq lsp-ltex-version "15.2.0-mac-x64"))
+#+END_SRC
+
+** Flycheck
+#+BEGIN_SRC emacs-lisp
+(use-package flycheck
+  :bind (:map evil-normal-state-map
+              ("SPC f ]" . flycheck-next-error)
+              ("SPC f [" . flycheck-previous-error)
+              ("SPC e l" . flycheck-list-errors))
+  :init
+  (global-flycheck-mode)
+  :config
+  ;; Change flycheck errors on save
+  (setq flycheck-check-syntax-automatically '(mode-enabled save idle-change new-line))
+  (setq flycheck-idle-change-delay 2)
+
+  (set-face-attribute 'flycheck-fringe-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'flycheck-error-list-error nil :background nil :foreground +m-color-secondary)
+  (set-face-attribute 'error nil :background nil :foreground +m-color-secondary)
+
+  (flycheck-add-mode 'javascript-eslint 'web-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-mode)
+  (flycheck-add-mode 'javascript-eslint 'ng2-ts-mode)
+  (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
+#+END_SRC
+
+*** LSP. Pyright
+#+BEGIN_SRC emacs-lisp
+(setq lsp-pyright-multi-root nil)
+(use-package lsp-pyright
+  :hook (python-mode . (lambda ()
+                          (require 'lsp-pyright)
+                          (lsp-deferred)))
+  :config
+  (setq lsp-pyright-auto-import-completions t)
+  (setq lsp-pyright-auto-search-paths t)
+  (setq lsp-pyright-log-level "trace")
+  (setq lsp-pyright-multi-root nil)
+  (setq lsp-pyright-use-library-code-for-types t)
+  ;; (setq lsp-pyright-venv-directory "/Users/darkawower/.local/share/virtualenvs/spice-farm-YhO8T07I")
+  (setq lsp-pyright-diagnostic-mode "workspace"))
+#+END_SRC
+
+* Emacs everywhere
+** HOLD GPT AI alternative
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+https://gist.github.com/Gavinok/a18e0b2dac74e4ae67df35e45a170f7f
+#+BEGIN_SRC emacs-lisp 
+(use-package emacs-gpt
+  :elpaca (:package "emacs-gpt" :host nil :type git
+             :repo "https://gist.github.com/a18e0b2dac74e4ae67df35e45a170f7f.git"))
+  ;; :load-path "~/pure-emacs"
+  ;; :ensure nil)
+#+END_SRC
+
+** Another GPT alternative
+Dependencies
+#+BEGIN_SRC emacs-lisp 
+(use-package openai
+  :elpaca (:host github :repo "emacs-openai/openai"))
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp 
+(use-package codegpt 
+  :elpaca (:type git :host github :repo "emacs-openai/codegpt")
+  :config
+  (add-to-list 'codegpt-action-alist '("JSDoc" . "Write JSDoc for this method"))
+  (defun codegpt--internal (instruction start end)
+    "Do INSTRUCTION with partial code.
+
+The partial code is defined in with the region, and the START nad END are
+boundaries of that region in buffer."
+    (let ((text (string-trim (buffer-substring start end)))
+          (original-window (selected-window)))
+      (codegpt--ask-in-buffer instruction
+        (insert text "\n\n")
+        (openai-completion
+         (buffer-string)
+         (lambda (data)
+           (openai--with-buffer codegpt-buffer-name
+             (openai--pop-to-buffer codegpt-buffer-name)
+             (let* ((choices (openai-completion--data-choices data))
+                    (result (openai-completion--get-choice choices))
+                    (original-point (point)))
+               (insert "\n" (string-trim result) "\n")
+               (fill-paragraph original-point (point))
+               (end-of-buffer)))
+           (unless codegpt-focus-p
+             (select-window original-window))))
+        (unless codegpt-focus-p
+          (select-window original-window))))))
+#+END_SRC
+** HOLD GPT AI
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+dependency
+#+BEGIN_SRC emacs-lisp 
+(use-package epc
+  :defer t)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp 
+(use-package chatgpt
+  :elpaca (:host github :repo "joshcho/ChatGPT.el" :files ("dist" "*.el"))
+  :ensure t
+  :general
+  (:keymaps 'override
+            "s-d" 'chatgpt-query)
+  :init
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/")
+  :config
+   (require 'epc)
+  (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+#+END_SRC
