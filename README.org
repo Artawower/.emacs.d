@@ -2759,116 +2759,39 @@ This need for correct highlighting of incorrect spell-fu faces."
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
 ** Autocomplete
-*** HOLD Corfu
-**** Corfu package
+*** Company mode
+**** Company package
 #+BEGIN_SRC emacs-lisp
-(use-package corfu
-  ;; Optional customizations
-  :defer 2
-  :custom
-  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
-  (corfu-auto t)                 ;; Enable auto completion
-  (corfu-commit-predicate t)   ;; Do not commit selected candidates on next input
-  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
-  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
-  (corfu-auto-delay 0.1)
-  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
-  (corfu-preselect-first t)
-  (corfu-auto-prefix 2)
-  (corfu-separator ?\s) 
-  ;; Optionally use TAB for cycling, default is `corfu-complete'.
-  :general
-
-  (:keymaps 'corfu-map
-            "TAB" 'corfu-next
-            [tab] 'corfu-next
-            "C-j" 'corfu-next
-            "C-k" 'corfu-previous
-            "S-TAB" 'corfu-previous
-            "<return>" 'corfu-insert
-            "C-<return>" 'corfu-insert-seporator
-            [backtab] 'corfu-previous)
-  (:keymaps 'override
-            :map evil-insert-state-map
-            "C-x C-o" 'completion-at-point
-            "C-SPC" 'completion-at-point)
+(use-package company
+  :defer t
+  :after lsp
+  :hook (emacs-lisp-mode . company-mode)
+  :bind (:map evil-insert-state-map
+              ("C-'" . company-yasnippet)
+              ("C-x C-o" . company-complete)
+              :map company-active-map
+              ("C-w" . backward-kill-word)
+              ("<escape>" . (lambda () (interactive)
+                              (company-cancel)
+                              (evil-normal-state))))
+  :init
+  (setq lsp-completion-provider :capf)
   :config
-  (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
-  (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
-  (evil-make-overriding-map corfu-map)
-  (setq lsp-completion-provider :none)
-
-  (global-corfu-mode))
+  (setq company-idle-delay 0.2)
+  (setq company-quick-access-modifier 'super)
+  (setq company-show-quick-access t)
+  (setq company-minimum-prefix-length 1)
+  (setq company-dabbrev-char-regexp "[A-z:-]")
+  (custom-set-variables
+   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
+   '(company-quick-access-modifier 'super))
+  (global-company-mode))
 #+END_SRC
-
-**** Disalbe company mode
-#+BEGIN_SRC emacs-lisp :tangle no
-(global-company-mode -1)
-(company-mode -1)
-(add-hook 'prog-mode-hook (lambda () (company-mode -1)))
+**** Company box
+#+BEGIN_SRC emacs-lisp 
+(use-package company-box
+  :hook (company-mode . company-box-mode))
 #+END_SRC
-
-
-#+RESULTS:
-: completion-at-point
-**** Corfu quick
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package corfu-quick
-  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
-  :bind (:map corfu-map
-              ("<tab>" . corfu-quick-insert))
-  :after corfu
-  :custom
-  (corfu-quick1 "123456789")
-  (corfu-quick2 "123456789"))
-#+END_SRC
-
-**** Corfu doc
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package corfu-popupinfo
-  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
-  :after corfu
-  :config
-  (setq corfu-popupinfo-delay '(0.5 . 0.5)))
-#+END_SRC
-**** Corfu save history
-
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package corfu-history
-  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
-  :after corfu
-  :config
-  (with-eval-after-load 'safehist
-    (cl-pushnew 'corfu-history savehist-additional-variables))
-   (setq corfu-sort-override-function 'corfu-history--sort)
-
-  (corfu-history-mode))
-#+END_SRC
-
-**** Corfu popup doc
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package corfu-popupinfo
-  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
-  :bind (:map corfu-map
-              ("C-m" . corfu-popupinfo-documentation))
-  :custom
-  (corfu-echo-delay nil)
-  :after corfu
-  :config
-  (corfu-popupinfo-mode))
-#+END_SRC
-
-**** Pretty icon
-#+BEGIN_SRC emacs-lisp
-  (use-package kind-icon
-    :after corfu
-    :custom
-    (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
-    :config
-    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-#+END_SRC
-
 ** Paren checker
 #+BEGIN_SRC emacs-lisp 
 (show-paren-mode 1)
