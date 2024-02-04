@@ -229,7 +229,7 @@ unreadable. Returns the names of envvars that were changed."
 Load private configs
 #+BEGIN_SRC emacs-lisp
 (ignore-errors
-  (load "~/pure-emacs/private.el"))
+  (load "~/apps/pure-emacs/private.el"))
 (elpaca-wait)
 #+END_SRC
 
@@ -647,7 +647,7 @@ TODO: check why it doesn;t work
 (defun @open-emacs-config ()
   "Open folder with emacs config"
   (interactive)
-  (let ((default-directory "~/pure-emacs/README.org"))
+  (let ((default-directory "~/apps/pure-emacs/README.org"))
     (call-interactively 'find-file)))
 #+END_SRC
 
@@ -1107,7 +1107,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  :prefix "SPC"
  "SPC"  'projectile-find-file
  "tr" 'read-only-mode
- "hre" (lambda () (interactive) (load-file "~/pure-emacs/init.el"))
+ "hre" (lambda () (interactive) (load-file "~/apps/pure-emacs/init.el"))
  "hm" 'describe-mode
  "om" '@open-messages
  "oM" '@open-clear-messages
@@ -1821,7 +1821,7 @@ Something like screensaver
 
 **** Persp doom configs
 #+BEGIN_SRC emacs-lisp 
-(load "~/pure-emacs/vendor/doom-workspaces.el")
+(load "~/apps/pure-emacs/vendor/doom-workspaces.el")
 (elpaca-wait)
 #+END_SRC
 
@@ -2478,7 +2478,7 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
           "SPC x" '@switch-to-scratch)
   :config
   <<persistent-scratch-save>>
-  (setq persistent-scratch-backup-directory "~/pure-emacs/backups")
+  (setq persistent-scratch-backup-directory "~/apps/pure-emacs/backups")
   (persistent-scratch-autosave-mode)
   (setq persistent-scratch-autosave-interval 5)
 )
@@ -2539,11 +2539,11 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 
   ;; TODO: main need to get all from directory.
   (setq tempel-path
-        '("~/pure-emacs/templates/common"
-          "~/pure-emacs/templates/readme"
-          "~/pure-emacs/templates/org-mode"
-          "~/pure-emacs/templates/emacs-lisp"
-          "~/pure-emacs/templates/golang")))
+        '("~/apps/pure-emacs/templates/common"
+          "~/apps/pure-emacs/templates/readme"
+          "~/apps/pure-emacs/templates/org-mode"
+          "~/apps/pure-emacs/templates/emacs-lisp"
+          "~/apps/pure-emacs/templates/golang")))
 #+END_SRC
 ** Tempel collection
 #+BEGIN_SRC emacs-lisp
@@ -2585,7 +2585,8 @@ Another all formtter. Based on prettier and black
            :keymaps 'override
            "\\p" 'apheleia-format-buffer)
   :config
-  (add-to-list 'apheleia-mode-alist '(emacs-lisp-mode . lisp-indent)))
+  (add-to-list 'apheleia-mode-alist '(emacs-lisp-mode . lisp-indent))
+  (add-to-list 'apheleia-mode-alist '(html-mode . prettier)))
 #+END_SRC
 
 ** Flycheck
@@ -2722,7 +2723,7 @@ This need for correct highlighting of incorrect spell-fu faces."
           (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
   :custom
   ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
-  (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sitter"))
+  (treesit-extra-load-path '("/Users/darkawower/apps/pure-emacs/tree-sitter"))
   (go-ts-mode-indent-offset 2)
   :config
   (defun nf/treesit-install-all-languages ()
@@ -2759,38 +2760,114 @@ This need for correct highlighting of incorrect spell-fu faces."
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
 ** Autocomplete
-*** Company mode
-**** Company package
+*** Corfu
+**** Corfu package
 #+BEGIN_SRC emacs-lisp
-(use-package company
-  :defer t
-  :after lsp
-  :hook (emacs-lisp-mode . company-mode)
-  :bind (:map evil-insert-state-map
-              ("C-'" . company-yasnippet)
-              ("C-x C-o" . company-complete)
-              :map company-active-map
-              ("C-w" . backward-kill-word)
-              ("<escape>" . (lambda () (interactive)
-                              (company-cancel)
-                              (evil-normal-state))))
-  :init
-  (setq lsp-completion-provider :capf)
+(use-package corfu
+  ;; Optional customizations
+  :defer 2
+  :custom
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  (corfu-commit-predicate t)   ;; Do not commit selected candidates on next input
+  (corfu-quit-at-boundary t)     ;; Automatically quit at word boundary
+  (corfu-quit-no-match t)        ;; Automatically quit if there is no match
+  (corfu-auto-delay 0.1)
+  (corfu-echo-documentation nil) ;; Do not show documentation in the echo area
+  (corfu-preselect-first t)
+  (corfu-auto-prefix 2)
+  (corfu-separator ?\s) 
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :general
+
+  (:keymaps 'corfu-map
+            "TAB" 'corfu-next
+            [tab] 'corfu-next
+            "C-j" 'corfu-next
+            "C-k" 'corfu-previous
+            "S-TAB" 'corfu-previous
+            "<return>" 'corfu-insert
+            "C-<return>" 'corfu-insert-seporator
+            [backtab] 'corfu-previous)
+  (:keymaps 'override
+            :map evil-insert-state-map
+            "C-x C-o" 'completion-at-point
+            "C-SPC" 'completion-at-point)
   :config
-  (setq company-idle-delay 0.2)
-  (setq company-quick-access-modifier 'super)
-  (setq company-show-quick-access t)
-  (setq company-minimum-prefix-length 1)
-  (setq company-dabbrev-char-regexp "[A-z:-]")
-  (custom-set-variables
-   '(company-quick-access-keys '("1" "2" "3" "4" "5" "6" "7" "8" "9" "0"))
-   '(company-quick-access-modifier 'super))
-  (global-company-mode))
+  ;; (advice-add 'corfu--setup :after 'evil-normalize-keymaps)
+  ;; (advice-add 'corfu--teardown :after 'evil-normalize-keymaps)
+  (evil-make-overriding-map corfu-map)
+  (setq lsp-completion-provider :none)
+
+  (global-corfu-mode))
 #+END_SRC
-**** Company box
-#+BEGIN_SRC emacs-lisp 
-(use-package company-box
-  :hook (company-mode . company-box-mode))
+
+**** Disalbe company mode
+#+BEGIN_SRC emacs-lisp :tangle no
+(global-company-mode -1)
+(company-mode -1)
+(add-hook 'prog-mode-hook (lambda () (company-mode -1)))
+#+END_SRC
+
+
+#+RESULTS:
+: completion-at-point
+**** Corfu quick
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-quick
+  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
+  :bind (:map corfu-map
+              ("<tab>" . corfu-quick-insert))
+  :after corfu
+  :custom
+  (corfu-quick1 "123456789")
+  (corfu-quick2 "123456789"))
+#+END_SRC
+
+**** Corfu doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :after corfu
+  :config
+  (setq corfu-popupinfo-delay '(0.5 . 0.5)))
+#+END_SRC
+**** Corfu save history
+
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-history
+  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
+  :after corfu
+  :config
+  (with-eval-after-load 'safehist
+    (cl-pushnew 'corfu-history savehist-additional-variables))
+   (setq corfu-sort-override-function 'corfu-history--sort)
+
+  (corfu-history-mode))
+#+END_SRC
+
+**** Corfu popup doc
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package corfu-popupinfo
+  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :bind (:map corfu-map
+              ("C-m" . corfu-popupinfo-documentation))
+  :custom
+  (corfu-echo-delay nil)
+  :after corfu
+  :config
+  (corfu-popupinfo-mode))
+#+END_SRC
+
+**** Pretty icon
+#+BEGIN_SRC emacs-lisp
+  (use-package kind-icon
+    :after corfu
+    :custom
+    (kind-icon-default-face 'corfu-default) ; to compute blended backgrounds correctly
+    :config
+    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
 #+END_SRC
 ** Paren checker
 #+BEGIN_SRC emacs-lisp 
@@ -2804,7 +2881,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-sonarlint
   :elpaca (:files ("*.el" "languages" "languages/*/*.el" "server" "server/*"))
-  :demand t
+  :after lsp-mode
   :config
   (setq lsp-sonarlint-server-path (expand-file-name "sonarlint-language-server.jar" (concat user-emacs-directory "/elpaca/builds/lsp-sonarlint/server")))
   (add-to-list 'lsp-sonarlint-modes-enabled 'ng2-ts-mode)
@@ -2823,7 +2900,6 @@ This need for correct highlighting of incorrect spell-fu faces."
   (setq lsp-sonarlint-typescript-enabled t)
   (setq lsp-sonarlint-ng2-ts-enabled t))
 
-(elpaca-wait)
 #+END_SRC
 
 *** Lsp functions
@@ -3149,7 +3225,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
 #+BEGIN_SRC emacs-lisp
 (use-package dape
-  :defer t
+  :defer 2
   :elpaca (dape :type git :host github :repo "svaante/dape")
   :bind (:map evil-normal-state-map
               ("SPC d d" . dape)
@@ -3731,11 +3807,11 @@ Improved styles for git changes
   :config
   (setq lsp-clients-angular-language-server-command
         '("node"
-          "/Users/darkawower/.npm-global/lib/node_modules/@angular/language-server"
+          "/opt/homebrew/lib/node_modules/@angular/language-server"
           "--ngProbeLocations"
-          "/Users/darkawower/.npm-global/lib/node_modules"
+          "/opt/homebrew/lib/node_modules"
           "--tsProbeLocations"
-          "/Users/darkawower/.npm-global/lib/node_modules"
+          "/opt/homebrew/lib/node_modules"
           "--stdio")))
 #+END_SRC
 
@@ -4632,7 +4708,7 @@ Debug for my own project
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package org-ai
   :elpaca nil
-  :load-path (lambda () "~/pure-emacs/vendor/org-ai")
+  :load-path (lambda () "~/apps/pure-emacs/vendor/org-ai")
   :commands (org-ai-mode)
   :init
   (add-hook 'org-mode-hook #'org-ai-mode)

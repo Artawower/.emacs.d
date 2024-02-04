@@ -2,6 +2,11 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 
 (l "console.log(" p ")")
 (console.date "console.log(`[${new Date().toString()}] " p "`)")
+(console.trace "console.trace(`"
+              (format "✎: [line %s][%s]: " (line-number-at-pos) (buffer-name)) 
+              p " ${" r "}"
+              "`)"
+              )
 (console.full "console.log(`"
               (format "✎: [line %s][%s]: " (line-number-at-pos) (buffer-name)) 
               p " ${" r "}"
