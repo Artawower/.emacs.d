@@ -4858,6 +4858,19 @@ Didn't mange to start work
         '(("en" . "ru") ("ru" . "en") ))
   (defun google-translate--search-tkk () "Search TKK." (list 430675 2721866130)))
 #+END_SRC
+** Reverso
+#+BEGIN_SRC emacs-lisp
+(use-package reverso
+  :general
+  (:states '(normal visual) :keymaps 'override
+           "SPC rr" 'reverso
+           "SPC rt" 'reverso-translate
+           "SPC rh" 'reverso-history)
+  :elpaca (:host github :repo "SqrtMinusOne/reverso.el"))
+#+END_SRC
+
+#+RESULTS:
+
 * Tools
 ** Wakatime. Be productive.
 *** Main package
@@ -5324,8 +5337,8 @@ Delete project
 
 ** Org pdf
 #+BEGIN_SRC emacs-lisp 
-(use-package org-pdftools
-  :hook (org-mode . org-pdftools-setup-link))
+(use-package org-pdftools)
+  ;; :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
 
 ** Pocket
