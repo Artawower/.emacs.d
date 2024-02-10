@@ -103,7 +103,7 @@ https://www.reddit.com/r/emacs/comments/f8xwau/hack_replace_execpathfromshell/
 #+BEGIN_SRC emacs-lisp
 ;;; Code to replace exec-path-from-shell
 ;; Need to create file in $HOME/.emacs.d/.local/env
-;; use this command to create the file  `printenv > $HOME/.emacs.d/.local/env'
+;; use this command to create the file  `printenv > $home/.emacs.d/.local/env'
 (defconst my-local-dir (concat user-emacs-directory ".local/"))
 
 (defconst my-env-file (concat my-local-dir "env"))
@@ -3918,7 +3918,9 @@ Function for open repl in the current buffer
            :keymaps 'override
            "SPC r p" '@open-ipython-repl-here)
   :config
+  
   (setq python-shell-interpreter "ipython"
+        python-interpreter "python3"
         python-shell-interpreter-args "--simple-prompt -i"))
 #+END_SRC
 
@@ -4355,6 +4357,7 @@ Dependency
               ("SPC h ]" . org-next-visible-heading)
               ("SPC h [" . org-previous-visible-heading))
   :config
+  (setq org-babel-python-command "python3")
   (setq org-confirm-babel-evaluate nil)
   (setq org-src-preserve-indentation t)
   (setq org-latex-create-formula-image-program 'dvisvgm)
