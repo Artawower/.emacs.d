@@ -1426,6 +1426,7 @@ Bookmark for navigation inside file
   (advice-add 'evil-next-line :around #'@better-jump-preserve-pos-advice)
   (advice-add 'evil-previous-line :around #'@better-jump-preserve-pos-advice)
   (advice-add '@find-definition :before (lambda () (call-interactively #'better-jumper-set-jump)))
+  (advice-add 'evil-jump-item :around #'@better-jump-preserve-pos-advice)
   (better-jumper-mode 1))
 #+END_SRC
 ** HOLD Tree sitter movement
