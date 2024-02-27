@@ -3528,6 +3528,8 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
             "4" 'digit-argument
             "P" 'magit-fetch
             "f" 'evil-avy-goto-word-1)
+  :custom-face
+  (git-commit-overlong-summary ((t :inherit error :weight bold)))
   :bind (:map magit-mode-map
               ("s-<return>" . magit-diff-visit-worktree-file)
               :map evil-normal-state-map
