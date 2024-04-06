@@ -715,6 +715,13 @@ Need to steal from doom emacs!
         ((and (bound-and-true-p lsp-mode) lsp-mode) (lsp-find-definition))
         (t (evil-goto-definition))))
 #+END_SRC
+*** Avy + goto definition
+#+BEGIN_SRC emacs-lisp
+(defun @avy-go-to-definition ()
+  (interactive)
+  (evil-avy-goto-word-1 nil)
+  (@find-definition))
+#+END_SRC
 
 * Performance
 Uncomment when u need to profile ;p
@@ -1348,6 +1355,7 @@ Bookmark for navigation inside file
   (:states '(normal visual)
            :keymaps 'override
            "f" 'avy-goto-word-1
+           "gD" '@avy-go-to-definition
            "SPC k l" 'avy-kill-whole-line
            "SPC k r" 'avy-kill-region)
   (:keymaps '(minibuffer-local-mode-map read--expression-map)
@@ -2151,7 +2159,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Folding (origami)
 #+BEGIN_SRC emacs-lisp 
 (use-package origami
-  :hook ((org-mode dart-mode yaml-mode python-mode html-mode ng2-html-mode) . origami-mode)
+  :hook ((org-mode dart-mode yaml-mode python-mode html-mode ng2-html-mode emacs-lisp-mode) . origami-mode)
   :after evil)
 #+END_SRC
 ** Folding (tree-sitter based) ts-fold
@@ -2919,7 +2927,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 *** LSP-mode Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
-  :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
+  ;; :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
   :after (flycheck lsp-sonarlint)
   :hook
   ((clojure-mode
@@ -3221,6 +3229,38 @@ By default ~compile-goto-error~ open new window. Its redundant.
 (use-package floobits
   :defer t)
 #+END_SRC
+** Collaborative editing
+Context: https://www.reddit.com/r/emacs/comments/1bg7tgn/introducing_chromeemacs_elevate_your_live_coding/
+
+#+begin_src emacs-lisp
+(use-package atomic-chrome
+  :demand t
+  :elpaca
+  (atomic-chrome
+   :repo "KarimAziev/atomic-chrome"
+   :type git
+   :flavor nil
+   :host github)
+  :commands
+  (atomic-chrome-start-server)
+  :config
+  (setq-default atomic-chrome-extension-type-list '(atomic-chrome))
+  (setq-default atomic-chrome-buffer-open-style 'frame)
+  (setq-default atomic-chrome-auto-remove-file t)
+  (setq-default atomic-chrome-url-major-mode-alist
+                '(("ramdajs.com" . js-ts-mode)
+                  ("github.com" . gfm-mode)
+                  ("gitlab.com" . gfm-mode)
+                  ("leetcode.com" . typescript-ts-mode)
+                  ("codesandbox.io" . js-ts-mode)
+                  ("typescriptlang.org" . typescript-ts-mode)
+                  ("jsfiddle.net" . js-ts-mode)
+                  ("w3schools.com" . js-ts-mode)))
+  (add-to-list 'atomic-chrome-create-file-strategy
+               '("~/repos/ts-scratch/src/" :extension
+                 ("js" "ts" "tsx" "jsx" "cjs" "mjs")))
+  (atomic-chrome-start-server))
+#+end_src
 
 ** Debugger DAPE
 Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
@@ -3613,9 +3653,9 @@ Improved styles for git changes
 ** Blamer
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
-  :defer 5
+  ;; :defer 5
   ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "enhancement/async-cmd")
-  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "fix/async-call")
+  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "fix/emacs-buffers-spawns")
   :bind (
          ("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
@@ -4277,6 +4317,17 @@ I don't remember why I need this code. Currently commented.
 #+END_SRC
 
 * Org mode
+** Org GPG encryption
+#+BEGIN_SRC emacs-lisp
+(use-package org-crypt
+  :elpaca nil
+  :config
+  (org-crypt-use-before-save-magic)
+  (setq org-tags-exclude-from-inheritance (quote ("crypt")))
+  ;; GPG key to use for encryption
+  ;; Either the Key ID or set to nil to use symmetric encryption.
+  (setq org-crypt-key nil))
+#+END_SRC
 ** Org babels
 *** async code
 #+BEGIN_SRC emacs-lisp
@@ -4625,9 +4676,6 @@ One of the best Zettelkasten implementation
    :image-data-fun #'org-image-link))
 #+END_SRC
 
-#+RESULTS:
-: t
-
 ** Orgnote. Roam publisher for second bran project
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp
@@ -4882,7 +4930,7 @@ Didn't mange to start work
 *** Main package
 #+BEGIN_SRC emacs-lisp
 (use-package wakatime-mode
-  :defer 5
+  :defer 2
   :config
   (global-wakatime-mode))
 #+END_SRC
@@ -5203,6 +5251,14 @@ Function for search in buffer depends or visual or normal line
 (use-package consult-flycheck
   :after consult)
 #+END_SRC
+*** Consult lsp
+#+BEGIN_SRC emacs-lisp
+(use-package consult-lsp
+  :defer t
+  :general (:states 'normal
+                    "SPC ss" 'consult-lsp-symbols
+                    "SPC sl" 'consult-lsp-diagnostics))
+#+END_SRC
 
 ** Projectile
 #+BEGIN_SRC emacs-lisp 
@@ -5419,6 +5475,7 @@ Delete project
   (setq plantuml-jar-path "/usr/share/plantuml/plantuml.jar"))
 #+END_SRC
 ** Telega.el
+ [[https://github.com/zevlg/telega.el/issues/404][How to run on m1]]
 #+BEGIN_SRC emacs-lisp
 (use-package telega
   :commands (telega)
