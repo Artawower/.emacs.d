@@ -39,7 +39,7 @@ js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 
 
 (console.log > "console.log('"
-             (format "[line %s]: " (line-number-at-pos)) "'" ", "
+             (format "[line %s]%s: " (line-number-at-pos) (if (turbo-log--get-context) (format "[%s]" (turbo-log--get-context)) "")) p "'" ", "
              r
              ")")
 

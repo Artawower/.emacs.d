@@ -3,7 +3,7 @@ org-mode
 (bash-script "#+BEGIN_SRC bash" n> p n "#+END_SRC")
 (bash-tangle "#+BEGIN_SRC bash :tangle " (p "file" file) n> p n "#+END_SRC")
 (export-latex "#+BEGIN_EXPORT latex" n> p n "#+END_EXPORT")
-(src "#+BEGIN_SRC" n> p "#+END_SRC")
+(src "#+BEGIN_SRC" n> p n "#+END_SRC")
 (python "#+BEGIN_SRC python" n> p n "#+END_SRC")
 (res-python "#+BEGIN_SRC python :results output" n> p n "#+END_SRC")
 (js "#+BEGIN_SRC js" n> p n "#+END_SRC")
