@@ -826,11 +826,17 @@ Very pretty titlebar for Mac os
           ("STUB"   . "#61AFEF")))
   (global-hl-todo-mode 1))
 #+END_SRC
-** Highlight hex colors
-#+BEGIN_SRC emacs-lisp 
+** HOLD Highlight hex colors
+#+BEGIN_SRC emacs-lisp :tangle no
   (use-package rainbow-mode
     :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode help-mode). rainbow-mode)
     :defer t)
+#+END_SRC
+** Rainbow extension
+#+BEGIN_SRC emacs-lisp
+(use-package colorful-mode
+  :elpaca (:type git :host github :repo "DevelopmentCool2449/colorful-mode"))
+            
 #+END_SRC
 ** Pixel scroll
 #+BEGIN_SRC emacs-lisp 
@@ -1540,18 +1546,19 @@ Treemacs projectile
 #+END_SRC
 *** Dired configs
 #+BEGIN_SRC emacs-lisp 
-  (use-package dired
-    :defer t
-    :elpaca nil
-    :general
-    (:keymaps 'override
-              :states 'normal
-              "SPC fi" 'image-dired)
-    (:keymaps 'dired-mode-map
-	      "C-c C-e" 'wdired-change-to-wdired-mode)
-    :config
-    (setq insert-directory-program "gls" dired-use-ls-dired t)
-    (add-hook 'dired-mode-hook 'auto-revert-mode))
+(use-package dired
+  :defer t
+  :elpaca nil
+  :general
+  (:keymaps 'override
+            :states 'normal
+            "SPC fi" 'image-dired)
+  (:keymaps 'dired-mode-map
+	          "C-c C-e" 'wdired-change-to-wdired-mode)
+  :config
+  (setq dired-dwim-target t)
+  (setq insert-directory-program "gls" dired-use-ls-dired t)
+  (add-hook 'dired-mode-hook 'auto-revert-mode))
 #+END_SRC
 
 *** Dirvish. Dired batteries ;3
