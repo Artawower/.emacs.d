@@ -1,5 +1,7 @@
 js-mode ts-mode ng2-ts-mode typescript-ts-mode typescript-mode web-mode
 
+(export-all "export * from '" p "'")
+
 (l "console.log(" p ")")
 (console.date "console.log(`[${new Date().toString()}] " p "`)")
 (console.trace "console.trace(`"
