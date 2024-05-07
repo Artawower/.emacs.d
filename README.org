@@ -870,6 +870,12 @@ Very pretty titlebar for Mac os
   :config
   (setq display-fill-column-indicator-column 80))
 #+END_SRC
+** Centered mode
+#+BEGIN_SRC emacs-lisp
+(use-package centered-cursor-mode
+  :hook (prog-mode . centered-cursor-mode)
+  :demand)
+#+END_SRC
 
 * Theme
 ** Functions
@@ -1316,6 +1322,7 @@ Evil should respect visual line mode
   (setq evil-want-keybinding nil)
   :config
 
+  (modify-syntax-entry ?_ "w")
   (setq evil-v$-excludes-newline t)
   <<evil-shifting-config>>
   <<evil-respect-visual-line-mode>>
@@ -2608,10 +2615,15 @@ Another all formtter. Based on prettier and black
 ** Flycheck
 #+BEGIN_SRC emacs-lisp
 (use-package flycheck
-  :bind (:map evil-normal-state-map
-              ("SPC f ]" . flycheck-next-error)
-              ("SPC f [" . flycheck-previous-error)
-              ("SPC e l" . flycheck-list-errors))
+  :general (:keymaps 'flycheck-mode-map
+                     :states '(normal visual)
+                     "C-j" 'flycheck-next-error
+                     "C-k" 'flycheck-previous-error)
+  :bind 
+  (:map evil-normal-state-map
+        ("SPC f ]" . flycheck-next-error)
+        ("SPC f [" . flycheck-previous-error)
+        ("SPC e l" . flycheck-list-errors))
   :init
   (global-flycheck-mode)
   :config
@@ -3003,6 +3015,7 @@ This need for correct highlighting of incorrect spell-fu faces."
   (lsp-enable-file-watchers t)
   (lsp-file-watch-threshold 8000)
   :config
+  (setq lsp-auto-execute-action nil)
   (setq lsp-javascript-display-return-type-hints t)
   (setq lsp-json-schemas
         `[
@@ -3224,6 +3237,10 @@ By default ~compile-goto-error~ open new window. Its redundant.
                       (interactive)
                       (compilation-display-error)
                       (+select-window-by-name "*compilation.*")))
+  (:states '(normal visual)
+           :keymaps 'compilation-mode-map
+           "C-j" 'compilation-next-error
+           "C-k" 'compilation-previous-error)
   :config
   <<display-compilation-buffer>>
   (@setup-compilation-errors))
