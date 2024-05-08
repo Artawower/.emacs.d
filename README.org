@@ -1623,6 +1623,16 @@ Dirvish.
    ("M-e" . dirvish-emerge-menu)
    ("M-j" . dirvish-fd-jump)))
 #+END_SRC
+*** Dired commands
+#+BEGIN_SRC emacs-lisp
+(use-package casual-dired
+  :elpaca (:type git :host github :repo "kickingvegas/casual-dired")
+  :ensure t
+  :general
+  (:states '(normal visual)
+           :kemaps '(dired-mode-map)
+           "E" 'casual-dired-tmenu))
+#+END_SRC
 *** File info
 #+BEGIN_SRC emacs-lisp 
 (use-package file-info
