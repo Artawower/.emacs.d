@@ -8,6 +8,12 @@
 
 
 * UI
+** HOLD Highlight hex colors
+#+BEGIN_SRC emacs-lisp :tangle no
+  (use-package rainbow-mode
+    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode help-mode). rainbow-mode)
+    :defer t)
+#+END_SRC
 ** Olivetti
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package olivetti
@@ -1296,4 +1302,56 @@ dependency
   :config
    (require 'epc)
   (setq chatgpt-repo-path "~/pure-emacs/straight/repos/ChatGPT.el/"))
+#+END_SRC
+* Navigation
+** HOLD Buffer hop. Smart jump between visited buffers.
+:PROPERTIES:
+:header-args: :tangle no
+:END: 
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package buffer-hop
+  :elpaca (buffer-hop :type git :host github :repo "artawower/buffer-hop.el")
+  :defer 2
+  :general
+  (:states '(normal visual)
+           :keymaps 'override
+           "SPC ]" 'buffer-hop-next
+           "SPC [" 'buffer-hop-prev
+           "SPC br" 'buffer-hop-jump-to-recently-buffer)
+  :config
+  (global-buffer-hop-mode))
+#+END_SRC
+
+** HOLD Tree sitter movement
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+BEGIN_SRC emacs-lisp 
+(use-package ts-movement
+  ;; :elpaca (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
+  ;; :load-path "vendor/ts-movement"
+  :bind (:map evil-normal-state-map
+              ("C-c ." . tsm/hydra/body)
+              ("\"" . tsm/clear-overlays)
+              ("M-[" . tsm/node-parent)
+              ("M-]" . tsm/node-child)
+              ("M-}" . tsm/node-next)
+              ("M-{" . tsm/node-prev))
+  :hook (prog-mode . ts-movement-mode))
+#+END_SRC
+
+* Common emacs packages
+** Folding
+*** HOLD Ts fold Indicators
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+
+#+BEGIN_SRC emacs-lisp 
+(use-package ts-fold-indicators
+  :after ts-fold
+  :elpaca (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :config
+  (setq ts-fold-indicators-fringe 'right-fringe)
+  (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
 #+END_SRC

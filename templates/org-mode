@@ -14,7 +14,7 @@ org-mode
 (docker "#+BEGIN_SRC docker" n> p n "#+END_SRC")
 (rust "#+BEGIN_SRC rust :result output" n> p n "#+END_SRC")
 (typescript "#+BEGIN_SRC typescript" n> p n "#+END_SRC")
-(emacs-lisp "#+BEGIN_SRC emacs-lisp" n> p n "#+END_SRC")
+(emacs-lisp "#+BEGIN_SRC emacs-lisp :results silent" n> p n "#+END_SRC")
 (h ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
 (:header-args: ":PROPERTIES:" n> ":header-args: :tangle no" n> ":END:")
 (example "#+BEGIN_EXAMPLE" n> p n "#+END_EXAMPLE")

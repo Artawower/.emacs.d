@@ -13,12 +13,12 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 ** TODO Modern package manager.
 *** Elpaca package.
 #+BEGIN_SRC emacs-lisp :results silent
-(defvar elpaca-installer-version 0.6)
+(defvar elpaca-installer-version 0.7)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
 (defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
 (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
-                              :ref nil
+                              :ref nil :depth 1
                               :files (:defaults "elpaca-test.el" (:exclude "extensions"))
                               :build (:not elpaca--activate-package)))
 (let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
@@ -31,8 +31,10 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
     (when (< emacs-major-version 28) (require 'subr-x))
     (condition-case-unless-debug err
         (if-let ((buffer (pop-to-buffer-same-window "*elpaca-bootstrap*"))
-                 ((zerop (call-process "git" nil buffer t "clone"
-                                       (plist-get order :repo) repo)))
+                 ((zerop (apply #'call-process `("git" nil ,buffer t "clone"
+                                                 ,@(when-let ((depth (plist-get order :depth)))
+                                                     (list (format "--depth=%d" depth) "--no-single-branch"))
+                                                 ,(plist-get order :repo) ,repo))))
                  ((zerop (call-process "git" nil buffer t "checkout"
                                        (or (plist-get order :ref) "--"))))
                  (emacs (concat invocation-directory invocation-name))
@@ -55,9 +57,9 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+BEGIN_SRC emacs-lisp :results silent
 ;; Install use-package support
 (elpaca elpaca-use-package
-  ;; Enable :elpaca use-package keyword.
+  ;; Enable :ensure use-package keyword.
   (elpaca-use-package-mode)
-  ;; Assume :elpaca t unless otherwise specified.
+  ;; Assume :ensure t unless otherwise specified.
   (setq elpaca-use-package-by-default t))
 
 ;; Block until current queue processed.
@@ -85,7 +87,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+END_SRC
 *** Elpaca fixese
 #+BEGIN_SRC emacs-lisp
-(use-package closql :elpaca (closql :depth nil) :defer t)
+(use-package closql :ensure (closql :depth nil) :defer t)
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
@@ -95,7 +97,7 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 
 #+BEGIN_SRC emacs-lisp
  (use-package jsonrpc
-  :elpaca (jsonrpc :depth nil)
+  :ensure (jsonrpc :depth nil)
   :defer t)
 #+END_SRC
 ** Env
@@ -188,7 +190,7 @@ unreadable. Returns the names of envvars that were changed."
 ** Startup time boost
 #+BEGIN_SRC emacs-lisp 
 (use-package fnhh
-  :elpaca (:type git :host github :repo "a13/fnhh")
+  :ensure (:type git :host github :repo "a13/fnhh")
   :config
   (fnhh-mode 1))
 #+END_SRC
@@ -258,8 +260,7 @@ Load private configs
 ** Doom libs (honestly spizjeno)
 #+BEGIN_SRC emacs-lisp 
 (use-package doom-lib
-  :ensure t
-  :elpaca (doom-lib
+  :ensure (doom-lib
              :host github
              :repo "hlissner/doom-emacs"
              :files ("lisp/doom-lib.el" "lisp/lib/buffers.el")))
@@ -365,6 +366,10 @@ list is returned as-is."
 #+BEGIN_SRC emacs-lisp 
 (defvar @before-buffer-changed-hook nil
   "Hook run before a buffer is changed.")
+#+END_SRC
+** Dependencies
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package transient :ensure t)
 #+END_SRC
 * Custom functions
 ** Org
@@ -505,14 +510,6 @@ Version 2015-12-08"
     (delete-region (region-beginning) (region-end)))
   (insert-register ?1 t))
 #+END_SRC
-** Open kitty
-#+BEGIN_SRC emacs-lisp
-(defun my-open-kitty-right-here ()
-  "Open or switch kitty to root directory of current project."
-  (interactive)
-  (let* ((cmd (concat "open -a kitty.app --args \"cd\" " default-directory)))
-    (shell-command cmd)))
-#+END_SRC
 ** Delete current file
 #+BEGIN_SRC emacs-lisp 
 (defun @delete-this-file (&optional path force-p)
@@ -576,7 +573,7 @@ If FORCE-P, delete without confirmation."
 ** Highlight selection
 #+BEGIN_SRC emacs-lisp
 (use-package selection-highlight-mode
-  :elpaca (selection-highlight-mode :type git
+  :ensure (selection-highlight-mode :type git
                                       :host github
                                       :repo "balloneij/selection-highlight-mode")
   :config (selection-highlight-mode))
@@ -728,7 +725,7 @@ Uncomment when u need to profile ;p
 *** Profiler
 #+BEGIN_SRC emacs-lisp
 (use-package explain-pause-mode
-  :elpaca (explain-pause-mode :type git :host github :repo "lastquestion/explain-pause-mode")
+  :ensure (explain-pause-mode :type git :host github :repo "lastquestion/explain-pause-mode")
   :defer t)
 #+END_SRC
 *** HOLD Package startup speed
@@ -812,7 +809,7 @@ Very pretty titlebar for Mac os
 ** Highlight keywords
 #+BEGIN_SRC emacs-lisp
 (use-package hl-todo
-  :elpaca (hl-todo :depth nil)
+  :ensure (hl-todo :depth nil)
   :defer 2
   :config
   (setq hl-todo-keyword-faces
@@ -826,21 +823,40 @@ Very pretty titlebar for Mac os
           ("STUB"   . "#61AFEF")))
   (global-hl-todo-mode 1))
 #+END_SRC
-** HOLD Highlight hex colors
-#+BEGIN_SRC emacs-lisp :tangle no
-  (use-package rainbow-mode
-    :hook ((css-mode scss-mode org-mode typescript-mode js-mode emacs-lisp-mode dart-mode help-mode). rainbow-mode)
-    :defer t)
-#+END_SRC
 ** Rainbow extension
 #+BEGIN_SRC emacs-lisp
 (use-package colorful-mode
-  :elpaca (:type git :host github :repo "DevelopmentCool2449/colorful-mode"))
+  :ensure (:type git :host github :repo "DevelopmentCool2449/colorful-mode"))
             
 #+END_SRC
 ** Pixel scroll
 #+BEGIN_SRC emacs-lisp 
 (pixel-scroll-mode)
+#+END_SRC
+** Smooth scroll by jump
+#+BEGIN_SRC emacs-lisp :tangle no
+(use-package scroll-on-jump
+  :custom
+  (scroll-on-jump-smooth t)
+  (scroll-on-jump-duration 0.1337)
+  :config
+  (scroll-on-jump-advice-add beginning-of-buffer)
+  (scroll-on-jump-advice-add end-of-buffer)
+  (scroll-on-jump-advice-add flyspell-goto-next-error)
+  (when (featurep 'smartparens)
+    (define-key smartparens-mode-map
+      (kbd "C-M-f") (scroll-on-jump-interactive 'sp-forward-sexp))
+    (define-key smartparens-mode-map
+      (kbd "C-M-b") (scroll-on-jump-interactive 'sp-backward-sexp)))
+  ;; (scroll-on-jump-with-scroll-advice-add scroll-up-command)
+  (scroll-on-jump-with-scroll-advice-add View-scroll-half-page-backward)
+  (scroll-on-jump-with-scroll-advice-add View-scroll-half-page-backward)
+  (scroll-on-jump-with-scroll-advice-add evil-scroll-down)
+  (scroll-on-jump-with-scroll-advice-add evil-scroll-up)
+  ;; (scroll-on-jump-with-scroll-advice-add ccm-scroll-down)
+  ;; (scroll-on-jump-with-scroll-advice-add ccm-scroll-up)
+  (scroll-on-jump-with-scroll-advice-add isearch-update)
+  (scroll-on-jump-with-scroll-advice-add recenter-top-bottom))
 #+END_SRC
 ** Fringes
 #+BEGIN_SRC emacs-lisp
@@ -866,7 +882,7 @@ Very pretty titlebar for Mac os
 #+BEGIN_SRC emacs-lisp 
 (use-package display-fill-column-indicator
   :defer t
-  :elpaca nil
+  :ensure nil
   :config
   (setq display-fill-column-indicator-column 80))
 #+END_SRC
@@ -1263,11 +1279,28 @@ Override function for auto-dark mode for applying function for nano theme changi
 : t
 
 ** Universal keybindings across keyboard layouts
-#+BEGIN_SRC emacs-lisp
-  (use-package reverse-im
-    :config
-    (reverse-im-activate "russian-computer"))
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package char-fold
+  :ensure nil
+  :custom
+  (char-fold-symmetric t)
+  (search-default-mode #'char-fold-to-regexp))
 #+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(use-package reverse-im
+  :demand t ; always load it
+  :after char-fold ; but only after `char-fold' is loaded
+  :custom
+  (reverse-im-char-fold t) ; use lax matching
+  (reverse-im-read-char-advice-function #'reverse-im-read-char-include)
+  (reverse-im-input-methods '("russian-computer")) ; translate these methods
+  :config
+  (reverse-im-mode t))
+#+END_SRC
+
+#+RESULTS:
+: [nil 26177 52845 327680 nil elpaca-process-queues nil nil 999999 nil]
 
 * Navigation
 ** Evil
@@ -1450,46 +1483,10 @@ Bookmark for navigation inside file
   (advice-add 'evil-jump-item :around #'@better-jump-preserve-pos-advice)
   (better-jumper-mode 1))
 #+END_SRC
-** HOLD Tree sitter movement
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+BEGIN_SRC emacs-lisp 
-(use-package ts-movement
-  ;; :elpaca (ts-movement :type git :host github :repo "haritkapadia/ts-movement")
-  ;; :load-path "vendor/ts-movement"
-  :bind (:map evil-normal-state-map
-              ("C-c ." . tsm/hydra/body)
-              ("\"" . tsm/clear-overlays)
-              ("M-[" . tsm/node-parent)
-              ("M-]" . tsm/node-child)
-              ("M-}" . tsm/node-next)
-              ("M-{" . tsm/node-prev))
-  :hook (prog-mode . ts-movement-mode))
-#+END_SRC
-
-** HOLD Buffer hop. Smart jump between visited buffers.
-:PROPERTIES:
-:header-args: :tangle no
-:END: 
-#+BEGIN_SRC emacs-lisp :results silent
-(use-package buffer-hop
-  :elpaca (buffer-hop :type git :host github :repo "artawower/buffer-hop.el")
-  :defer 2
-  :general
-  (:states '(normal visual)
-           :keymaps 'override
-           "SPC ]" 'buffer-hop-next
-           "SPC [" 'buffer-hop-prev
-           "SPC br" 'buffer-hop-jump-to-recently-buffer)
-  :config
-  (global-buffer-hop-mode))
-#+END_SRC
-
 ** Buffer frog. Another one buffer navigation
 #+BEGIN_SRC emacs-lisp
 (use-package frog-jump-buffer
-  :elpaca (:host github :repo "waymondo/frog-jump-buffer")
+  :ensure (:host github :repo "waymondo/frog-jump-buffer")
   :bind
   (("s-t" . frog-jump-buffer))
   :config
@@ -1555,7 +1552,7 @@ Treemacs projectile
 #+BEGIN_SRC emacs-lisp 
 (use-package dired
   :defer t
-  :elpaca nil
+  :ensure nil
   :general
   (:keymaps 'override
             :states 'normal
@@ -1626,8 +1623,7 @@ Dirvish.
 *** Dired commands
 #+BEGIN_SRC emacs-lisp
 (use-package casual-dired
-  :elpaca (:type git :host github :repo "kickingvegas/casual-dired")
-  :ensure t
+  :ensure (:type git :host github :repo "kickingvegas/casual-dired")
   :general
   (:states '(normal visual)
            :kemaps '(dired-mode-map)
@@ -1636,6 +1632,7 @@ Dirvish.
 *** File info
 #+BEGIN_SRC emacs-lisp 
 (use-package file-info
+  :after browse-at-remote
   :bind
   (("C-c d" . 'file-info-show)
    ("s-'" . 'file-info-show))
@@ -1831,7 +1828,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 Something like screensaver
 #+BEGIN_SRC emacs-lisp
   (use-package redacted
-    :elpaca (:type git :host github :repo "bkaestner/redacted.el")
+    :ensure (:type git :host github :repo "bkaestner/redacted.el")
     :defer t)
 #+END_SRC
 ** Workspace
@@ -2102,7 +2099,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+BEGIN_SRC emacs-lisp 
 (use-package ibuffer
   :defer t
-  :elpaca nil
+  :ensure nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -2306,7 +2303,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 *** Core package
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package ts-fold
-  :elpaca (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :ensure (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
   :hook ((tree-sitter-mode
           web-mode
           ng2-html-mode
@@ -2362,20 +2359,6 @@ This function also stolen from doom emacs. It provide functionality for automati
   ;; (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
   ;; (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
 #+END_SRC
-*** HOLD Ts fold Indicators
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-
-#+BEGIN_SRC emacs-lisp 
-(use-package ts-fold-indicators
-  :after ts-fold
-  :elpaca (ts-fold-indicators :type git :host github :repo "emacs-tree-sitter/ts-fold")
-  :config
-  (setq ts-fold-indicators-fringe 'right-fringe)
-  (add-hook 'tree-sitter-after-on-hook #'ts-fold-indicators-mode))
-#+END_SRC
-
 ** Notes
 *** Settings
 Display buffer of quick note always at bottom
@@ -2587,7 +2570,7 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 ** LSP Snippets
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-snippet-tempel
-  :elpaca (lsp-snippet-tempel :type git
+  :ensure (lsp-snippet-tempel :type git
                               :host github
                               :repo "svaante/lsp-snippet")
   :config
@@ -2725,13 +2708,10 @@ This need for correct highlighting of incorrect spell-fu faces."
 :header-args: :tangle no
 :END:
 *** Treesit core
-:PROPERTIES:
-:header-args: :tangle no
-:END:
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit                    ;
-  :elpaca nil
+  :ensure nil
   :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
   :hook ((typescript-ts-base-mode
           go-ts-mode
@@ -2781,11 +2761,10 @@ This need for correct highlighting of incorrect spell-fu faces."
   (setq treesit-auto-install 'prompt)
   (global-treesit-auto-mode))
 #+END_SRC
-
 *** Tree sitter movement. Ts hopper
 #+BEGIN_SRC emacs-lisp 
 (use-package ts-hopper
-  :elpaca (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
+  :ensure (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
   :init
   (ts-hopper-init)
   :general (:states '(normal visual)
@@ -2853,7 +2832,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 **** Corfu quick
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package corfu-quick
-  :elpaca (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
+  :ensure (corfu-quick :host github :repo "minad/corfu" :files ("extensions/corfu-quick.el"))
   :bind (:map corfu-map
               ("<tab>" . corfu-quick-insert))
   :after corfu
@@ -2865,7 +2844,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 **** Corfu doc
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package corfu-popupinfo
-  :elpaca (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :ensure (corfu-info :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
   :after corfu
   :config
   (setq corfu-popupinfo-delay '(0.5 . 0.5)))
@@ -2874,7 +2853,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package corfu-history
-  :elpaca (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
+  :ensure (corfu-history :host github :repo "minad/corfu" :files ("extensions/corfu-history.el"))
   :after corfu
   :config
   (with-eval-after-load 'safehist
@@ -2887,7 +2866,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 **** Corfu popup doc
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package corfu-popupinfo
-  :elpaca (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
+  :ensure (corfu-popupinfo :host github :repo "minad/corfu" :files ("extensions/corfu-popupinfo.el"))
   :bind (:map corfu-map
               ("C-m" . corfu-popupinfo-documentation))
   :custom
@@ -2918,7 +2897,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 *** LSP sonarlint
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-sonarlint
-  :elpaca (:files ("*.el" "languages" "languages/*/*.el" "server" "server/*"))
+  :ensure (:files ("*.el" "languages" "languages/*/*.el" "server" "server/*"))
   :after lsp-mode
   :config
   (setq lsp-sonarlint-server-path (expand-file-name "sonarlint-language-server.jar" (concat user-emacs-directory "/elpaca/builds/lsp-sonarlint/server")))
@@ -2956,7 +2935,7 @@ This need for correct highlighting of incorrect spell-fu faces."
 *** LSP-mode Core package
 #+BEGIN_SRC emacs-lisp
 (use-package lsp-mode
-  ;; :elpaca (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
+  ;; :ensure (:host github :repo "emacs-lsp/lsp-mode" :rev "8c57bcfa4b0cf9187011425cf276aed006f27df4")
   :after (flycheck lsp-sonarlint)
   :hook
   ((clojure-mode
@@ -3237,7 +3216,7 @@ By default ~compile-goto-error~ open new window. Its redundant.
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (use-package compile
   :defer t
-  :elpaca nil
+  :ensure nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -3268,8 +3247,9 @@ Context: https://www.reddit.com/r/emacs/comments/1bg7tgn/introducing_chromeemacs
 
 #+begin_src emacs-lisp
 (use-package atomic-chrome
+  :defer t
   :demand t
-  :elpaca
+  :ensure
   (atomic-chrome
    :repo "KarimAziev/atomic-chrome"
    :type git
@@ -3301,7 +3281,7 @@ Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
 #+BEGIN_SRC emacs-lisp
 (use-package dape
   :defer 2
-  :elpaca (dape :type git :host github :repo "svaante/dape")
+  :ensure (dape :type git :host github :repo "svaante/dape")
   :bind (:map evil-normal-state-map
               ("SPC d d" . dape)
               ("SPC d n" . dape-next)
@@ -3330,7 +3310,7 @@ Clone this repo for js debug git@github.com:microsoft/vscode-js-debug.git
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package codemetrics
   :hook (typescript-mode . codemetrics-mode)
-  :elpaca (:host github :repo "jcs-elpa/codemetrics")
+  :ensure (:host github :repo "jcs-elpa/codemetrics")
   :defer t)
 #+END_SRC
 
@@ -3364,7 +3344,7 @@ TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
   :defer 5
-  :elpaca (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el" "copilot-balancer.el"))
+  :ensure (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el" "copilot-balancer.el"))
   :hook
   (prog-mode . copilot-mode)
   (text-mode . copilot-mode)
@@ -3385,11 +3365,12 @@ TODO: check copilot + blamer
   ;; (global-copilot-mode)
   (add-hook 'evil-insert-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p t)
-                                            (blamer--clear-overlay)))
+                                            (when (fboundp 'blamer--clear-overlay)
+
+                                              (blamer--clear-overlay))))
   (add-hook 'evil-normal-state-entry-hook (lambda ()
                                             (setq blamer--block-render-p nil)
-                                            (copilot-clear-overlay)))
-  )
+                                            (copilot-clear-overlay))))
 
 #+END_SRC
 
@@ -3398,7 +3379,7 @@ TODO: check copilot + blamer
 *** Electric
 #+BEGIN_SRC emacs-lisp 
 (use-package electric
-  :elpaca nil
+  :ensure nil
   :hook
   (html-mode . sgml-electric-tag-pair-mode)
   (ng2-html-mode . sgml-electric-tag-pair-mode)
@@ -3431,7 +3412,7 @@ Correct position after blamer flicker
 #+BEGIN_SRC emacs-lisp
 (use-package turbo-log
   :defer t
-  :elpaca (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
+  :ensure (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
   :commands (turbo-log--get-context)
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
@@ -3567,7 +3548,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 
 #+BEGIN_SRC emacs-lisp 
 (use-package persistent-kmacro
-  :elpaca (:host github :repo "artawower/persistent-kmacro.el")
+  :ensure (:host github :repo "artawower/persistent-kmacro.el")
   :defer t
   :general (:keymaps 'override
                      :states 'normal
@@ -3583,6 +3564,7 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
 #+BEGIN_SRC emacs-lisp 
 (use-package magit
   :defer t
+  :ensure t
   :commands
   (magit-get-current-branch)
   :general
@@ -3628,6 +3610,8 @@ Allow to transform PASCAL_CASE -> camelCase -> snake_case
    #'my-remove-cr)
   (setq magit-process-finish-apply-ansi-colors t))
 #+END_SRC
+
+#+RESULTS:
 
 ** Magit todos
 #+BEGIN_SRC emacs-lisp 
@@ -3687,11 +3671,8 @@ Improved styles for git changes
 ** Blamer
 #+BEGIN_SRC emacs-lisp
 (use-package blamer
-  ;; :defer 5
-  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "enhancement/async-cmd")
-  ;; :elpaca (:type git :host github :repo "artawower/blamer.el" :branch "fix/emacs-buffers-spawns")
-  :bind (
-         ("C-c i" . blamer-show-commit-info)
+  ;; :ensure (:type git :host github :repo "artawower/blamer.el" :branch "fix/emacs-buffers-spawns")
+  :bind (("C-c i" . blamer-show-commit-info)
          ("C-c h" . (lambda () (interactive) (blamer-show-commit-info 'visual)))
          ("s-i" . blamer-show-posframe-commit-info))
   :custom
@@ -3750,7 +3731,6 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp 
 (use-package browse-at-remote
   :defer t
-  :elpaca nil
   :general
   (:states '(normal visual)
    :keymaps 'override
@@ -3791,7 +3771,7 @@ Improved styles for git changes
 #+BEGIN_SRC emacs-lisp
 (use-package elisp-mode
   :defer t
-  :elpaca nil
+  :ensure nil
   :hook ((emacs-lisp-mode . paren-face-mode)
          (emacs-lisp-mode . (lambda () (setq fill-column 80))))
 
@@ -3844,12 +3824,6 @@ Improved styles for git changes
 #+END_SRC
 
 ** Typescript
-*** Jest
-#+BEGIN_SRC emacs-lisp 
-(use-package jest
-  :defer t)
-#+END_SRC
-
 *** Typescript package
 #+BEGIN_SRC emacs-lisp 
 (setenv "TSSERVER_LOG_FILE" "/tmp/tsserver.log")
@@ -3907,7 +3881,7 @@ Improved styles for git changes
 *** NPM
 #+BEGIN_SRC emacs-lisp
 (use-package npm
-  :elpaca (npm :repo "Artawower/npm.el" :host github)
+  :ensure (npm :repo "Artawower/npm.el" :host github)
   :defer t)
 #+END_SRC
 *** REPL
@@ -4177,7 +4151,7 @@ I don't remember why I need this code. Currently commented.
 ** SCSS/CSS
 #+BEGIN_SRC emacs-lisp
   (use-package css-mode
-    :elpaca nil
+    :ensure nil
     :defer 10
     :config
     (setq css-indent-offset 2)
@@ -4249,8 +4223,7 @@ I don't remember why I need this code. Currently commented.
 #+BEGIN_SRC emacs-lisp
 (use-package docker
   :defer t
-  :ensure t
-  :bind ("C-c d" . docker))
+  :ensure t)
 #+END_SRC
 
 *** Jenkins
@@ -4336,7 +4309,7 @@ I don't remember why I need this code. Currently commented.
 #+BEGIN_SRC emacs-lisp
 (use-package markdown-xwidget
   :after markdown-mode
-  :elpaca (markdown-xwidget
+  :ensure (markdown-xwidget
              :type git
              :host github
              :repo "cfclrk/markdown-xwidget"
@@ -4354,7 +4327,7 @@ I don't remember why I need this code. Currently commented.
 ** Org GPG encryption
 #+BEGIN_SRC emacs-lisp
 (use-package org-crypt
-  :elpaca nil
+  :ensure nil
   :config
   (org-crypt-use-before-save-magic)
   (setq org-tags-exclude-from-inheritance (quote ("crypt")))
@@ -4420,14 +4393,14 @@ Dependency
   :hook
   (org-mode . org-indent-mode)
   (org-mode . (lambda () (setq corfu-mode -1)))
-  :elpaca nil
+  :ensure nil
   :general
   (:states '(normal visual)
    :keymaps 'override
    "SPC m t" 'org-todo
    "SPC m n" 'org-store-link
    "SPC m l l" 'org-insert-link
-   "SPC nl" 'org-store-link
+   "SPC nl" 'org-store-link 
    "SPC dt" 'org-time-stamp-inactive
    "SPC mlt" 'org-toggle-link-display)
   (:states '(normal visual)
@@ -4558,7 +4531,7 @@ Dependency
 ** Org modern indent
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package org-modern-indent
-  :elpaca (org-modern-indent :type git :host github :repo "jdtsmith/org-modern-indent"))
+  :ensure (org-modern-indent :type git :host github :repo "jdtsmith/org-modern-indent"))
   :config ; add late to hook
   (add-hook 'org-mode-hook #'org-modern-indent-mode 90)
 #+END_SRC
@@ -4642,7 +4615,7 @@ Dependency
 One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp 
 (use-package org-roam
-  ;; :elpaca (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
+  ;; :ensure (:package "org-roam" :protocol https :inherit t :depth 1 :fetcher github :repo "org-roam/org-roam")
   :bind
   (:map evil-normal-state-map
         ("SPC n r i" . org-roam-node-insert)
@@ -4687,7 +4660,7 @@ One of the best Zettelkasten implementation
 #+BEGIN_SRC emacs-lisp
 (use-package org-yt
   :after org
-  :elpaca (:host github :repo "TobiasZawada/org-yt")
+  :ensure (:host github :repo "TobiasZawada/org-yt")
   :config
   (defun org-image-link (protocol link _description)
     "Interpret LINK as base64-encoded image data."
@@ -4714,7 +4687,7 @@ One of the best Zettelkasten implementation
 My own package for publish roam files
 #+BEGIN_SRC emacs-lisp
 (use-package orgnote
-  :elpaca (:host github :repo "Artawower/orgnote.el")
+  :ensure (:host github :repo "Artawower/orgnote.el")
   :general
   (:states '(normal visual)
            :keymaps 'org-mode-map
@@ -4740,7 +4713,7 @@ My own package for publish roam files
   :bind (:map org-mode-map
               ("<C-return>" . +org/insert-item-below)
               ("<C-S-return>" . +org/insert-item-above))
-  :elpaca (org-insert
+  :ensure (org-insert
            :type git
            :host github
            :repo "hlissner/doom-emacs"
@@ -4759,7 +4732,7 @@ My own package for publish roam files
                                  (directory-files-recursively "~/projects/pet" "\\.org$"))))
 
 (use-package org-agenda
-  :elpaca nil
+  :ensure nil
   :defer t
   :config
   (setq org-agenda-files (directory-files-recursively "~/Yandex.Disk.localized/Dropbox/org/calendar/" "\\.org$")))
@@ -4777,7 +4750,7 @@ My own package for publish roam files
 #+BEGIN_SRC emacs-lisp 
 (use-package ox-gfm
   :defer t
-  :elpaca (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
+  :ensure (ox-gfm :type git :host github :repo "larstvei/ox-gfm"))
 #+END_SRC
 
 ** IDEA Latex preview
@@ -4795,7 +4768,7 @@ Debug for my own project
 ** Org AI. 
 #+BEGIN_SRC emacs-lisp :results silent
 (use-package org-ai
-  :elpaca nil
+  :ensure nil
   :load-path (lambda () "~/apps/pure-emacs/vendor/org-ai")
   :commands (org-ai-mode)
   :init
@@ -4809,7 +4782,7 @@ Debug for my own project
 (use-package org-download
   :defer 2
   :hook (dired-mode-hook . org-download-enable)
-  :elpaca (org-download :type git :host github :repo "abo-abo/org-download")
+  :ensure (org-download :type git :host github :repo "abo-abo/org-download")
   :config
   (setq org-download-method 'directory)
   (setq org-download-link-format "[[./%s]]\n")
@@ -4954,7 +4927,7 @@ Didn't mange to start work
            "SPC rr" 'reverso
            "SPC rt" 'reverso-translate
            "SPC rh" 'reverso-history)
-  :elpaca (:host github :repo "SqrtMinusOne/reverso.el"))
+  :ensure (:host github :repo "SqrtMinusOne/reverso.el"))
 #+END_SRC
 
 #+RESULTS:
@@ -4972,7 +4945,7 @@ Didn't mange to start work
 #+BEGIN_SRC emacs-lisp 
 (use-package wakatime-ui
   :after wakatime-mode
-  :elpaca (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
+  :ensure (wakatime-ui :host github :repo "Artawower/wakatime-ui.el")
   :custom
   (wakatim-ui-schedule-url "https://wakatime.com/share/@darkawower/af1bfb85-2c8b-44e4-9873-c4a91b512e8d.png")
   :config
@@ -4983,7 +4956,7 @@ Didn't mange to start work
 #+BEGIN_SRC emacs-lisp
 (use-package recentf
   :after consult
-  :elpaca nil
+  :ensure nil
   :init
   (recentf-mode 1)
   :config
@@ -4993,7 +4966,7 @@ Didn't mange to start work
 *** Projectile package
 #+BEGIN_SRC emacs-lisp :noweb yes
   (use-package projectile
-    :elpaca nil
+    :ensure nil
     :general
     (:states 'normal
              "SPC pa" 'projectile-add-known-project
@@ -5045,23 +5018,11 @@ Didn't mange to start work
            ("SPC h ." . helpful-at-point)))
 #+END_SRC
 
-** Annotate
-#+BEGIN_SRC emacs-lisp
-(use-package annotate
-  :defer t)
-#+END_SRC
-
-** Pomodoro
-#+BEGIN_SRC emacs-lisp
-(use-package org-pomodoro
-  :defer t)
-#+END_SRC
-
 * Completion
 ** Vertico
 #+BEGIN_SRC emacs-lisp
 (use-package vertico
-  :elpaca (:host github :repo "minad/vertico" :files ("vertico.el" "extensions/*.el"))
+  :ensure (:host github :repo "minad/vertico" :files ("vertico.el" "extensions/*.el"))
   :bind (:map evil-normal-state-map
               ("SPC ;" . vertico-repeat-last)
               ("SPC '" . vertico-repeat)
@@ -5102,7 +5063,7 @@ Didn't mange to start work
 (elpaca-wait)
 
 (use-package vertico-repeat
-   :elpaca nil
+   :ensure nil
    :after vertico)
 
 (use-package orderless
@@ -5113,13 +5074,13 @@ Didn't mange to start work
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
-  :elpaca nil
+  :ensure nil
   :config
   (savehist-mode))
 
 ;; A few more useful configurations...
 (use-package emacs
-  :elpaca nil
+  :ensure nil
   :init
   ;; Add prompt indicator to `completing-read-multiple'.
   ;; Alternatively try `consult-completing-read-multiple'.
@@ -5346,7 +5307,6 @@ Delete project
 
 
 
-
 *** Embark package
 #+BEGIN_SRC emacs-lisp  :noweb yes
 (defun +vertico/embark-preview ()
@@ -5402,7 +5362,7 @@ Delete project
 ** Tramp
 #+BEGIN_SRC emacs-lisp
 (use-package tramp
-  :elpaca nil
+  :ensure nil
   :config
   (setenv "SHELL" "/bin/bash")
   (setq remote-file-name-inhibit-cache nil)
@@ -5433,7 +5393,7 @@ Delete project
 
 ** Org pdf
 #+BEGIN_SRC emacs-lisp 
-(use-package org-pdftools)
+;; (use-package org-pdftools)
   ;; :hook (org-mode . org-pdftools-setup-link))
 #+END_SRC
 
