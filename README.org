@@ -93,11 +93,21 @@ brew install emacs-plus@28 --with-xwidgets --with-nobu417-big-sur-icon --with-no
 #+BEGIN_SRC emacs-lisp
 ;; (use-package seq
 ;; :defer t)
+
+
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+;; (use-package subr :ensure nil)
+
+;;   :preface
+;;    (unload-feature 'subr t)
+;; :ensure (:type git :host github :repo "emacs-mirror/emacs"))
 #+END_SRC
 
 #+BEGIN_SRC emacs-lisp
  (use-package jsonrpc
-  :ensure (jsonrpc :depth nil)
+  :ensure (jsonrpc :depth 1)
   :defer t)
 #+END_SRC
 ** Env
@@ -800,6 +810,23 @@ Very pretty titlebar for Mac os
   :group 'org-faces)
 #+END_SRC
 
+Custom italic-like faces
+
+#+BEGIN_SRC emacs-lisp :results silent
+(defface italic-string-face
+  '((t (:inherit font-lock-string-face :slant italic)))
+  "Face for italic strings."
+  :group 'faces)
+#+END_SRC
+
+Custom italic build-in face
+#+BEGIN_SRC emacs-lisp :results silent
+(defface italic-builtin-face
+  '((t (:inherit font-lock-builtin-face :slant italic)))
+  "Face for italic keywords."
+  :group 'faces)
+#+END_SRC
+
 ** Dired icons
 #+BEGIN_SRC emacs-lisp
   (use-package all-the-icons-dired
@@ -983,6 +1010,7 @@ Doesn't work for mac os unfortunately ;c
 (use-package catppuccin-theme
   :after auto-dark
   :config
+  (set-face-attribute 'font-lock-property-name-face nil :foreground (catppuccin-get-color 'lavender))
   (add-hook 'auto-dark-dark-mode-hook #'@set-catppucin-theme)
   (add-hook 'auto-dark-light-mode-hook #'@set-catppucin-theme)
   (@set-catppucin-theme)
@@ -1190,6 +1218,7 @@ Override function for auto-dark mode for applying function for nano theme changi
  :keymaps 'override
  "C-u" 'evil-scroll-up
  "C-e" 'pixel-scroll-up
+ "gf" '@avy-go-to-definition
  "C-y" 'pixel-scroll-down
  "s-Y" 'xah-copy-to-register-1
  "s-r" (lambda () (interactive) (set-mark-command nil) (evil-avy-goto-char))
@@ -1632,7 +1661,6 @@ Dirvish.
 *** File info
 #+BEGIN_SRC emacs-lisp 
 (use-package file-info
-  :after browse-at-remote
   :bind
   (("C-c d" . 'file-info-show)
    ("s-'" . 'file-info-show))
@@ -1645,6 +1673,9 @@ Dirvish.
                                                  :left-fringe 16
                                                  :right-fringe 16)))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26193 61646 215592 nil elpaca-process-queues nil nil 999999 nil]
 
 *** Open in finder
 #+BEGIN_SRC emacs-lisp 
@@ -2634,131 +2665,155 @@ Another all formtter. Based on prettier and black
   (flycheck-add-mode 'javascript-eslint 'typescript-ts-mode))
 #+END_SRC
 
-** AST. Tree sitter.
-*** Tree sitter package
-#+BEGIN_SRC emacs-lisp
-(use-package tree-sitter-langs
-  :after spell-fu)
-
-(defun init-tree-sitter-hl-mode ()
-  "Function for init tree-sitter-hl-mode in correct order.
-
-This need for correct highlighting of incorrect spell-fu faces."
-  (tree-sitter-hl-mode -1)
-  (my-set-spellfu-faces)
-  (tree-sitter-hl-mode)
-  (codemetrics-mode))
-
-(use-package tree-sitter
-  :after (evil tree-sitter-langs)
-  :hook ((go-mode
-          typescript-mode
-          css-mode
-          typescript-tsx-mode
-          html-mode
-          scss-mode
-          ng2-mode
-          ng2-html-mode
-          js-mode
-          python-mode
-          rust-mode
-          ng2-ts-mode
-          ng2-html-mode) . init-tree-sitter-hl-mode)
-  :config
-  (push '(ng2-html-mode . html) tree-sitter-major-mode-language-alist)
-  ;; (push '(web-mode . html) tree-sitter-major-mode-language-alist)
-  (push '(ng2-ts-mode . typescript) tree-sitter-major-mode-language-alist)
-  (push '(scss-mode . css) tree-sitter-major-mode-language-alist)
-  (push '(scss-mode . typescript) tree-sitter-major-mode-language-alist)
-
-  ;; (push '(html-ts-mode . ng2-html-mode) treesit-auto-fallback-alist)
-
-  ;; TODO: remove, 
-  (push '(typescript-ts-mode . typescript) tree-sitter-major-mode-language-alist)
-  (push '(go-ts-mode . go) tree-sitter-major-mode-language-alist)
-  (push '(python-ts-mode . python) tree-sitter-major-mode-language-alist)
-  (push '(css-ts-mode . css) tree-sitter-major-mode-language-alist)
-  (push '(html-ts-mode . ng2-html) tree-sitter-major-mode-language-alist)
-
-  (tree-sitter-require 'tsx)
-  (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-tsx-mode . tsx)))
-
-(use-package tree-edit
-  :defer t)
-#+END_SRC
-
-#+RESULTS:
-*** Tree sitter + evil
-#+BEGIN_SRC emacs-lisp
-(use-package evil-textobj-tree-sitter
-  :ensure t
-  :config
-  ;; bind `function.outer`(entire function block) to `f` for use in things like `vaf`, `yaf`
-  (define-key evil-outer-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.outer"))
-  ;; bind `function.inner`(function block without name and args) to `f` for use in things like `vif`, `yif`
-  (define-key evil-inner-text-objects-map "f" (evil-textobj-tree-sitter-get-textobj "function.inner"))
-
-  ;; You can also bind multiple items and we will match the first one we can find
-  (define-key evil-outer-text-objects-map "a" (evil-textobj-tree-sitter-get-textobj ("conditional.outer" "loop.outer"))))
-
-#+END_SRC
-
 ** AST treesit
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+# :PROPERTIES:
+# :header-args: :tangle no
+# :END:
+*** Treesit colors presets
+#+BEGIN_SRC emacs-lisp :results silent
+(defun @setup-typescript-highlights ()
+  "Setup TypeScript highlights via treesit."
+  (interactive)
+
+  (message "SETUP TS MODE")
+
+  (setq typescript--treesit-settings
+        (treesit-font-lock-rules
+         :language 'typescript
+         :feature 'decorator-identifier
+         :override t
+         '((decorator (call_expression function: (identifier) @font-lock-number-face)))
+
+
+         :language 'typescript
+         :feature 'decorator-identifier
+         :override t
+         '((decorator (identifier) @font-lock-number-face))
+
+
+         :language 'typescript
+         :feature 'named-import
+         :override t
+         '((import_specifier) @font-lock-number-face)
+
+         :language 'typescript
+         :feature 'this
+         :override t
+         '((member_expression object: (this) @font-lock-builtin-face))
+
+         :language 'typescript
+         :feature 'predefined
+         :override t
+         '((predefined_type) @font-lock-builtin-face)
+
+         :language 'typescript
+         :feature 'property
+         :override t
+         '((object (pair key: (property_identifier) @font-lock-property-name-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (string) @italic-string-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (true) @italic-string-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (false) @italic-builtin-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (true) @italic-builtin-face)))
+
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (null) @italic-builtin-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (undefined) @italic-builtin-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (number) @italic-builtin-face)))
+
+         :language 'typescript
+         :feature 'object-values
+         :override t
+         '((object (pair key: (property_identifier) value: (identifier) @italic)))
+         ))
+
+  (setq-local treesit-font-lock-settings (append treesit-font-lock-settings typescript--treesit-settings))
+  ;; (setq-local treesit-font-lock-settings typescript--treesit-settings)
+  (setq-local treesit-font-lock-rules typescript--treesit-settings)
+  (setq-local treesit-font-lock-feature-list
+              '((comment declaration identifier)
+                (keyword string escape-sequence named-import decorator-identifier type-annotation predefined_type decorator)
+                (constant expression identifier number pattern property predefined this)
+                (operator function bracket delimiter object-values)))
+
+  (treesit-major-mode-setup))
+#+END_SRC
+*** Combobulate
+#+BEGIN_SRC emacs-lisp :results silent
+(use-package combobulate
+  :after treesit
+  :ensure (:host github :repo "mickeynp/combobulate")
+  :preface
+  ;; You can customize Combobulate's key prefix here.
+  ;; Note that you may have to restart Emacs for this to take effect!
+  (setq combobulate-key-prefix "C-c o")
+  :hook
+  ((python-ts-mode . combobulate-mode)
+   (js-ts-mode . combobulate-mode)
+   (html-ts-mode . combobulate-mode)
+   (css-ts-mode . combobulate-mode)
+   (yaml-ts-mode . combobulate-mode)
+   (typescript-ts-mode . combobulate-mode)
+   (json-ts-mode . combobulate-mode)
+   (tsx-ts-mode . combobulate-mode))
+  ;; Amend this to the directory where you keep Combobulate's source
+  ;; code.
+  )
+#+END_SRC
 *** Treesit core
 # Right not its not supporteed well. Moreover, tree-sitter-hl-mode is really better then built in functionality
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit                    ;
   :ensure nil
-  :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
-  :hook ((typescript-ts-base-mode
-          go-ts-mode
-          python-ts-mode
-          css-ts-mode) . init-tree-sitter-hl-mode)
+  ;; :commands (treesit-install-language-grammar nf/treesit-install-all-languages)
+  ;; :hook ((typescript-ts-base-mode
+  ;;         go-ts-mode
+  ;;         python-ts-mode
+  ;;         css-ts-mode) . init-tree-sitter-hl-mode)
+  :hook
   (go-ts-mode . (lambda () (setq-local tab-width 2)))
-  :init
-  (setq treesit-language-source-alist
-        '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
-          (c . ("https://github.com/tree-sitter/tree-sitter-c"))
-          (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
-          (css . ("https://github.com/tree-sitter/tree-sitter-css"))
-          (go . ("https://github.com/tree-sitter/tree-sitter-go"))
-          (html . ("https://github.com/tree-sitter/tree-sitter-html"))
-          (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
-          (json . ("https://github.com/tree-sitter/tree-sitter-json"))
-          (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
-          (make . ("https://github.com/alemuller/tree-sitter-make"))
-          (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "ocaml/src" "ocaml"))
-          (python . ("https://github.com/tree-sitter/tree-sitter-python"))
-          (php . ("https://github.com/tree-sitter/tree-sitter-php"))
-          (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "typescripts" "tsx"))
-          (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
-          (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
-          (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
-          (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
-          (zig . ("https://github.com/GrayJack/tree-sitter-zig"))))
   :custom
-  ;; (treesit-extra-load-path '("/Users/darkawower/pure-emacs/tree-sit-parsers"))
-  (treesit-extra-load-path '("/Users/darkawower/apps/pure-emacs/tree-sitter"))
   (go-ts-mode-indent-offset 2)
   :config
-  (defun nf/treesit-install-all-languages ()
-    "Install all languages specified by `treesit-language-source-alist'."
-    (interactive)
-    (let ((languages (mapcar 'car treesit-language-source-alist)))
-      (dolist (lang languages)
-	      (treesit-install-language-grammar lang)
-	      (message "`%s' parser was installed." lang)
-	      (sit-for 0.75)))))
+  (add-hook 'typescript-ts-mode-hook #'@setup-typescript-highlights)
+  (setq treesit-font-lock-level 4))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26192 58130 222559 nil elpaca-process-queues nil nil 999999 nil]
 
 *** Tree sitterm automatic grammar installation
 #+BEGIN_SRC emacs-lisp 
 (use-package treesit-auto
   :config
   (setq treesit-auto-install 'prompt)
+  (treesit-auto-add-to-auto-mode-alist 'all)
   (global-treesit-auto-mode))
 #+END_SRC
 *** Tree sitter movement. Ts hopper
@@ -2771,11 +2826,16 @@ This need for correct highlighting of incorrect spell-fu faces."
                  :keymaps 'override
                  "\'" 'ts-hopper-define-context
                  "\\k" 'ts-hopper-mode
+                 "," 'ts-hopper-select
                  "[" 'ts-hopper-hop-prev-context
                  "]" 'ts-hopper-hop-next-context)
   :config
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26193 63931 302611 nil elpaca-process-queues nil nil 999999 nil]
+
 ** Autocomplete
 *** Corfu
 **** Corfu package
@@ -3344,7 +3404,7 @@ TODO: check copilot + blamer
 #+BEGIN_SRC emacs-lisp
 (use-package copilot
   :defer 5
-  :ensure (copilot :host github :repo "zerolfx/copilot.el" :files ("dist" "copilot.el" "copilot-balancer.el"))
+  :ensure (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
   :hook
   (prog-mode . copilot-mode)
   (text-mode . copilot-mode)
@@ -3361,6 +3421,7 @@ TODO: check copilot + blamer
   :config
   (setq copilot--previous-point nil)
   (setq copilot--previous-window-width nil)
+
   (copilot-diagnose)
   ;; (global-copilot-mode)
   (add-hook 'evil-insert-state-entry-hook (lambda ()
@@ -3373,6 +3434,9 @@ TODO: check copilot + blamer
                                             (copilot-clear-overlay))))
 
 #+END_SRC
+
+#+RESULTS:
+: [nil 26193 48854 290335 nil elpaca-process-queues nil nil 999999 nil]
 
 
 ** Autopairs
@@ -3964,6 +4028,7 @@ Function for open repl in the current buffer
 #+BEGIN_SRC emacs-lisp 
 (use-package python
   :defer t
+  :ensure nil
   :general
   (:states '(normal visual)
            :keymaps 'override
@@ -3979,6 +4044,8 @@ Function for open repl in the current buffer
 #+BEGIN_SRC emacs-lisp
 (use-package python-mode
   :defer t
+  :after treesit
+  :ensure nil
   :config
   (setq python-indent-level 4)
   (add-hook 'python-mode-hook
@@ -4388,12 +4455,12 @@ Dependency
 ** Org package
 #+BEGIN_SRC emacs-lisp
 (use-package org
+  :ensure nil
   :defer t
   :mode (("\\.org$" . org-mode))
   :hook
   (org-mode . org-indent-mode)
   (org-mode . (lambda () (setq corfu-mode -1)))
-  :ensure nil
   :general
   (:states '(normal visual)
    :keymaps 'override
@@ -4503,7 +4570,7 @@ Dependency
    '(
      ;; (typescript . t)
      (js . t)
-     (python . t)
+     ;; (python . t)
      (restclient . t)
      (shell . t)))
 
