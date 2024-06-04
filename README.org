@@ -2,7 +2,6 @@
 #+DESCRIPTION: The main puprose of this config is create very simple, minimalistic and usefull setup.
 #+DESCRIPTION: Also i plan to steal some usefull features from Doom emacs, but without copying it, cause it's very bloat in some cases.
 
-
 #+TITLE: Emacs config
 * Installation
 For install emacs on macos use brew:
@@ -188,7 +187,7 @@ unreadable. Returns the names of envvars that were changed."
                         `(,@package-archives
                           ("melpa" . "http://melpa.org/packages/")
                           ("melpa" . "http://melpa.milkbox.net/packages/")
-                          ( "jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
+                          ("jcs-elpa" . "https://jcs-emacs.github.io/jcs-elpa/packages/")
                           ("melpa-stable" . "http://stable.melpa.org/packages/")
                           ("org" . "https://orgmode.org/elpa/")
                           ;; ("emacswiki" . "https://mirrors.tuna.tsinghua.edu.cn/elpa/emacswiki/")
@@ -1010,7 +1009,11 @@ Doesn't work for mac os unfortunately ;c
 (use-package catppuccin-theme
   :after auto-dark
   :config
-  (set-face-attribute 'font-lock-property-name-face nil :foreground (catppuccin-get-color 'lavender))
+  (defface font-lock-object-key-face
+    `((t (:inherit font-lock-property-name-face :foreground ,(catppuccin-get-color 'lavender))))
+    "Face for object keys."
+    :group 'font-lock-faces)
+  ;; (set-face-attribute 'font-lock-property-name-face nil :foreground (catppuccin-get-color 'lavender))
   (add-hook 'auto-dark-dark-mode-hook #'@set-catppucin-theme)
   (add-hook 'auto-dark-light-mode-hook #'@set-catppucin-theme)
   (@set-catppucin-theme)
@@ -2211,10 +2214,29 @@ This function also stolen from doom emacs. It provide functionality for automati
 ** Folding (origami)
 #+BEGIN_SRC emacs-lisp 
 (use-package origami
-  :hook ((org-mode dart-mode yaml-mode python-mode html-mode ng2-html-mode emacs-lisp-mode) . origami-mode)
+  :hook ((org-mode
+          dart-mode
+          yaml-mode
+          js-ts-mode
+          yaml-ts-mode
+          python-mode
+          python-ts-mode
+          html-mode
+          ng2-html-mode
+          emacs-lisp-mode
+          typescript-ts-mode
+          go-ts-mode
+          python-ts-mode) . origami-mode)
   :after evil)
 #+END_SRC
+
+#+RESULTS:
+: [nil 26202 13717 589909 nil elpaca-process-queues nil nil 999999 nil]
+
 ** Folding (tree-sitter based) ts-fold
+:PROPERTIES:
+:HEADER-ARGS: :tangle no
+:END:
 *** Funtions for better folding depends on mode
 #+BEGIN_SRC emacs-lisp 
 (defun @fold-close-all ()
@@ -2223,7 +2245,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (interactive)
   (cond ((equal major-mode 'org-mode) (+org/close-all-folds))
         ((bound-and-true-p origami-mode) (call-interactively 'origami-close-all-nodes))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-close-all))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-close-all))
         (t (evil-close-folds))))
 
 (defun @fold-close ()
@@ -2232,7 +2254,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (interactive)
   (cond ((equal major-mode 'org-mode) (+org/close-fold))
         ((bound-and-true-p origami-mode) (call-interactively 'origami-close-node))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-close))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-close))
         (t (evil-close-fold))))
 
 
@@ -2242,7 +2264,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (interactive)
   (cond ((equal major-mode 'org-mode) (+org/open-all-folds))
         ((bound-and-true-p origami-mode) (call-interactively 'origami-open-all-nodes))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-open-all))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-open-all))
         (t (evil-open-folds))))
 
 (defun @fold-open ()
@@ -2251,7 +2273,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (interactive)
   (cond ((equal major-mode 'org-mode) (+org/open-fold))
         ((bound-and-true-p origami-mode) (call-interactively 'origami-open-node))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-open))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-open))
         (t (evil-open-fold))))
 
 (defun @fold-toggle-all ()
@@ -2260,7 +2282,7 @@ This function also stolen from doom emacs. It provide functionality for automati
   (interactive)
   (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
         ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-all-nodes))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-toggle-all))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-toggle-all))
         (t (evil-toggle-fold))))
 
 (defun @fold-toggle ()
@@ -2271,7 +2293,7 @@ This function also stolen from doom emacs. It provide functionality for automati
     (end-of-line)
     (cond ((equal major-mode 'org-mode) (+org/toggle-fold))
           ((bound-and-true-p origami-mode) (call-interactively 'origami-toggle-node))
-          ((bound-and-true-p ts-fold-mode) (ts-fold-toggle))
+          ((bound-and-true-p treesit-fold-mode) (treesit-fold-toggle))
           (t (evil-toggle-fold)))))
 
 
@@ -2280,7 +2302,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 
   (interactive)
   (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-next-fold))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-next))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-next))
         (t (evil-next-fold))))
 
 (defun @fold-previous ()
@@ -2288,7 +2310,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 
   (interactive)
   (cond ((bound-and-true-p origami-mode) (call-interactively 'origami-previous-fold))
-        ((bound-and-true-p ts-fold-mode) (ts-fold-previous))
+        ((bound-and-true-p treesit-fold-mode) (treesit-fold-previous))
         (t (evil-previous-fold))))
 #+END_SRC
 *** Tsfold improved bindings (general)
@@ -2306,7 +2328,7 @@ This function also stolen from doom emacs. It provide functionality for automati
 #+END_SRC
 *** Init hook
 #+BEGIN_SRC emacs-lisp 
-(defun @ts-fold-init ()
+(defun @treesit-fold-init ()
   "Init ts-fold."
   (interactive)
   (when (and (bound-and-true-p tree-sitter-mode)
@@ -2328,13 +2350,13 @@ This function also stolen from doom emacs. It provide functionality for automati
                                   scss-ts-mode
                                   css-ts-mode
                                   bash-mode)))
-    (ts-fold-mode 1)))
+    (treesit-fold-mode 1)))
 #+END_SRC
 
-*** Core package
-#+BEGIN_SRC emacs-lisp  :noweb yes
-(use-package ts-fold
-  :ensure (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+*** Treesit fold. Core package
+#+BEGIN_SRC emacs-lisp :noweb yes
+(use-package treesit-fold
+  :ensure (treesit-fold :type git :host github :repo "abougouffa/treesit-fold")
   :hook ((tree-sitter-mode
           web-mode
           ng2-html-mode
@@ -2349,7 +2371,7 @@ This function also stolen from doom emacs. It provide functionality for automati
           css-mode
           scss-mode
           go-ts-mode
-          typescript-ts-mode) . @ts-fold-init)
+          typescript-ts-mode) . @treesit-fold-init)
   :general
   <<ts-fold-general-keybindings>>
   :config
@@ -2390,6 +2412,10 @@ This function also stolen from doom emacs. It provide functionality for automati
   ;; (add-to-list 'ts-fold-foldable-node-alist '(scss-mode comment block keyframe_block_list))
   ;; (add-to-list 'ts-fold-foldable-node-alist '(ng2-html-mode comment element)))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26197 60087 99576 nil elpaca-process-queues nil nil 999999 nil]
+
 ** Notes
 *** Settings
 Display buffer of quick note always at bottom
@@ -2709,7 +2735,7 @@ Another all formtter. Based on prettier and black
          :language 'typescript
          :feature 'property
          :override t
-         '((object (pair key: (property_identifier) @font-lock-property-name-face)))
+         '((object (pair key: (property_identifier) @font-lock-object-key-face)))
 
          :language 'typescript
          :feature 'object-values
@@ -2751,13 +2777,19 @@ Another all formtter. Based on prettier and black
          :feature 'object-values
          :override t
          '((object (pair key: (property_identifier) value: (identifier) @italic)))
+
+
+         ;; :language 'typescript
+         ;; :feature 'class-property
+         ;; :override t
+         ;; '((accessibility_modifier) name: (property_identifier) @font-lock-variable-name-face)
          ))
 
   (setq-local treesit-font-lock-settings (append treesit-font-lock-settings typescript--treesit-settings))
   ;; (setq-local treesit-font-lock-settings typescript--treesit-settings)
   (setq-local treesit-font-lock-rules typescript--treesit-settings)
   (setq-local treesit-font-lock-feature-list
-              '((comment declaration identifier)
+              '((comment declaration identifier class-property)
                 (keyword string escape-sequence named-import decorator-identifier type-annotation predefined_type decorator)
                 (constant expression identifier number pattern property predefined this)
                 (operator function bracket delimiter object-values)))
@@ -2817,7 +2849,7 @@ Another all formtter. Based on prettier and black
   (global-treesit-auto-mode))
 #+END_SRC
 *** Tree sitter movement. Ts hopper
-#+BEGIN_SRC emacs-lisp 
+#+BEGIN_SRC emacs-lisp :results silent
 (use-package ts-hopper
   :ensure (ts-hopper :type git :host github :repo "artawower/ts-hopper.el")
   :init
@@ -2832,9 +2864,6 @@ Another all formtter. Based on prettier and black
   :config
   (add-hook 'ts-hopper--after-hop-hook (lambda () (call-interactively 'evil-scroll-line-to-center))))
 #+END_SRC
-
-#+RESULTS:
-: [nil 26193 63931 302611 nil elpaca-process-queues nil nil 999999 nil]
 
 ** Autocomplete
 *** Corfu
@@ -3064,6 +3093,7 @@ Another all formtter. Based on prettier and black
   (lsp-enable-file-watchers t)
   (lsp-file-watch-threshold 8000)
   :config
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.bun\\'")
   (setq lsp-auto-execute-action nil)
   (setq lsp-javascript-display-return-type-hints t)
   (setq lsp-json-schemas
@@ -3248,6 +3278,8 @@ See [[https://github.com/blahgeek/emacs-lsp-booster][detail]]
   (add-to-list 'compilation-error-regexp-alist '("[[:blank:]]*\\([/_\\.[:alnum:]-]+\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\) - error.*$" 1 2 3))
   ;; Angular
   (add-to-list 'compilation-error-regexp-alist '("^Error: \\([_[:alnum:]-/.]*\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
+  ;; New eslint
+  (add-to-list 'compilation-error-regexp-alist '("^\\([_[:alnum:]-/.]*\\)\n[[:blank:]]*\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
 
   ;; Flutter
   ;; (add-to-list 'compilation-error-regexp-alist '("[[:blank:]]*\\([/_\\.[:alnum:]-]+\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\): Error.*$"))
@@ -3473,10 +3505,10 @@ Correct position after blamer flicker
 #+END_SRC
 
 ** Turbo log. Quick log inserting
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp 
 (use-package turbo-log
   :defer t
-  :ensure (turbo-log :type git :host github :repo "Artawower/turbo-log.el")
+  :ensure (turbo-log :type git :host github :repo "Artawower/turbo-log.el" :branch "feat/treesit-migration")
   :commands (turbo-log--get-context)
   :bind (("C-s-l" . turbo-log-print)
          ("C-s-i" . turbo-log-print-immediately)
@@ -3494,10 +3526,13 @@ Correct position after blamer flicker
   (turbo-log-configure
    :modes (typescript-ts-mode tsx-ts-mode typescript-mode js2-mode web-mode ng2-ts-mode js-mode)
    :strategy merge
-   :post-insert-hooks (apheleia-format-buffer lsp)
+   :post-insert-hooks ((lambda () (interactive) (call-interactively 'apheleia-format-buffer)) lsp)
    ;; :msg-format-template "'🦄: %s'"
    :msg-format-template "'✎: %s'"))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26198 4723 375035 nil elpaca-process-queues nil nil 999999 nil]
 
 *** Automatic rename html/xml tags
 Patch for correct flycheck run, see 
@@ -3931,7 +3966,7 @@ Improved styles for git changes
 #+END_SRC
 
 #+RESULTS:
-| ng2-mode | init-tree-sitter-hl-mode | auto-rename-tag-mode | lsp-deferred | prettier-mode | @ts-fold-init |
+| ng2-mode | init-tree-sitter-hl-mode | auto-rename-tag-mode | lsp-deferred | prettier-mode | @treesit-fold-init |
 
 ** Js
 *** Main mode
@@ -4570,7 +4605,7 @@ Dependency
    '(
      ;; (typescript . t)
      (js . t)
-     ;; (python . t)
+     (python . t)
      (restclient . t)
      (shell . t)))
 
