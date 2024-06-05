@@ -3094,6 +3094,7 @@ Another all formtter. Based on prettier and black
   (lsp-file-watch-threshold 8000)
   :config
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.bun\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.npm\\'")
   (setq lsp-auto-execute-action nil)
   (setq lsp-javascript-display-return-type-hints t)
   (setq lsp-json-schemas
@@ -3278,6 +3279,9 @@ See [[https://github.com/blahgeek/emacs-lsp-booster][detail]]
   (add-to-list 'compilation-error-regexp-alist '("[[:blank:]]*\\([/_\\.[:alnum:]-]+\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\) - error.*$" 1 2 3))
   ;; Angular
   (add-to-list 'compilation-error-regexp-alist '("^Error: \\([_[:alnum:]-/.]*\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
+  ;; Angular vite
+  (add-to-list 'compilation-error-regexp-alist '("\\([_[:alnum:]-/.]*\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
+
   ;; New eslint
   (add-to-list 'compilation-error-regexp-alist '("^\\([_[:alnum:]-/.]*\\)\n[[:blank:]]*\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
 
