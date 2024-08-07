@@ -912,7 +912,10 @@ Custom italic build-in face
   :config
   (setq display-fill-column-indicator-column 80))
 #+END_SRC
-** Centered mode
+** WAIT Centered mode
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+BEGIN_SRC emacs-lisp
 (use-package centered-cursor-mode
   :hook (prog-mode . centered-cursor-mode)
