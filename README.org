@@ -2847,6 +2847,9 @@ Another all formtter. Based on prettier and black
   :custom
   (go-ts-mode-indent-offset 2)
   :config
+  (setq treesit-language-source-alist
+      '((go "https://github.com/tree-sitter/tree-sitter-go")
+        (gomod "https://github.com/camdencheek/tree-sitter-go-mod")))
   (add-hook 'typescript-ts-mode-hook #'@setup-typescript-highlights)
   (setq treesit-font-lock-level 4))
 #+END_SRC
