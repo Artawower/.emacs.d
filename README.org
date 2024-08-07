@@ -1656,7 +1656,7 @@ Dirvish.
    ("M-j" . dirvish-fd-jump)))
 #+END_SRC
 *** Dired commands
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :tangle no
 (use-package casual-dired
   :ensure (:type git :host github :repo "kickingvegas/casual-dired")
   :general
@@ -2649,14 +2649,18 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
 (setq-default tab-width 2)
 #+END_SRC
 ** Formatters
-*** Prettier
+*** DONE Prettier
+:PROPERTIES:
+:header-args: :tangle-no
+:END:
 #+BEGIN_SRC emacs-lisp 
 (use-package prettier
   :defer t
   :bind (:map evil-normal-state-map
               ("SPC fp" . prettier-prettify))
-  :config
-  (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts))))
+  ;; :config
+  ;; (add-to-list 'prettier-major-mode-parsers '(typescript-ts-mode . (typescript babel-ts)))
+)
 #+END_SRC
 *** Apheleia formatter
 Another all formtter. Based on prettier and black
