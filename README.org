@@ -767,9 +767,9 @@ Uncomment when u need to profile ;p
 
 #+BEGIN_SRC emacs-lisp
 (use-package all-the-icons-completion
-  :after (marginalia all-the-icons)
+  ;; :after (marginalia all-the-icons)
   :hook (marginalia-mode . all-the-icons-completion-marginalia-setup)
-  :init
+  :config
   (all-the-icons-completion-mode))
  #+END_SRC
 
