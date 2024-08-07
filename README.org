@@ -1845,6 +1845,7 @@ Open vterm in the current buffer. When vterm doesn't exist, create one.
 (use-package detached
   :init
   (detached-init)
+  :defer 2
   :general 
   (:states '(normal visual)
            :keymaps 'override
@@ -2232,6 +2233,7 @@ This function also stolen from doom emacs. It provide functionality for automati
           python-mode
           python-ts-mode
           html-mode
+          scss-mode
           ng2-html-mode
           emacs-lisp-mode
           typescript-ts-mode
@@ -2625,6 +2627,7 @@ Override autosave function. What is the sense save buffer whic doesn't exist???
         '("~/apps/pure-emacs/templates/common"
           "~/apps/pure-emacs/templates/readme"
           "~/apps/pure-emacs/templates/org-mode"
+          "~/apps/pure-emacs/templates/web-mode"
           "~/apps/pure-emacs/templates/emacs-lisp"
           "~/apps/pure-emacs/templates/golang")))
 #+END_SRC
@@ -4312,10 +4315,15 @@ I don't remember why I need this code. Currently commented.
 #+BEGIN_SRC emacs-lisp
 (use-package json-mode
   :defer 5
-  :hook (json-mode . format-all-mode)
+  :hook ((json-mode . format-all-mode)
+         (json-mode . json-ts-mode))
   :config
   (setq js-indent-level 2))
 #+END_SRC
+
+#+RESULTS:
+: [nil 26284 60438 689150 nil elpaca-process-queues nil nil 999999 nil]
+
 ** Flutter
 *** Dart
 #+BEGIN_SRC emacs-lisp
@@ -5255,7 +5263,7 @@ Didn't mange to start work
 ** Completion annotations
 #+BEGIN_SRC emacs-lisp
   (use-package marginalia
-    :after vertico
+    :elpaca t
     ;; Either bind `marginalia-cycle` globally or only in the minibuffer
     :bind (("M-A" . marginalia-cycle)
            :map minibuffer-local-map

@@ -1,0 +1,4 @@
+web-mode
+
+(props "const props = defineProps<{" n> p n "}>();")
+(emits "const emits = defineEmits<{" n> p n "}>();")
