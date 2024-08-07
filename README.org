@@ -3304,6 +3304,10 @@ See [[https://github.com/blahgeek/emacs-lsp-booster][detail]]
   ;; Angular vite
   (add-to-list 'compilation-error-regexp-alist '("\\([_[:alnum:]-/.]*\\):\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
 
+  ;; TSC
+  ;; [tsl] ERROR in /Users/darkawower/projects/pet/orgnote/orgnote-cli/src/commands/files-api.ts(1,46)
+  (add-to-list 'compilation-error-regexp-alist '("\\([_[:alnum:]-/.]*\\)(\\([0-9]+\\),\\([0-9]+\\))" 1 2 3))
+
   ;; New eslint
   (add-to-list 'compilation-error-regexp-alist '("^\\([_[:alnum:]-/.]*\\)\n[[:blank:]]*\\([0-9]+\\):\\([0-9]+\\)" 1 2 3))
 
