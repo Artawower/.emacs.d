@@ -1420,13 +1420,13 @@ Bookmark for navigation inside file
 (bm-face ((t (:foreground ,+m-color-secondary :background unspecified))))
 :custom
 (bm-in-lifo-order t)
-:bind (("C-M-n" . bm-next)
-        ("C-M-p" . bm-previous)
+:bind (("M-s-n" . bm-next)
+        ("M-s-p" . bm-previous)
         ("s-b" . bm-toggle)))
 #+END_SRC
 
 #+RESULTS:
-: bm-toggle
+: [nil 26217 44217 235873 nil elpaca-process-queues nil nil 999999 nil]
 
 ** Avy. fast jump
 #+BEGIN_SRC emacs-lisp
@@ -1687,8 +1687,12 @@ Dirvish.
 #+BEGIN_SRC emacs-lisp 
 (use-package reveal-in-osx-finder
   :defer t
-  :bind (:map evil-normal-state-map
-              ("SPC o f" . reveal-in-osx-finder))
+  :general
+  (:keymaps 'override
+            :states 'normal
+            "SPC o f" 'reveal-in-osx-finder)
+  (:keymaps 'dired-mode-map
+            "SPC o f" 'reveal-in-osx-finder)
   :ensure t)
 #+END_SRC
 
@@ -2141,11 +2145,14 @@ This function also stolen from doom emacs. It provide functionality for automati
   (:states '(normal visual)
            :keymaps 'override
            "SPC bI" 'projectile-ibuffer
-           "SPC bi" 'ibuffer)
+           "SPC bi" (lambda () (interactive) (call-interactively 'ibuffer)))
   (:states '(normal visual)
            :keymaps 'ibuffer-mode-map
            "<return>" '+ibuffer/visit-workspace-buffer))
 #+END_SRC
+
+#+RESULTS:
+
 *** Collect ibuffers for all workspaces
 #+BEGIN_SRC emacs-lisp 
 (with-eval-after-load "ibuffer"
