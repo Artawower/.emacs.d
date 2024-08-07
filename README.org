@@ -3112,6 +3112,7 @@ Another all formtter. Based on prettier and black
   :config
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.bun\\'")
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.npm\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.pnpm-store\\'")
   (setq lsp-auto-execute-action nil)
   (setq lsp-javascript-display-return-type-hints t)
   (setq lsp-json-schemas
@@ -3144,9 +3145,13 @@ Another all formtter. Based on prettier and black
   (set-face-foreground 'lsp-face-highlight-textual +m-color-secondary)
 
 
-  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\venv\\'")
-  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\pyenv\\'")
-  (add-to-list 'lsp-file-watch-ignored "[/\\\\]\\.cache\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\venv\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\pyenv\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.cache\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.emacs\\.d\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\pure-emacs\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\Yandex.Disk.localized\\'")
+
   (set-face-attribute 'lsp-face-highlight-textual nil :background "#c0caf5")
   ;; Install corfu completion for lsp
   ;; (defun corfu-lsp-setup ()
@@ -3933,13 +3938,15 @@ Improved styles for git changes
 *** Main mode
 #+BEGIN_SRC emacs-lisp
 (use-package clojure-mode
-  :hook ((clojure-mode . paren-face-mode))
+  :hook ((clojure-mode . paren-face-mode)
+         (clojure-mode . (lambda () (setq-local lsp-enable-on-type-formatting t))))
   :defer t)
 
 #+END_SRC
 *** Repl
 #+BEGIN_SRC emacs-lisp
 (use-package cider
+  :hook (clojure-mode . cider-mode)
   :defer t)
 #+END_SRC
 
